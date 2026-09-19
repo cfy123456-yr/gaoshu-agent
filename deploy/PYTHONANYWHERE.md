@@ -37,10 +37,10 @@ If Python 3.13 is unavailable, use `python3.12` instead.
 ## 4. Replace the WSGI file
 
 Open the WSGI configuration file shown on the Web page. Replace its entire
-contents with `deploy/pythonanywhere_wsgi.py`, and change
-`/home/YOUR_USERNAME/gaoshu-agent` to your actual username. The deployment uses
-the project's dependency-free ASGI-to-WSGI adapter rather than relying on a
-separate compatibility package.
+contents with `deploy/pythonanywhere_wsgi.py`. The file resolves the project
+from the current user's home directory. The deployment uses the project's
+dependency-free ASGI-to-WSGI adapter rather than relying on a separate
+compatibility package.
 
 Save the file, then click **Reload**.
 
