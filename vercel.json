@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "env": {
+    "LOG_ENABLED": "false"
+  }
+}

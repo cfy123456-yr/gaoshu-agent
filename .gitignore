@@ -11,6 +11,7 @@ htmlcov/
 .env.*
 !.env.example
 .npm-cache/
+.vercel/
 tools/
 logs/
 .DS_Store
