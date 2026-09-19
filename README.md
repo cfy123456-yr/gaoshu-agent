@@ -35,7 +35,9 @@ gaoshu-agent/
 │  ├─ start-demo.ps1
 │  ├─ test-api.cmd
 │  ├─ stop-demo.cmd
-│  └─ stop-demo.ps1
+│  ├─ stop-demo.ps1
+│  ├─ verify-deployment.cmd
+│  └─ verify_deployment.py
 ├─ tests/
 │  ├─ test_math_api.py
 │  ├─ test_security_api.py
@@ -43,6 +45,7 @@ gaoshu-agent/
 ├─ .dockerignore
 ├─ .env.example
 ├─ .gitignore
+├─ DEPLOYMENT.md
 ├─ Dockerfile
 ├─ README.md
 ├─ render.yaml
@@ -84,9 +87,9 @@ python -m pip install -r requirements.txt
 1. 检查并启动本地数学服务。
 2. 核对本地 `/health` 版本，发现旧进程时先重启。
 3. 检查公网隧道健康状态，隧道失效时自动重建。
-4. 输出智能体页面和两个工作流接口地址。
+4. 输出智能体页面和求导、积分、极限三个接口地址。
 
-演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的说明见 `outputs\演示服务一键启动说明.md`。
+演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的部署与验收说明见 `DEPLOYMENT.md`。
 
 数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。当前 11 项测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、非法表达式拦截、API Key、限流、计算超时、日志隐私和日志轮转配置。
 
@@ -177,6 +180,7 @@ POST /limit-query?expression=1/x&variable=x&point=0&direction=-
 | --- | --- | --- |
 | `math_verify` | 求导、导数答案判断 | `/verify-query` |
 | `math_integrate` | 不定积分、定积分、积分答案判断 | `/integrate-query` |
+| 极限工作流 | 双侧极限、左极限、右极限与答案判断 | `/limit-query` |
 | `knowledge_lookup` | 检索高数知识库 | 扣子知识库 |
 
 ## 知识库
@@ -230,7 +234,7 @@ $env:CALCULATION_WORKERS = "4"
 
 后续公网部署时仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。
 
-固定公网部署所需的 Docker、Render 和环境变量模板已经准备好，操作步骤见 `outputs\固定公网部署说明.md`。
+固定公网部署所需的 Docker、Render 和环境变量模板已经准备好，操作步骤见 `DEPLOYMENT.md`，部署完成后可运行 `scripts\verify-deployment.cmd` 自动验收。
 
 ## 当前状态
 
@@ -238,7 +242,7 @@ $env:CALCULATION_WORKERS = "4"
 
 - 智能体已发布：<https://www.coze.cn/store/agent/7687155979821481999?bot_id=true>
 - 知识库已绑定：12 个文档、464 个分段。
-- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流。
+- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流，并接入极限判定接口。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
 - 已通过 11 项自动回归，左右极限为无穷大时的判题错误也已修复。
