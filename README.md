@@ -1,6 +1,6 @@
 # 知微高等数学学伴
 
-面向大学理工科学生的高等数学教育智能体项目。第一阶段覆盖导数与微分、不定积分和定积分。
+面向大学理工科学生的高等数学教育智能体项目。第一阶段覆盖极限、导数与微分、不定积分和定积分。
 
 项目采用“大模型负责教学表达，SymPy 负责确定性计算，知识库负责概念和教材依据”的架构。
 
@@ -9,6 +9,7 @@
 - 通过扣子智能体提供“知微老师”中文对话。
 - 使用 `math_verify` 工作流计算导数并判断学生答案。
 - 使用 `math_integrate` 工作流计算不定积分、定积分并判断学生答案。
+- 使用数学服务计算双侧极限、左极限和右极限并判断学生答案。
 - 使用 `knowledge_lookup` 工作流检索导数、微分和积分知识。
 - FastAPI 数学服务同时提供 JSON 和查询参数两种调用方式。
 - 数学表达式支持 `x^2`、`x**2`、`3x` 和 `3*x` 等常见写法。
@@ -110,6 +111,28 @@ POST /integrate-query?expression=x^2&variable=x&lower=0&upper=1&candidate=1/3
 - `integral_latex`：可供 LaTeX 渲染的积分结果。
 - `is_correct`：学生答案是否正确；没有提供答案时为 `null`。
 
+### 极限计算与判题
+
+双侧极限：
+
+```http
+POST /limit-query?expression=sin(x)/x&variable=x&point=0&candidate=1
+```
+
+左极限和右极限：
+
+```http
+POST /limit-query?expression=1/x&variable=x&point=0&direction=+
+POST /limit-query?expression=1/x&variable=x&point=0&direction=-
+```
+
+返回字段包括：
+
+- `limit`：极限结果。
+- `limit_latex`：可供 LaTeX 渲染的极限结果。
+- `direction`：`+` 表示右极限，`-` 表示左极限，空值表示双侧极限。
+- `is_correct`：学生答案是否正确；没有提供答案时为 `null`。
+
 ## 扣子工作流
 
 | 工作流 | 用途 | 后端接口 |
@@ -137,4 +160,4 @@ POST /integrate-query?expression=x^2&variable=x&lower=0&upper=1&candidate=1/3
 
 ## 当前状态
 
-已实现文字对话、导数与积分计算、答案判断、知识库检索和多轮上下文测试。OCR、语音、稳定公网部署、独立前端和参赛材料仍在后续开发中。
+已实现文字对话、极限与导数及积分计算、答案判断、知识库检索和多轮上下文测试。OCR、语音、稳定公网部署、独立前端和参赛材料仍在后续开发中。
