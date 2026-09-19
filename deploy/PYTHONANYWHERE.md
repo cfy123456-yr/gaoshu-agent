@@ -38,9 +38,8 @@ If Python 3.13 is unavailable, use `python3.12` instead.
 
 Open the WSGI configuration file shown on the Web page. Replace its entire
 contents with `deploy/pythonanywhere_wsgi.py`. The file resolves the project
-from the current user's home directory. The deployment uses the project's
-dependency-free ASGI-to-WSGI adapter rather than relying on a separate
-compatibility package.
+from the current user's home directory and uses the synchronous Flask WSGI
+entry point in `deploy/wsgi_app.py`.
 
 Save the file, then click **Reload**.
 

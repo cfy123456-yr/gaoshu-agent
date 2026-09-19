@@ -11,8 +11,5 @@ os.environ.setdefault("LOG_ENABLED", "false")
 os.environ.setdefault("CALCULATION_TIMEOUT_SECONDS", "20")
 os.environ.setdefault("CALCULATION_WORKERS", "2")
 
-from app.main import app as asgi_app
-from deploy.asgi_wsgi import ASGIApplication
+from deploy.wsgi_app import application
 
-
-application = ASGIApplication(asgi_app)
