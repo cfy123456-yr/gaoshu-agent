@@ -232,9 +232,7 @@ $env:CALCULATION_WORKERS = "4"
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
-后续公网部署时仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。
-
-固定公网部署所需的 Docker、Render 和环境变量模板已经准备好，操作步骤见 `DEPLOYMENT.md`，部署完成后可运行 `scripts\verify-deployment.cmd` 自动验收。
+公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。后续仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
 
 ## 当前状态
 
@@ -242,13 +240,14 @@ $env:CALCULATION_WORKERS = "4"
 
 - 智能体已发布：<https://www.coze.cn/store/agent/7687155979821481999?bot_id=true>
 - 知识库已绑定：12 个文档、464 个分段。
-- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流，并接入极限判定接口。
+- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流；极限判定接口已经提供，扣子侧暂未单独绑定极限工作流。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
 - 已通过 11 项自动回归，左右极限为无穷大时的判题错误也已修复。
 - 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
 - 同济版高等数学第 1—12 章知识文件已经整理完成。
 
-当前公网访问依赖 LocalTunnel 固定子域名 `https://zhixi-gaoshu-2026.loca.lt`，需要本机 FastAPI 服务和隧道进程同时运行。
+- 已部署到 PythonAnywhere，固定公网地址为 `https://cfyyy.pythonanywhere.com`，不再依赖本机 LocalTunnel。
+- 已通过扣子实测求导 `f(x)=x^2` 和不定积分 `∫x^2 dx` 两条完整链路。
 
-图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音、固定公网部署、独立前端和参赛材料仍在后续开发中。
+图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音、独立前端和参赛材料仍在后续开发中。
