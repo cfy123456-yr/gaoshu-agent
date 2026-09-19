@@ -1,0 +1,16 @@
+.git
+.gitignore
+.venv
+.npm-cache
+__pycache__
+*.py[cod]
+.env
+.env.*
+!.env.example
+logs
+work
+tools
+tests
+knowledge
+knowledge_tongji
+scripts

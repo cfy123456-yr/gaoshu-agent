@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: zhixi-gaoshu-math
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MATH_API_KEY
+        generateValue: true
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: MAX_EXPRESSION_LENGTH
+        value: "300"
+      - key: MAX_SYMBOL_LENGTH
+        value: "32"
+      - key: CALCULATION_TIMEOUT_SECONDS
+        value: "10"
+      - key: CALCULATION_WORKERS
+        value: "4"
+      - key: LOG_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: LOG_FILE
+        value: "logs/math-service.jsonl"
+      - key: LOG_MAX_BYTES
+        value: "5242880"
+      - key: LOG_BACKUP_COUNT
+        value: "3"

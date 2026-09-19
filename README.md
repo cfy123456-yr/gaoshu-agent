@@ -30,14 +30,26 @@ gaoshu-agent/
 │  ├─ 05_反常积分补充.md
 │  ├─ 06_定积分的应用.md
 │  └─ 07—12 章各知识文件
-├─ tools/
-│  └─ cloudflared.exe
+├─ scripts/
+│  ├─ start-demo.cmd
+│  ├─ start-demo.ps1
+│  ├─ test-api.cmd
+│  ├─ stop-demo.cmd
+│  └─ stop-demo.ps1
+├─ tests/
+│  ├─ test_math_api.py
+│  ├─ test_security_api.py
+│  └─ test_service_components.py
+├─ .dockerignore
+├─ .env.example
 ├─ .gitignore
+├─ Dockerfile
 ├─ README.md
+├─ render.yaml
 └─ requirements.txt
 ```
 
-`tools/`、`.venv/`、缓存文件和 `.env` 不进入 Git 仓库。
+`.venv/`、缓存文件和 `.env` 不进入 Git 仓库。
 
 ## 环境要求
 
@@ -66,6 +78,25 @@ python -m pip install -r requirements.txt
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+
+演示时可以直接双击 `scripts\start-demo.cmd`，脚本会自动完成：
+
+1. 检查并启动本地数学服务。
+2. 核对本地 `/health` 版本，发现旧进程时先重启。
+3. 检查公网隧道健康状态，隧道失效时自动重建。
+4. 输出智能体页面和两个工作流接口地址。
+
+演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的说明见 `outputs\演示服务一键启动说明.md`。
+
+数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。当前 11 项测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、非法表达式拦截、API Key、限流、计算超时、日志隐私和日志轮转配置。
+
+也可以直接使用 Python 命令运行：
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+如果测试服务不在默认地址，可先设置 `TEST_BASE_URL`。
 
 开发时可增加自动重载：
 
@@ -157,18 +188,63 @@ POST /limit-query?expression=1/x&variable=x&point=0&direction=-
 
 第 1 章、第 3 章、第 5—12 章使用 `knowledge_tongji` 中的独立文件；第 2、4 章继续引用冻结文件，避免重复生成和版本冲突。
 
-## 安全说明
+## 安全与配置
 
-当前接口主要用于本地开发和作品演示，公开发布前还需要增加：
+数学服务已加入基础安全防护：
 
-- API 鉴权。
-- 请求频率限制。
-- 表达式长度限制。
-- 计算超时。
-- 日志、监控和密钥管理。
+- 可选 API 密钥校验：`MATH_API_KEY`。
+- 内存请求频率限制：`RATE_LIMIT_PER_MINUTE`，默认每分钟 60 次。
+- 表达式长度限制：`MAX_EXPRESSION_LENGTH`，默认 300 字符。
+- 变量名长度限制：`MAX_SYMBOL_LENGTH`，默认 32 字符。
+- 表达式字符检查和变量名白名单检查。
+- SymPy 解析器使用受限的 `local_dict` 和空的 `global_dict`，不再直接解析不受信任内容。
+- 计算超时：`CALCULATION_TIMEOUT_SECONDS`，默认 10 秒；超时返回 HTTP 504，并带 `X-Calculation-Timeout` 响应头。
+- 计算线程池：`CALCULATION_WORKERS`，默认 4 个并发计算线程。
+- JSONL 持久化日志：默认写入 `logs/math-service.jsonl`，日志按 5 MiB 轮转并保留 3 个备份。
 
-不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。
+日志只记录请求时间、接口、状态码、耗时、客户端哈希和错误类型，不记录数学表达式、API 密钥或学生个人数据。可通过以下变量调整：
+
+```powershell
+$env:LOG_ENABLED = "true"
+$env:LOG_LEVEL = "INFO"
+$env:LOG_FILE = "logs/math-service.jsonl"
+$env:LOG_MAX_BYTES = "5242880"
+$env:LOG_BACKUP_COUNT = "3"
+```
+
+可在启动服务前通过环境变量覆盖默认配置：
+
+```powershell
+$env:MATH_API_KEY = "替换为你的密钥"
+$env:RATE_LIMIT_PER_MINUTE = "60"
+$env:MAX_EXPRESSION_LENGTH = "300"
+$env:MAX_SYMBOL_LENGTH = "32"
+$env:CALCULATION_TIMEOUT_SECONDS = "10"
+$env:CALCULATION_WORKERS = "4"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+设置 `MATH_API_KEY` 后，扣子 HTTP 节点必须增加请求头 `X-API-Key`，其值与 `MATH_API_KEY` 一致。未设置时仍保持本地演示可直接调用。
+
+`GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
+
+后续公网部署时仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。
+
+固定公网部署所需的 Docker、Render 和环境变量模板已经准备好，操作步骤见 `outputs\固定公网部署说明.md`。
 
 ## 当前状态
 
-已实现文字对话、极限与导数及积分计算、答案判断、知识库检索和多轮上下文测试。同济版高等数学第 1—12 章知识文件已经整理完成。OCR、语音、稳定公网部署、独立前端和参赛材料仍在后续开发中。
+已完成从知识库到教学对话的核心闭环：
+
+- 智能体已发布：<https://www.coze.cn/store/agent/7687155979821481999?bot_id=true>
+- 知识库已绑定：12 个文档、464 个分段。
+- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流。
+- 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
+- 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
+- 已通过 11 项自动回归，左右极限为无穷大时的判题错误也已修复。
+- 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
+- 同济版高等数学第 1—12 章知识文件已经整理完成。
+
+当前公网访问依赖 LocalTunnel 固定子域名 `https://zhixi-gaoshu-2026.loca.lt`，需要本机 FastAPI 服务和隧道进程同时运行。
+
+图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音、固定公网部署、独立前端和参赛材料仍在后续开发中。
