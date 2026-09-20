@@ -47,6 +47,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('data.intent === "solve"', html)
         self.assertIn("populateSolverChapters();", html)
         self.assertIn('solverDialog.showModal()', html)
+        self.assertIn("parametric_derivative", html)
+        self.assertIn("参数方程求导", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -267,6 +269,14 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("solve", payload["intent"])
         self.assertIn("C1*exp(x)", payload["calculation"]["result"])
+
+    def test_demo_chat_solves_parametric_derivative(self):
+        response = self.chat("参数方程 x=t^2, y=t^3 求 dy/dx")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("3*t/2", payload["calculation"]["result"])
 
     def test_demo_chat_solves_vector_dot_product(self):
         response = self.chat("向量 (1,2,3) 点乘 (4,5,6)")

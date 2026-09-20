@@ -240,6 +240,23 @@ Content-Type: application/json
 
 该接口返回 `method`、`result`、`latex`、`notes` 等字段；提供 `candidate` 时，能确定性比较的题型会返回 `is_correct`。支持的章节包括 `limits`、`derivatives`、`integrals`、`differential_equations`、`vectors`、`multivariable_calculus`、`multiple_integrals`、`line_surface_integrals` 和 `series`。
 
+参数方程求导示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "derivatives",
+  "topic": "parametric_derivative",
+  "inputs": {
+    "x_expression": "t^2",
+    "y_expression": "t^3",
+    "parameter": "t"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：

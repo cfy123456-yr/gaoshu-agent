@@ -47,6 +47,11 @@ ALL_TOPIC_CASES = {
         "variable": "x",
         "point": "0",
     },
+    ("derivatives", "parametric_derivative"): {
+        "x_expression": "t^2",
+        "y_expression": "t^3",
+        "parameter": "t",
+    },
     ("integrals", "indefinite"): {"expression": "x", "variable": "x"},
     ("integrals", "definite"): {
         "expression": "x",
@@ -291,6 +296,23 @@ class ChapterSolverTest(unittest.TestCase):
             {"equation": "x^2+y^2=1", "variable": "x", "dependent": "y"},
         )
         self.assertEqual("-x/y", payload["result"])
+
+    def test_parametric_derivative(self):
+        payload = self.solve(
+            "derivatives",
+            "parametric_derivative",
+            {"x_expression": "t^2", "y_expression": "t^3", "parameter": "t"},
+        )
+        self.assertEqual("3*t/2", payload["result"])
+        self.assertEqual("参数方程求导", payload["method"])
+
+    def test_parametric_derivative_rejects_zero_dx(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "derivatives",
+                "parametric_derivative",
+                {"x_expression": "1", "y_expression": "t^2", "parameter": "t"},
+            )
 
     def test_power_radius(self):
         payload = self.solve(

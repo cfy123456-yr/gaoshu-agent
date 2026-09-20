@@ -2036,6 +2036,21 @@
                 solverPoint(false),
               ],
             },
+            parametric_derivative: {
+              label: "参数方程求导",
+              hint: "填写 x、y 关于参数的表达式，由 dy/dx = (dy/dt)/(dx/dt) 计算。",
+              fields: [
+                solverText("x_expression", "x(t)", "例如：t^2"),
+                solverText("y_expression", "y(t)", "例如：t^3"),
+                solverText(
+                  "parameter",
+                  "参数",
+                  "例如：t",
+                  "t",
+                  optionalField,
+                ),
+              ],
+            },
           },
         },
         integrals: {

@@ -283,7 +283,7 @@ series
 | chapter | topic |
 | --- | --- |
 | limits | limit, sequence_limit |
-| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature |
+| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature, parametric_derivative |
 | integrals | indefinite, definite, improper |
 | differential_equations | dsolve |
 | vectors | dot, cross, norm, angle, distance, projection |

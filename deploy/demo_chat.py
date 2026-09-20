@@ -160,6 +160,10 @@ _EXTENDED_CHAPTER_HINTS = {
         "missing": "请写出隐函数方程，例如“隐函数 x^2+y^2=1 求 dy/dx”。",
         "suggestions": ["隐函数 x^2+y^2=1 求 dy/dx"],
     },
+    ("derivatives", "parametric_derivative"): {
+        "missing": "请写出参数方程，例如“参数方程 x=t^2, y=t^3 求 dy/dx”。",
+        "suggestions": ["参数方程 x=t^2, y=t^3 求 dy/dx"],
+    },
     ("vectors", "dot"): {
         "missing": "请写出两个向量，例如“向量 (1,2,3) 点乘 (4,5,6)”。",
         "suggestions": ["向量 (1,2,3) 点乘 (4,5,6)"],
@@ -294,6 +298,29 @@ def _extract_vector_operands(message: str) -> tuple[list[str], list[str]] | None
 
 def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] | None:
     compact = message.strip()
+
+    if "参数方程" in compact:
+        x_match = re.search(
+            r"x\s*=\s*(.+?)(?=\s*[,，;；]\s*y\s*=|y\s*=)",
+            compact,
+        )
+        y_match = re.search(
+            r"y\s*=\s*(.+?)(?=\s*(?:求|计算|,|，|;|；|$))",
+            compact,
+        )
+        if x_match and y_match:
+            parameter_match = re.search(r"参数\s*([A-Za-z])", compact)
+            return (
+                "derivatives",
+                "parametric_derivative",
+                {
+                    "x_expression": _strip_expression_tail(x_match.group(1)),
+                    "y_expression": _strip_expression_tail(y_match.group(1)),
+                    "parameter": (
+                        parameter_match.group(1) if parameter_match else "t"
+                    ),
+                },
+            )
 
     if (
         "微分方程" in compact

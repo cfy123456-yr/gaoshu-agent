@@ -152,7 +152,7 @@ candidate
 | chapter | topic |
 | --- | --- |
 | limits | limit, sequence_limit |
-| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature |
+| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature, parametric_derivative |
 | integrals | indefinite, definite, improper |
 | differential_equations | dsolve |
 | vectors | dot, cross, norm, angle, distance, projection |
@@ -167,14 +167,15 @@ candidate
 1. 高阶导数使用 `derivatives/higher_derivative`。
 2. 切线和法线使用 `derivatives/tangent` 或 `derivatives/normal`。
 3. 隐函数求导使用 `multivariable_calculus/implicit_derivative`。
-4. 二重积分和三重积分使用 `multiple_integrals/double` 或 `multiple_integrals/triple`。
-5. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
-6. 微分方程使用 `differential_equations/dsolve`。
-7. 如果题目不属于当前支持列表，如实说明该题型暂不能由计算工作流确定性验证，只提供思路，不编造最终答案。
-8. 工作流返回的 `latex` 是公式的唯一标准。必须逐字放入 `$$...$$` 中使用，不得自行重写、改写或删除反斜杠。
-9. 禁止把 `\sum`、`\frac`、`\infty` 等 LaTeX 命令改写成 `sum`、`frac`、`infity`。
-10. 如果 `latex` 为空，只使用返回的 `result`，不要自行补写公式。
-11. 有非空 `candidate` 时，根据 `is_correct_text`（`"true"` 或 `"false"`）判断答案是否正确；空字符串时不判题。
+4. 参数方程求导使用 `derivatives/parametric_derivative`，输入 `x_expression`、`y_expression` 和可选 `parameter`（默认 `t`）。
+5. 二重积分和三重积分使用 `multiple_integrals/double` 或 `multiple_integrals/triple`。
+6. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
+7. 微分方程使用 `differential_equations/dsolve`。
+8. 如果题目不属于当前支持列表，如实说明该题型暂不能由计算工作流确定性验证，只提供思路，不编造最终答案。
+9. 工作流返回的 `latex` 是公式的唯一标准。必须逐字放入 `$$...$$` 中使用，不得自行重写、改写或删除反斜杠。
+10. 禁止把 `\sum`、`\frac`、`\infty` 等 LaTeX 命令改写成 `sum`、`frac`、`infity`。
+11. 如果 `latex` 为空，只使用返回的 `result`，不要自行补写公式。
+12. 有非空 `candidate` 时，根据 `is_correct_text`（`"true"` 或 `"false"`）判断答案是否正确；空字符串时不判题。
 
 ### math_plot
 

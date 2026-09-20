@@ -49,6 +49,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "extrema",
             "taylor",
             "curvature",
+            "parametric_derivative",
         }
     ),
     "integrals": frozenset({"indefinite", "definite", "improper"}),
@@ -656,6 +657,26 @@ def _curvature(view: _InputView) -> dict[str, Any]:
     if point is not None:
         result = simplify(curvature.subs(variable, _parse_expression(point, "point")))
     return {"result": result, "comparison_value": result, "latex": latex(result)}
+
+
+@_solver(method="参数方程求导")
+def _parametric_derivative(view: _InputView) -> dict[str, Any]:
+    x_expression = _parse_expression(view.text("x_expression"), "x_expression")
+    y_expression = _parse_expression(view.text("y_expression"), "y_expression")
+    parameter = _parse_symbol(
+        view.text("parameter", required=False, default="t"),
+        "parameter",
+    )
+    dx_dt = simplify(diff(x_expression, parameter))
+    dy_dt = simplify(diff(y_expression, parameter))
+    if dx_dt == 0:
+        raise SolveError("dx/dt = 0，不能直接使用 dy/dx = (dy/dt)/(dx/dt)")
+    result = simplify(dy_dt / dx_dt)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [f"dy/dx = (dy/dt)/(dx/dt)，其中 dx/dt = {dx_dt}，dy/dt = {dy_dt}"],
+    }
 
 
 # Integrals
@@ -1336,6 +1357,7 @@ _SOLVERS = {
     ("derivatives", "extrema"): _extrema,
     ("derivatives", "taylor"): _taylor,
     ("derivatives", "curvature"): _curvature,
+    ("derivatives", "parametric_derivative"): _parametric_derivative,
     ("integrals", "indefinite"): _indefinite_integral,
     ("integrals", "definite"): _definite_integral,
     ("integrals", "improper"): _improper_integral,
