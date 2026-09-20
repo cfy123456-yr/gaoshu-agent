@@ -3,32 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="知微高数求导、积分和极限计算演示">
-  <title>知微高数计算演示</title>
+  <meta name="theme-color" content="#f4f7f5">
+  <meta
+    name="description"
+    content="知微老师高等数学对话演示，支持求导、积分和极限计算。"
+  >
+  <title>知微老师 · 高数对话演示</title>
   <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
-    crossorigin="anonymous"
+    href="{{ url_for('static', filename='katex/katex.min.css') }}"
   >
   <style>
     :root {
       --ink: #17231f;
-      --muted: #5e6d67;
-      --line: #d5ded9;
-      --line-strong: #b7c6bf;
+      --muted: #61706a;
+      --line: #d7e0db;
+      --line-strong: #b8c8c0;
+      --canvas: #f4f7f5;
       --surface: #ffffff;
-      --canvas: #f2f5f3;
-      --soft: #e8f0ec;
-      --green: #1c6b57;
-      --green-dark: #145242;
-      --amber: #a85e19;
-      --red: #b42318;
-      --blue: #275f8f;
-      --shadow: 0 12px 30px rgba(23, 35, 31, 0.07);
+      --soft-green: #e7f1ec;
+      --green: #1d6b56;
+      --green-dark: #14503f;
+      --blue: #245f8c;
+      --blue-dark: #18486d;
+      --amber: #a25b16;
+      --red: #ad2d24;
+      --shadow: 0 16px 45px rgba(23, 35, 31, 0.09);
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
     }
 
     html {
@@ -38,16 +47,16 @@
     body {
       margin: 0;
       min-width: 320px;
-      min-height: 100vh;
       color: var(--ink);
-      background: var(--canvas);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 220px),
+        var(--canvas);
       font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
       line-height: 1.55;
     }
 
     button,
-    input,
-    select {
+    textarea {
       font: inherit;
     }
 
@@ -55,26 +64,61 @@
       cursor: pointer;
     }
 
-    .masthead {
-      border-bottom: 1px solid var(--line);
-      background: var(--surface);
+    button:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid rgba(29, 107, 86, 0.2);
+      outline-offset: 2px;
     }
 
-    .masthead-inner {
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .app-shell {
+      display: flex;
+      width: min(980px, 100%);
+      height: 100dvh;
+      min-height: 540px;
+      margin: 0 auto;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow);
+    }
+
+    .chat-layout {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    .chat-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
-      width: min(1160px, 100%);
-      margin: 0 auto;
-      padding: 18px 24px;
+      gap: 18px;
+      flex: 0 0 auto;
+      min-height: 76px;
+      padding: 13px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 13px;
       min-width: 0;
+      gap: 12px;
     }
 
     .brand-mark {
@@ -83,69 +127,81 @@
       width: 44px;
       height: 44px;
       place-items: center;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
+      border: 1px solid #a9c9bb;
+      border-radius: 50%;
       color: var(--green-dark);
-      background: var(--soft);
-      font-weight: 800;
+      background: var(--soft-green);
+      font-size: 1.05rem;
+      font-weight: 850;
     }
 
-    .eyebrow {
-      margin: 0 0 1px;
-      color: var(--green);
-      font-size: 0.76rem;
-      font-weight: 700;
+    .brand-copy {
+      min-width: 0;
     }
 
-    h1,
-    h2,
-    h3,
-    p {
-      margin-top: 0;
-    }
-
-    h1 {
-      margin-bottom: 0;
-      font-size: 1.34rem;
+    .brand-copy h1 {
+      margin: 0;
+      font-size: 1.1rem;
       line-height: 1.25;
     }
 
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex: 0 0 auto;
-      min-height: 34px;
-      padding: 6px 11px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
+    .brand-copy p {
+      margin: 2px 0 0;
+      overflow: hidden;
       color: var(--muted);
-      background: #f8faf9;
-      font-size: 0.82rem;
-      font-weight: 700;
+      font-size: 0.77rem;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 9px;
+    }
+
+    .status-chip,
+    .clear-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      border-radius: 999px;
+      font-size: 0.79rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .status-chip {
+      gap: 7px;
+      min-width: 92px;
+      padding: 6px 11px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #f7f9f8;
+    }
+
     .status-dot {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--amber);
     }
 
     .status-chip[data-state="online"] {
+      border-color: #b8d7c8;
       color: var(--green-dark);
-      border-color: #b9d4c9;
-      background: #edf7f2;
+      background: #ecf7f1;
     }
 
     .status-chip[data-state="online"] .status-dot {
-      background: #238b67;
+      background: #258463;
     }
 
     .status-chip[data-state="offline"] {
-      color: var(--red);
-      border-color: #efc2bd;
+      border-color: #efc5c1;
+      color: #84261f;
       background: #fff4f2;
     }
 
@@ -153,1032 +209,572 @@
       background: var(--red);
     }
 
-    .page {
-      width: min(1160px, 100%);
-      margin: 0 auto;
-      padding: 28px 24px 44px;
-    }
-
-    .calculator-header {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 18px;
-    }
-
-    .calculator-header h2 {
-      margin-bottom: 4px;
-      font-size: 1.16rem;
-    }
-
-    .calculator-header p {
-      margin-bottom: 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-    }
-
-    .segmented {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(76px, 1fr));
-      gap: 4px;
-      flex: 0 0 auto;
-      padding: 4px;
+    .clear-button {
+      min-height: 34px;
+      padding: 5px 12px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #e8ece9;
-    }
-
-    .segmented button {
-      min-width: 0;
-      min-height: 38px;
-      padding: 7px 15px;
-      border: 1px solid transparent;
-      border-radius: 6px;
       color: var(--muted);
       background: transparent;
-      font-weight: 700;
-      white-space: nowrap;
     }
 
-    .segmented button:hover {
-      color: var(--ink);
-      background: rgba(255, 255, 255, 0.58);
-    }
-
-    .segmented button[aria-pressed="true"] {
-      color: var(--green-dark);
+    .clear-button:hover {
       border-color: var(--line-strong);
-      background: var(--surface);
-      box-shadow: 0 2px 5px rgba(23, 35, 31, 0.07);
-    }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(330px, 0.92fr);
-      align-items: start;
-      gap: 18px;
-    }
-
-    .panel {
-      min-width: 0;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-    }
-
-    .form-panel {
-      padding: 22px;
-    }
-
-    .result-panel {
-      min-height: 488px;
-      padding: 22px;
-    }
-
-    .panel-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
-      padding-bottom: 13px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .panel-heading h3 {
-      margin-bottom: 0;
-      font-size: 1rem;
-    }
-
-    .panel-heading-note {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-
-    .sample-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 18px;
-    }
-
-    .sample-button {
-      min-height: 32px;
-      padding: 5px 10px;
-      border: 1px dashed var(--line-strong);
-      border-radius: 6px;
-      color: var(--blue);
-      background: #f8fbfd;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .sample-button:hover {
-      border-style: solid;
-      border-color: #8fb1cc;
-      background: #eef6fb;
-    }
-
-    .sample-button[hidden] {
-      display: none;
-    }
-
-    .form-grid,
-    .field-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(130px, 0.3fr);
-      gap: 14px;
-    }
-
-    .field-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .form-grid {
-      margin-bottom: 15px;
-    }
-
-    .field-wide {
-      grid-column: 1 / -1;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .field[hidden],
-    .dynamic-fields[hidden],
-    .form-error[hidden],
-    .result-state[hidden],
-    #resultContent[hidden] {
-      display: none;
-    }
-
-    label,
-    .field-label {
-      color: #31423b;
-      font-size: 0.84rem;
-      font-weight: 750;
-    }
-
-    input,
-    select {
-      width: 100%;
-      min-height: 43px;
-      padding: 9px 11px;
-      border: 1px solid var(--line-strong);
-      border-radius: 6px;
       color: var(--ink);
-      background: #fdfefe;
-      outline: none;
-    }
-
-    input:focus,
-    select:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(28, 107, 87, 0.12);
-    }
-
-    input::placeholder {
-      color: #89958f;
-    }
-
-    .field-help {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.76rem;
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 21px;
-    }
-
-    .primary-button,
-    .secondary-button {
-      min-height: 43px;
-      padding: 9px 18px;
-      border-radius: 6px;
-      font-weight: 750;
-    }
-
-    .primary-button {
-      flex: 1;
-      border: 1px solid var(--green-dark);
-      color: #fff;
-      background: var(--green);
-    }
-
-    .primary-button:hover {
-      background: var(--green-dark);
-    }
-
-    .primary-button:disabled {
-      cursor: wait;
-      opacity: 0.68;
-    }
-
-    .secondary-button {
-      border: 1px solid var(--line-strong);
-      color: var(--ink);
-      background: #f8faf9;
-    }
-
-    .secondary-button:hover {
-      background: #edf1ef;
-    }
-
-    .form-error {
-      margin: 13px 0 0;
-      padding: 10px 12px;
-      border-left: 3px solid var(--red);
-      color: #7a1d16;
-      background: #fff4f2;
-      font-size: 0.85rem;
-    }
-
-    .result-state {
-      display: grid;
-      min-height: 380px;
-      place-items: center;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .state-inner {
-      max-width: 290px;
-    }
-
-    .state-inner strong {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--ink);
-    }
-
-    .spinner {
-      width: 28px;
-      height: 28px;
-      margin: 0 auto 12px;
-      border: 3px solid #d6e4de;
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .spinner {
-        animation-duration: 1.8s;
-      }
-    }
-
-    .formula-box {
-      display: grid;
-      min-height: 120px;
-      margin-bottom: 16px;
-      padding: 16px 8px;
-      place-items: center;
-      overflow-x: auto;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      color: #102e25;
-      background: #fbfdfc;
-      font-size: 1.2rem;
-    }
-
-    .formula-box .katex {
-      font-size: 1.24em;
-    }
-
-    .answer-state {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      padding: 10px 12px;
-      border-left: 3px solid var(--line-strong);
       background: #f5f7f6;
-      font-size: 0.88rem;
-      font-weight: 750;
     }
 
-    .answer-state[data-result="correct"] {
-      border-color: #238b67;
+    .messages {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 24px 22px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .message[data-role="user"] {
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      display: grid;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      margin-top: 20px;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
       color: var(--green-dark);
-      background: #edf7f2;
-    }
-
-    .answer-state[data-result="incorrect"] {
-      border-color: var(--red);
-      color: #7a1d16;
-      background: #fff4f2;
-    }
-
-    .answer-state[data-result="empty"] {
-      border-color: #8ba4b8;
-      color: #274f71;
-      background: #f1f7fb;
-    }
-
-    .meta-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      margin: 0;
-      border-top: 1px solid var(--line);
-    }
-
-    .meta-row {
-      display: grid;
-      grid-template-columns: 86px minmax(0, 1fr);
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .meta-row dt {
-      color: var(--muted);
+      background: var(--soft-green);
       font-size: 0.8rem;
+      font-weight: 850;
+    }
+
+    .message[data-role="user"] .avatar {
+      border-color: #a9c5dc;
+      color: var(--blue-dark);
+      background: #eaf3fa;
+    }
+
+    .message-content {
+      width: fit-content;
+      max-width: min(76%, 680px);
+    }
+
+    .message[data-role="user"] .message-content {
+      display: flex;
+      align-items: flex-end;
+      flex-direction: column;
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 18px;
+      margin: 0 5px 3px;
+      color: var(--muted);
+      font-size: 0.72rem;
       font-weight: 700;
     }
 
-    .meta-row dd {
-      min-width: 0;
-      margin: 0;
-      overflow-wrap: anywhere;
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.84rem;
+    .message[data-role="user"] .message-meta {
+      justify-content: flex-end;
     }
 
-    details {
-      margin-top: 14px;
-    }
-
-    summary {
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    pre {
-      max-height: 220px;
-      margin: 10px 0 0;
-      padding: 12px;
-      overflow: auto;
+    .bubble {
+      min-width: 74px;
+      padding: 12px 15px;
       border: 1px solid var(--line);
-      border-radius: 6px;
-      color: #dcebe5;
-      background: #1d2b26;
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.76rem;
-      line-height: 1.5;
+      border-radius: 6px 16px 16px 16px;
+      background: var(--surface);
+      box-shadow: 0 5px 18px rgba(23, 35, 31, 0.045);
+    }
+
+    .message[data-role="user"] .bubble {
+      border-color: var(--blue);
+      border-radius: 16px 6px 16px 16px;
+      color: #ffffff;
+      background: var(--blue);
+      box-shadow: none;
+    }
+
+    .message-text {
+      margin: 0;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
 
-    .page-footer {
-      width: min(1160px, 100%);
-      margin: 0 auto;
-      padding: 0 24px 30px;
+    .formula {
+      max-width: 100%;
+      margin: 12px -15px 11px;
+      padding: 12px 10px;
+      overflow-x: auto;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: #12372c;
+      background: #f7fbf9;
+      text-align: center;
+    }
+
+    .formula .katex {
+      font-size: 1.18em;
+    }
+
+    .verdict {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin-top: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .verdict[data-state="correct"] {
+      color: var(--green-dark);
+      background: #e8f6ef;
+    }
+
+    .verdict[data-state="incorrect"] {
+      color: #84261f;
+      background: #fff0ee;
+    }
+
+    .calculation-details {
+      margin-top: 10px;
       color: var(--muted);
       font-size: 0.78rem;
     }
 
-    @media (max-width: 860px) {
-      .masthead-inner,
-      .calculator-header {
-        align-items: flex-start;
-        flex-direction: column;
+    .calculation-details summary {
+      width: fit-content;
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    .calculation-grid {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 5px 12px;
+      margin: 8px 0 1px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .calculation-grid dt {
+      color: #7b8983;
+      font-size: 0.73rem;
+      font-weight: 700;
+    }
+
+    .calculation-grid dd {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.76rem;
+    }
+
+    .typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 22px;
+    }
+
+    .typing span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7e9b8f;
+      animation: pulse 1.15s ease-in-out infinite;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.32s;
+    }
+
+    @keyframes pulse {
+      0%,
+      70%,
+      100% {
+        opacity: 0.35;
+        transform: translateY(0);
       }
 
-      .status-chip,
-      .segmented {
-        width: 100%;
-        align-self: stretch;
-      }
-
-      .segmented {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .status-chip {
-        justify-content: center;
-        white-space: normal;
-      }
-
-      .workspace {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .result-panel {
-        min-height: 420px;
+      35% {
+        opacity: 1;
+        transform: translateY(-3px);
       }
     }
 
-    @media (max-width: 560px) {
-      .masthead-inner,
-      .page,
-      .page-footer {
-        padding-right: 15px;
-        padding-left: 15px;
+    @media (prefers-reduced-motion: reduce) {
+      .messages {
+        scroll-behavior: auto;
       }
 
-      .page {
-        padding-top: 20px;
+      .typing span {
+        animation-duration: 2s;
       }
+    }
 
-      .form-panel,
-      .result-panel {
-        padding: 16px;
-      }
+    .composer-area {
+      flex: 0 0 auto;
+      padding: 0 18px 15px;
+      background: rgba(255, 255, 255, 0.96);
+    }
 
-      .form-grid,
-      .field-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
+    .suggestions {
+      display: flex;
+      gap: 8px;
+      padding: 10px 2px 9px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
 
-      .segmented {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
+    .suggestions:empty {
+      display: none;
+    }
 
-      .segmented button {
-        padding-right: 8px;
-        padding-left: 8px;
-      }
+    .suggestion {
+      flex: 0 0 auto;
+      min-height: 32px;
+      padding: 5px 11px;
+      border: 1px solid #b8cbdc;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: #f7fbfe;
+      font-size: 0.77rem;
+      font-weight: 750;
+    }
 
-      .actions {
-        align-items: stretch;
-        flex-direction: column;
-      }
+    .suggestion:hover {
+      border-color: #89acc8;
+      background: #eef6fb;
+    }
 
-      .secondary-button {
+    .composer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 9px;
+      padding: 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 8px 25px rgba(23, 35, 31, 0.07);
+    }
+
+    .composer:focus-within {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(29, 107, 86, 0.1);
+    }
+
+    .chat-input {
+      width: 100%;
+      min-height: 42px;
+      max-height: 132px;
+      padding: 9px 8px 8px;
+      overflow-y: auto;
+      resize: none;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      outline: none;
+      line-height: 1.5;
+    }
+
+    .chat-input::placeholder {
+      color: #85928c;
+    }
+
+    .send-button {
+      min-width: 72px;
+      min-height: 42px;
+      padding: 8px 17px;
+      border: 1px solid var(--green-dark);
+      border-radius: 10px;
+      color: #ffffff;
+      background: var(--green);
+      font-weight: 800;
+    }
+
+    .send-button:hover {
+      background: var(--green-dark);
+    }
+
+    .send-button:disabled {
+      cursor: wait;
+      opacity: 0.62;
+    }
+
+    .composer-note {
+      margin: 7px 3px 0;
+      color: #86928d;
+      font-size: 0.69rem;
+    }
+
+    @media (max-width: 640px) {
+      .app-shell {
         width: 100%;
+        border: 0;
+      }
+
+      .chat-header {
+        min-height: 66px;
+        padding: 10px 13px;
+      }
+
+      .brand-mark {
+        flex-basis: 38px;
+        width: 38px;
+        height: 38px;
+      }
+
+      .brand-copy h1 {
+        font-size: 0.98rem;
+      }
+
+      .brand-copy p,
+      .clear-button {
+        display: none;
+      }
+
+      .status-chip {
+        min-width: auto;
+        padding: 6px 9px;
+      }
+
+      .messages {
+        padding: 18px 12px;
+      }
+
+      .message {
+        gap: 7px;
+        margin-bottom: 17px;
+      }
+
+      .avatar {
+        flex-basis: 30px;
+        width: 30px;
+        height: 30px;
+        font-size: 0.73rem;
+      }
+
+      .message-content {
+        max-width: 87%;
+      }
+
+      .bubble {
+        padding: 10px 12px;
+      }
+
+      .formula {
+        margin-right: -12px;
+        margin-left: -12px;
+      }
+
+      .composer-area {
+        padding: 0 10px 10px;
+      }
+
+      .send-button {
+        min-width: 62px;
+        padding-right: 13px;
+        padding-left: 13px;
       }
     }
   </style>
 </head>
 <body>
-  <header class="masthead">
-    <div class="masthead-inner">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">知微</div>
-        <div>
-          <p class="eyebrow">高等数学工具</p>
-          <h1>知微高数计算演示</h1>
+  <div class="app-shell">
+    <div class="chat-layout">
+      <header class="chat-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">知</div>
+          <div class="brand-copy">
+            <h1>知微老师</h1>
+            <p>高等数学学习伙伴</p>
+          </div>
         </div>
-      </div>
-      <div class="status-chip" id="serviceStatus" data-state="checking" role="status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="serviceStatusText">正在检查计算服务</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="page">
-    <section aria-labelledby="calculatorTitle">
-      <div class="calculator-header">
-        <div>
-          <h2 id="calculatorTitle">选择计算类型</h2>
-          <p>求导、积分与极限结果由 SymPy 确定性计算。</p>
+        <div class="header-actions">
+          <div
+            class="status-chip"
+            id="serviceStatus"
+            data-state="checking"
+            role="status"
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="serviceStatusText">连接中</span>
+          </div>
+          <button class="clear-button" id="clearButton" type="button">清空对话</button>
         </div>
-        <div class="segmented" role="group" aria-label="计算类型">
-          <button type="button" data-mode="verify" aria-pressed="true">求导</button>
-          <button type="button" data-mode="integrate" aria-pressed="false">积分</button>
-          <button type="button" data-mode="limit" aria-pressed="false">极限</button>
-        </div>
-      </div>
+      </header>
 
-      <div class="workspace">
-        <form class="panel form-panel" id="calculatorForm" novalidate>
-          <div class="panel-heading">
-            <h3>输入题目</h3>
-            <span class="panel-heading-note" id="modeHint">求导模式</span>
-          </div>
+      <main
+        class="messages"
+        id="messageList"
+        aria-label="知微老师对话记录"
+        aria-live="polite"
+      ></main>
 
-          <div class="sample-row" aria-label="示例">
-            <button class="sample-button" type="button" data-sample="verify-basic" data-sample-for="verify">x^2</button>
-            <button class="sample-button" type="button" data-sample="verify-trig" data-sample-for="verify">sin(x)</button>
-            <button class="sample-button" type="button" data-sample="integrate-basic" data-sample-for="integrate" hidden>x^2 不定积分</button>
-            <button class="sample-button" type="button" data-sample="integrate-definite" data-sample-for="integrate" hidden>x^2 定积分</button>
-            <button class="sample-button" type="button" data-sample="limit-classic" data-sample-for="limit" hidden>sin(x)/x</button>
-            <button class="sample-button" type="button" data-sample="limit-one-sided" data-sample-for="limit" hidden>1/x 右极限</button>
-          </div>
-
-          <div class="form-grid">
-            <div class="field field-wide">
-              <label for="expression">函数表达式</label>
-              <input
-                id="expression"
-                name="expression"
-                type="text"
-                value="x^2"
-                maxlength="300"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="例如：x^2 + sin(x)"
-                required
-              >
-            </div>
-
-            <div class="field field-wide">
-              <label for="variable">自变量</label>
-              <input
-                id="variable"
-                name="variable"
-                type="text"
-                value="x"
-                maxlength="32"
-                autocomplete="off"
-                spellcheck="false"
-                required
-              >
-            </div>
-          </div>
-
-          <div class="dynamic-fields" data-fields="verify">
-            <div class="field">
-              <label for="verifyCandidate">候选答案</label>
-              <input
-                id="verifyCandidate"
-                name="verifyCandidate"
-                type="text"
-                maxlength="300"
-                autocomplete="off"
-                spellcheck="false"
-                value="2x"
-                placeholder="可选，例如：2x"
-              >
-              <p class="field-help">填写后可判断答案是否正确。</p>
-            </div>
-          </div>
-
-          <div class="dynamic-fields" data-fields="integrate" hidden>
-            <div class="field-grid">
-              <div class="field">
-                <label for="lower">积分下限</label>
-                <input
-                  id="lower"
-                  name="lower"
-                  type="text"
-                  maxlength="300"
-                  autocomplete="off"
-                  spellcheck="false"
-                  placeholder="可选，例如：0"
-                >
-              </div>
-              <div class="field">
-                <label for="upper">积分上限</label>
-                <input
-                  id="upper"
-                  name="upper"
-                  type="text"
-                  maxlength="300"
-                  autocomplete="off"
-                  spellcheck="false"
-                  placeholder="可选，例如：1"
-                >
-              </div>
-            </div>
-            <div class="field">
-              <label for="integrateCandidate">候选答案</label>
-              <input
-                id="integrateCandidate"
-                name="integrateCandidate"
-                type="text"
-                maxlength="300"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="可选，例如：x^3/3"
-              >
-              <p class="field-help">不定积分显示结果时需补上任意常数 C。</p>
-            </div>
-          </div>
-
-          <div class="dynamic-fields" data-fields="limit" hidden>
-            <div class="field-grid">
-              <div class="field">
-                <label for="limitPoint">趋近点</label>
-                <input
-                  id="limitPoint"
-                  name="limitPoint"
-                  type="text"
-                  maxlength="300"
-                  autocomplete="off"
-                  spellcheck="false"
-                  value="0"
-                  required
-                >
-              </div>
-              <div class="field">
-                <label for="direction">趋近方向</label>
-                <select id="direction" name="direction">
-                  <option value="">双侧</option>
-                  <option value="+">右极限</option>
-                  <option value="-">左极限</option>
-                </select>
-              </div>
-            </div>
-            <div class="field">
-              <label for="limitCandidate">候选答案</label>
-              <input
-                id="limitCandidate"
-                name="limitCandidate"
-                type="text"
-                maxlength="300"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="可选，例如：1"
-              >
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="primary-button" id="submitButton" type="submit">开始求导</button>
-            <button class="secondary-button" id="resetButton" type="button">清空结果</button>
-          </div>
-          <p class="form-error" id="formError" role="alert" hidden></p>
+      <footer class="composer-area">
+        <div class="suggestions" id="suggestions" aria-label="示例题目"></div>
+        <form class="composer" id="chatForm">
+          <label class="sr-only" for="chatInput">输入高等数学题目</label>
+          <textarea
+            class="chat-input"
+            id="chatInput"
+            name="message"
+            rows="1"
+            maxlength="600"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="输入题目，例如：求导 x^2"
+            required
+          ></textarea>
+          <button class="send-button" id="sendButton" type="submit">发送</button>
         </form>
-
-        <section class="panel result-panel" aria-labelledby="resultTitle" aria-live="polite">
-          <div class="panel-heading">
-            <h3 id="resultTitle">计算结果</h3>
-            <span class="panel-heading-note" id="resultLabel">等待计算</span>
-          </div>
-
-          <div class="result-state" id="emptyState">
-            <div class="state-inner">
-              <strong>输入题目后开始计算</strong>
-              <span>公式将在这里显示。</span>
-            </div>
-          </div>
-
-          <div class="result-state" id="loadingState" hidden>
-            <div class="state-inner">
-              <div class="spinner" aria-hidden="true"></div>
-              <strong>正在计算</strong>
-              <span>复杂表达式可能需要几秒钟。</span>
-            </div>
-          </div>
-
-          <div class="result-state" id="errorState" hidden>
-            <div class="state-inner">
-              <strong>计算没有完成</strong>
-              <span id="errorMessage">请检查表达式后重试。</span>
-            </div>
-          </div>
-
-          <div id="resultContent" hidden>
-            <div class="formula-box" id="formulaBox"></div>
-            <div class="answer-state" id="answerState" hidden></div>
-            <dl class="meta-grid">
-              <div class="meta-row">
-                <dt>计算结果</dt>
-                <dd id="rawResult">-</dd>
-              </div>
-              <div class="meta-row">
-                <dt>识别输入</dt>
-                <dd id="rawExpression">-</dd>
-              </div>
-            </dl>
-            <details>
-              <summary>接口原始返回</summary>
-              <pre id="rawJson"></pre>
-            </details>
-          </div>
-        </section>
-      </div>
-    </section>
-  </main>
-
-  <footer class="page-footer">
-    知微高数项目 · SymPy 计算服务
-  </footer>
+        <p class="composer-note">SymPy 确定性计算</p>
+      </footer>
+    </div>
+  </div>
 
   <script
     defer
-    src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"
-    crossorigin="anonymous"
+    src="{{ url_for('static', filename='katex/katex.min.js') }}"
   ></script>
   <script>
     (() => {
       "use strict";
 
-      const MODE_CONFIG = {
-        verify: {
-          endpoint: "/demo/api/verify",
-          hint: "求导模式",
-          submit: "开始求导",
-          resultLabel: "导数结果",
-        },
-        integrate: {
-          endpoint: "/demo/api/integrate",
-          hint: "积分模式",
-          submit: "开始积分",
-          resultLabel: "积分结果",
-        },
-        limit: {
-          endpoint: "/demo/api/limit",
-          hint: "极限模式",
-          submit: "开始求极限",
-          resultLabel: "极限结果",
-        },
-      };
+      const STORAGE_KEY = "zhiwei-demo-chat-v1";
+      const MAX_STORED_MESSAGES = 40;
+      const DEFAULT_SUGGESTIONS = [
+        "求导 x^2",
+        "判断 2x 是不是 x^2 的导数",
+        "积分 x^2",
+        "积分 0 到 1 x^2",
+        "lim x→0 sin(x)/x",
+      ];
+      const WELCOME_TEXT =
+        "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。";
 
-      const SAMPLES = {
-        "verify-basic": {
-          mode: "verify",
-          values: { expression: "x^2", variable: "x", verifyCandidate: "2x" },
-        },
-        "verify-trig": {
-          mode: "verify",
-          values: { expression: "sin(x)", variable: "x", verifyCandidate: "cos(x)" },
-        },
-        "integrate-basic": {
-          mode: "integrate",
-          values: {
-            expression: "x^2",
-            variable: "x",
-            lower: "",
-            upper: "",
-            integrateCandidate: "x^3/3",
-          },
-        },
-        "integrate-definite": {
-          mode: "integrate",
-          values: {
-            expression: "x^2",
-            variable: "x",
-            lower: "0",
-            upper: "1",
-            integrateCandidate: "1/3",
-          },
-        },
-        "limit-classic": {
-          mode: "limit",
-          values: {
-            expression: "sin(x)/x",
-            variable: "x",
-            limitPoint: "0",
-            direction: "",
-            limitCandidate: "1",
-          },
-        },
-        "limit-one-sided": {
-          mode: "limit",
-          values: {
-            expression: "1/x",
-            variable: "x",
-            limitPoint: "0",
-            direction: "+",
-            limitCandidate: "oo",
-          },
-        },
-      };
-
-      const form = document.getElementById("calculatorForm");
-      const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
-      const fieldGroups = Array.from(document.querySelectorAll("[data-fields]"));
-      const samples = Array.from(document.querySelectorAll("[data-sample]"));
-      const submitButton = document.getElementById("submitButton");
-      const resetButton = document.getElementById("resetButton");
-      const formError = document.getElementById("formError");
-      const emptyState = document.getElementById("emptyState");
-      const loadingState = document.getElementById("loadingState");
-      const errorState = document.getElementById("errorState");
-      const errorMessage = document.getElementById("errorMessage");
-      const resultContent = document.getElementById("resultContent");
-      const resultLabel = document.getElementById("resultLabel");
-      const modeHint = document.getElementById("modeHint");
-      const formulaBox = document.getElementById("formulaBox");
-      const answerState = document.getElementById("answerState");
-      const rawResult = document.getElementById("rawResult");
-      const rawExpression = document.getElementById("rawExpression");
-      const rawJson = document.getElementById("rawJson");
+      const messageList = document.getElementById("messageList");
+      const suggestions = document.getElementById("suggestions");
+      const chatForm = document.getElementById("chatForm");
+      const chatInput = document.getElementById("chatInput");
+      const sendButton = document.getElementById("sendButton");
+      const clearButton = document.getElementById("clearButton");
       const serviceStatus = document.getElementById("serviceStatus");
       const serviceStatusText = document.getElementById("serviceStatusText");
 
-      let currentMode = "verify";
+      let messages = [];
+      let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
 
-      function setMode(mode) {
-        if (!MODE_CONFIG[mode] || requestInFlight) {
-          return;
-        }
-
-        currentMode = mode;
-        modeButtons.forEach((button) => {
-          button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
-        });
-        fieldGroups.forEach((group) => {
-          group.hidden = group.dataset.fields !== mode;
-        });
-        samples.forEach((button) => {
-          button.hidden = button.dataset.sampleFor !== mode;
-        });
-
-        const config = MODE_CONFIG[mode];
-        modeHint.textContent = config.hint;
-        submitButton.textContent = config.submit;
-        hideFormError();
-        showState("empty");
+      function makeId() {
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
 
-      function setSample(sampleId) {
-        const sample = SAMPLES[sampleId];
-        if (!sample || sample.mode !== currentMode) {
-          return;
-        }
-
-        Object.entries(sample.values).forEach(([id, value]) => {
-          const element = document.getElementById(id);
-          if (element) {
-            element.value = value;
-          }
+      function currentTime() {
+        return new Date().toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
         });
-        hideFormError();
-        showState("empty");
       }
 
-      function trimOrNull(value) {
-        const trimmed = value.trim();
-        return trimmed || null;
-      }
-
-      function buildPayload() {
-        const expression = document.getElementById("expression").value.trim();
-        const variable = document.getElementById("variable").value.trim();
-
-        if (!expression) {
-          throw new Error("请填写函数表达式。");
-        }
-        if (!variable) {
-          throw new Error("请填写自变量。");
-        }
-        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(variable)) {
-          throw new Error("自变量必须以字母开头，只能包含字母、数字和下划线。");
-        }
-
-        if (currentMode === "verify") {
-          return {
-            expression,
-            variable,
-            candidate: trimOrNull(document.getElementById("verifyCandidate").value),
-          };
-        }
-
-        if (currentMode === "integrate") {
-          const lower = trimOrNull(document.getElementById("lower").value);
-          const upper = trimOrNull(document.getElementById("upper").value);
-          if ((lower && !upper) || (!lower && upper)) {
-            throw new Error("定积分需要同时填写积分下限和积分上限。");
-          }
-          return {
-            expression,
-            variable,
-            lower,
-            upper,
-            candidate: trimOrNull(document.getElementById("integrateCandidate").value),
-          };
-        }
-
-        const point = document.getElementById("limitPoint").value.trim();
-        if (!point) {
-          throw new Error("请填写趋近点。");
-        }
+      function welcomeMessage() {
         return {
-          expression,
-          variable,
-          point,
-          direction: trimOrNull(document.getElementById("direction").value),
-          candidate: trimOrNull(document.getElementById("limitCandidate").value),
+          id: makeId(),
+          role: "assistant",
+          text: WELCOME_TEXT,
+          formulaLatex: "",
+          formulaText: "",
+          resultLabel: "",
+          resultValue: "",
+          verdict: null,
+          createdAt: currentTime(),
         };
       }
 
-      async function requestCalculation(payload) {
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), 25000);
-        const response = await fetch(MODE_CONFIG[currentMode].endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        }).finally(() => window.clearTimeout(timeoutId));
-
-        let data;
+      function loadMessages() {
         try {
-          data = await response.json();
-        } catch (error) {
-          throw new Error("计算服务返回了无法识别的内容。");
-        }
-
-        if (!response.ok) {
-          throw new Error(data.detail || `计算服务返回错误（${response.status}）。`);
-        }
-        return data;
-      }
-
-      function showState(state) {
-        emptyState.hidden = state !== "empty";
-        loadingState.hidden = state !== "loading";
-        errorState.hidden = state !== "error";
-        resultContent.hidden = state !== "result";
-      }
-
-      function showError(message) {
-        errorMessage.textContent = message;
-        resultLabel.textContent = "计算失败";
-        showState("error");
-      }
-
-      function hideFormError() {
-        formError.hidden = true;
-        formError.textContent = "";
-      }
-
-      function showFormError(message) {
-        formError.textContent = message;
-        formError.hidden = false;
-      }
-
-      function escapeLatexText(value) {
-        return String(value)
-          .replace(/\\/g, "\\textbackslash{}")
-          .replace(/([{}_$%#&])/g, "\\$1");
-      }
-
-      function formatPoint(value) {
-        if (value === "oo") {
-          return "\\infty";
-        }
-        if (value === "-oo") {
-          return "-\\infty";
-        }
-        return escapeLatexText(value);
-      }
-
-      function directionMark(direction) {
-        if (direction === "+") {
-          return "^+";
-        }
-        if (direction === "-") {
-          return "^-";
-        }
-        return "";
-      }
-
-      function formulaFor(data, payload) {
-        const expression = escapeLatexText(data.expression);
-        const variable = escapeLatexText(data.variable);
-
-        if (currentMode === "verify") {
-          return {
-            latex: `\\frac{d}{d${variable}}\\left(${expression}\\right)=${data.derivative_latex}`,
-            fallback: `d/d${data.variable} (${data.expression}) = ${data.derivative}`,
-          };
-        }
-
-        if (currentMode === "integrate") {
-          const lower = payload.lower;
-          const upper = payload.upper;
-          if (lower && upper) {
-            return {
-              latex: `\\int_{${escapeLatexText(lower)}}^{${escapeLatexText(upper)}} ${expression}\\,d${variable}=${data.integral_latex}`,
-              fallback: `Integral of ${data.expression} from ${lower} to ${upper} = ${data.integral}`,
-            };
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            return [];
           }
-          return {
-            latex: `\\int ${expression}\\,d${variable}=${data.integral_latex}+C`,
-            fallback: `Integral of ${data.expression} d${data.variable} = ${data.integral} + C`,
-          };
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+          return parsed
+            .filter((item) => item && (item.role === "user" || item.role === "assistant"))
+            .slice(-MAX_STORED_MESSAGES)
+            .map((item) => ({
+              id: String(item.id || makeId()),
+              role: item.role,
+              text: String(item.text || ""),
+              formulaLatex: String(item.formulaLatex || ""),
+              formulaText: String(item.formulaText || ""),
+              resultLabel: String(item.resultLabel || ""),
+              resultValue: String(item.resultValue || ""),
+              verdict: typeof item.verdict === "boolean" ? item.verdict : null,
+              createdAt: String(item.createdAt || currentTime()),
+            }));
+        } catch (error) {
+          return [];
         }
-
-        const point = formatPoint(data.point);
-        const direction = directionMark(data.direction);
-        return {
-          latex: `\\lim_{${variable}\\to ${point}${direction}}\\left(${expression}\\right)=${data.limit_latex}`,
-          fallback: `limit ${data.expression} as ${data.variable} -> ${data.point} = ${data.limit}`,
-        };
       }
 
-      function renderFormula(data, payload) {
-        const formula = formulaFor(data, payload);
-        formulaBox.textContent = "";
+      function saveMessages() {
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)),
+          );
+        } catch (error) {
+          // The conversation still works when browser storage is unavailable.
+        }
+      }
+
+      function element(tagName, className, text) {
+        const node = document.createElement(tagName);
+        if (className) {
+          node.className = className;
+        }
+        if (text !== undefined) {
+          node.textContent = text;
+        }
+        return node;
+      }
+
+      function renderFormula(container, message) {
+        container.textContent = "";
+        if (!message.formulaLatex) {
+          return;
+        }
 
         if (window.katex) {
           try {
-            window.katex.render(formula.latex, formulaBox, {
+            window.katex.render(message.formulaLatex, container, {
               displayMode: true,
               throwOnError: true,
               strict: false,
@@ -1186,86 +782,236 @@
             });
             return;
           } catch (error) {
-            // Fall back to readable plain text if KaTeX cannot render a value.
+            // Fall back to the plain text returned by the calculation service.
           }
         }
-        formulaBox.textContent = formula.fallback;
+        container.textContent = message.formulaText || message.formulaLatex;
       }
 
-      function renderAnswerState(data) {
-        answerState.hidden = false;
-        answerState.removeAttribute("data-result");
+      function createMessageNode(message) {
+        const article = element("article", "message");
+        article.dataset.role = message.role;
+        article.dataset.messageId = message.id;
 
-        if (data.is_correct === true) {
-          answerState.dataset.result = "correct";
-          answerState.textContent = "候选答案正确";
-        } else if (data.is_correct === false) {
-          answerState.dataset.result = "incorrect";
-          answerState.textContent = "候选答案不正确";
+        const avatar = element(
+          "div",
+          "avatar",
+          message.role === "user" ? "我" : "知",
+        );
+        avatar.setAttribute("aria-hidden", "true");
+
+        const content = element("div", "message-content");
+        const meta = element("div", "message-meta");
+        meta.append(
+          element("span", "", message.role === "user" ? "你" : "知微老师"),
+          element("time", "", message.createdAt),
+        );
+
+        const bubble = element("div", "bubble");
+        if (message.loading) {
+          const typing = element("div", "typing");
+          typing.setAttribute("aria-label", "知微老师正在计算");
+          typing.append(element("span"), element("span"), element("span"));
+          bubble.append(typing);
         } else {
-          answerState.dataset.result = "empty";
-          answerState.textContent = "未填写候选答案，仅展示计算结果";
+          bubble.append(element("p", "message-text", message.text));
+
+          if (message.formulaLatex) {
+            const formula = element("div", "formula");
+            renderFormula(formula, message);
+            bubble.append(formula);
+          }
+
+          if (typeof message.verdict === "boolean") {
+            const verdict = element(
+              "div",
+              "verdict",
+              message.verdict ? "答案正确" : "答案不正确",
+            );
+            verdict.dataset.state = message.verdict ? "correct" : "incorrect";
+            bubble.append(verdict);
+          }
+
+          if (message.resultLabel && message.resultValue) {
+            const details = element("details", "calculation-details");
+            details.append(element("summary", "", "计算明细"));
+            const grid = element("dl", "calculation-grid");
+            grid.append(
+              element("dt", "", "结果"),
+              element("dd", "", message.resultValue),
+              element("dt", "", "类型"),
+              element("dd", "", message.resultLabel),
+            );
+            details.append(grid);
+            bubble.append(details);
+          }
         }
+
+        content.append(meta, bubble);
+        article.append(avatar, content);
+        return article;
       }
 
-      function renderResult(data, payload) {
-        const resultValue =
-          currentMode === "verify"
-            ? data.derivative
-            : currentMode === "integrate"
-              ? data.integral
-              : data.limit;
-
-        renderFormula(data, payload);
-        renderAnswerState(data);
-        rawResult.textContent = resultValue;
-        rawExpression.textContent = `${data.expression}; 自变量 ${data.variable}`;
-        rawJson.textContent = JSON.stringify(data, null, 2);
-        resultLabel.textContent = MODE_CONFIG[currentMode].resultLabel;
-        showState("result");
+      function scrollToLatest() {
+        window.requestAnimationFrame(() => {
+          messageList.scrollTop = messageList.scrollHeight;
+        });
       }
 
-      async function handleSubmit(event) {
-        event.preventDefault();
-        if (requestInFlight) {
+      function renderMessages() {
+        const fragment = document.createDocumentFragment();
+        messages.forEach((message) => fragment.append(createMessageNode(message)));
+        messageList.replaceChildren(fragment);
+        scrollToLatest();
+      }
+
+      function renderSuggestions(items) {
+        currentSuggestions = Array.isArray(items) && items.length
+          ? items.slice(0, 5)
+          : DEFAULT_SUGGESTIONS;
+        const fragment = document.createDocumentFragment();
+        currentSuggestions.forEach((text) => {
+          const button = element("button", "suggestion", String(text));
+          button.type = "button";
+          button.dataset.message = String(text);
+          fragment.append(button);
+        });
+        suggestions.replaceChildren(fragment);
+      }
+
+      function resizeInput() {
+        chatInput.style.height = "auto";
+        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 132)}px`;
+      }
+
+      function setRequestState(active) {
+        requestInFlight = active;
+        sendButton.disabled = active;
+        sendButton.textContent = active ? "计算中" : "发送";
+      }
+
+      function responseToMessage(data) {
+        const calculation = data.calculation || {};
+        let resultLabel = "";
+        let resultValue = "";
+
+        if (data.intent === "verify") {
+          resultLabel = "导数";
+          resultValue = calculation.derivative || "";
+        } else if (data.intent === "integrate") {
+          resultLabel = "积分";
+          resultValue = calculation.integral || "";
+        } else if (data.intent === "limit") {
+          resultLabel = "极限";
+          resultValue = calculation.limit || "";
+        }
+
+        return {
+          id: makeId(),
+          role: "assistant",
+          text: String(data.reply || "这次没有得到可用的计算结果。"),
+          formulaLatex: String(data.formula_latex || ""),
+          formulaText: String(data.formula_text || ""),
+          resultLabel,
+          resultValue: String(resultValue),
+          verdict:
+            typeof calculation.is_correct === "boolean"
+              ? calculation.is_correct
+              : null,
+          createdAt: currentTime(),
+        };
+      }
+
+      async function sendMessage(rawMessage) {
+        const text = String(rawMessage || "").trim();
+        if (!text || requestInFlight) {
           return;
         }
 
-        hideFormError();
-        let payload;
-        try {
-          payload = buildPayload();
-        } catch (error) {
-          showFormError(error.message);
-          return;
-        }
+        messages.push({
+          id: makeId(),
+          role: "user",
+          text,
+          formulaLatex: "",
+          formulaText: "",
+          resultLabel: "",
+          resultValue: "",
+          verdict: null,
+          createdAt: currentTime(),
+        });
 
-        requestInFlight = true;
-        submitButton.disabled = true;
-        submitButton.textContent = "正在计算...";
-        resultLabel.textContent = "正在计算";
-        showState("loading");
+        const loadingId = makeId();
+        messages.push({
+          id: loadingId,
+          role: "assistant",
+          text: "",
+          formulaLatex: "",
+          formulaText: "",
+          resultLabel: "",
+          resultValue: "",
+          verdict: null,
+          createdAt: currentTime(),
+          loading: true,
+        });
+
+        chatInput.value = "";
+        resizeInput();
+        setRequestState(true);
+        renderMessages();
+        saveMessages();
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 30000);
 
         try {
-          const data = await requestCalculation(payload);
-          renderResult(data, payload);
+          const response = await fetch("/demo/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text }),
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeoutId));
+
+          let data;
+          try {
+            data = await response.json();
+          } catch (error) {
+            throw new Error("计算服务返回了无法识别的内容。");
+          }
+
+          if (!response.ok) {
+            throw new Error(data.detail || `计算服务返回错误（${response.status}）。`);
+          }
+
+          const index = messages.findIndex((message) => message.id === loadingId);
+          if (index !== -1) {
+            messages[index] = responseToMessage(data);
+          }
+          renderSuggestions(data.suggestions);
         } catch (error) {
-          const message =
-            error.name === "AbortError"
-              ? "计算超时，请简化表达式后重试。"
-              : error.message || "计算服务暂时不可用。";
-          showError(message);
+          const index = messages.findIndex((message) => message.id === loadingId);
+          if (index !== -1) {
+            messages[index] = {
+              id: loadingId,
+              role: "assistant",
+              text:
+                error.name === "AbortError"
+                  ? "这次计算超时了，请把题目简化后重试。"
+                  : error.message || "计算服务暂时不可用，请稍后重试。",
+              formulaLatex: "",
+              formulaText: "",
+              resultLabel: "",
+              resultValue: "",
+              verdict: null,
+              createdAt: currentTime(),
+            };
+          }
+          renderSuggestions(DEFAULT_SUGGESTIONS);
         } finally {
-          requestInFlight = false;
-          submitButton.disabled = false;
-          submitButton.textContent = MODE_CONFIG[currentMode].submit;
+          setRequestState(false);
+          renderMessages();
+          saveMessages();
+          chatInput.focus();
         }
-      }
-
-      function resetOutput() {
-        hideFormError();
-        resultLabel.textContent = "等待计算";
-        showState("empty");
       }
 
       async function checkService() {
@@ -1275,23 +1021,56 @@
             throw new Error("offline");
           }
           serviceStatus.dataset.state = "online";
-          serviceStatusText.textContent = "计算服务在线";
+          serviceStatusText.textContent = "服务在线";
         } catch (error) {
           serviceStatus.dataset.state = "offline";
-          serviceStatusText.textContent = "计算服务暂时离线";
+          serviceStatusText.textContent = "服务离线";
         }
       }
 
-      modeButtons.forEach((button) => {
-        button.addEventListener("click", () => setMode(button.dataset.mode));
+      chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendMessage(chatInput.value);
       });
-      samples.forEach((button) => {
-        button.addEventListener("click", () => setSample(button.dataset.sample));
-      });
-      form.addEventListener("submit", handleSubmit);
-      resetButton.addEventListener("click", resetOutput);
 
-      setMode("verify");
+      chatInput.addEventListener("input", resizeInput);
+      chatInput.addEventListener("keydown", (event) => {
+        if (
+          event.key === "Enter"
+          && !event.shiftKey
+          && !event.isComposing
+          && event.keyCode !== 229
+        ) {
+          event.preventDefault();
+          chatForm.requestSubmit();
+        }
+      });
+
+      suggestions.addEventListener("click", (event) => {
+        const button = event.target.closest(".suggestion");
+        if (button) {
+          sendMessage(button.dataset.message);
+        }
+      });
+
+      clearButton.addEventListener("click", () => {
+        if (requestInFlight) {
+          return;
+        }
+        messages = [welcomeMessage()];
+        renderSuggestions(DEFAULT_SUGGESTIONS);
+        renderMessages();
+        saveMessages();
+        chatInput.focus();
+      });
+
+      messages = loadMessages();
+      if (!messages.length) {
+        messages = [welcomeMessage()];
+      }
+      renderSuggestions(DEFAULT_SUGGESTIONS);
+      renderMessages();
+      resizeInput();
       checkService();
     })();
   </script>

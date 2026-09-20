@@ -20,6 +20,7 @@ from app.main import (
     rate_limiter,
     verify_derivative,
 )
+from deploy.demo_chat import DemoChatRequest, build_chat_response
 
 
 application = Flask(__name__)
@@ -82,6 +83,7 @@ def service_index():
                 "/demo/api/verify",
                 "/demo/api/integrate",
                 "/demo/api/limit",
+                "/demo/api/chat",
                 "/verify",
                 "/verify-query",
                 "/integrate",
@@ -128,6 +130,13 @@ def demo_limit():
     payload = request.get_json(silent=False)
     model = LimitRequest.model_validate(payload)
     return _json_response(calculate_limit(model, _=None))
+
+
+@application.post("/demo/api/chat")
+def demo_chat():
+    payload = request.get_json(silent=False)
+    model = DemoChatRequest.model_validate(payload)
+    return jsonify(build_chat_response(model.message))
 
 
 @application.get("/health")

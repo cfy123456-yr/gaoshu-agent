@@ -26,14 +26,15 @@ https://cfyyy.pythonanywhere.com
 
 | 接口 | 地址 |
 | --- | --- |
-| 独立数学计算演示 | `https://cfyyy.pythonanywhere.com/demo` |
+| 独立对话演示 | `https://cfyyy.pythonanywhere.com/demo` |
+| 对话接口 | `https://cfyyy.pythonanywhere.com/demo/api/chat` |
 | 演示页健康检查 | `https://cfyyy.pythonanywhere.com/demo/api/health` |
 | 健康检查 | `https://cfyyy.pythonanywhere.com/health` |
 | 求导与导数判题 | `https://cfyyy.pythonanywhere.com/verify-query` |
 | 积分与积分判题 | `https://cfyyy.pythonanywhere.com/integrate-query` |
 | 极限与极限判题 | `https://cfyyy.pythonanywhere.com/limit-query` |
 
-独立演示页及其 `/demo/api/*` 接口始终允许浏览器直接访问，并继续受频率限制保护。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
+独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
 扣子 HTTP 节点必须增加 `X-API-Key` 请求头，并与环境变量保持一致。
 
 ## 扣子节点
@@ -93,6 +94,16 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/limit-query' --data-url
 
 以上接口已经验证返回 `is_correct: true`。
 
+对话接口：
+
+```bash
+curl -sS -X POST 'https://cfyyy.pythonanywhere.com/demo/api/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"积分 0 到 1 x^2"}'
+```
+
+应返回 `"status": "ok"`，并包含 `"intent": "integrate"` 和 `"integral": "1/3"`。
+
 演示页验收：
 
 ```text
@@ -100,7 +111,7 @@ https://cfyyy.pythonanywhere.com/demo
 https://cfyyy.pythonanywhere.com/demo/api/health
 ```
 
-页面应能直接打开，不要求登录或 API Key，并可完成求导、积分和极限计算。
+页面应能直接打开，不要求登录或 API Key。依次发送“求导 x^2”“积分 x^2”“积分 0 到 1 x^2”和“lim x→0 sin(x)/x”，应看到知微老师的对话回复、可正常渲染的数学公式和计算结果。发送几条消息后刷新页面，当前浏览器仍应保留自己的记录；点击“清空对话”后记录应被删除。
 
 ## 长期运行注意事项
 

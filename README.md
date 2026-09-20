@@ -7,6 +7,8 @@
 ## 当前功能
 
 - 通过扣子智能体提供“知微老师”中文对话。
+- 提供无需登录的独立对话演示页，支持在浏览器中连续输入求导、积分和极限题目。
+- 演示页聊天记录只保存在当前浏览器的 `localStorage`，不读取或展示其他用户的扣子会话记录。
 - 使用 `math_verify` 工作流计算导数并判断学生答案。
 - 使用 `math_integrate` 工作流计算不定积分、定积分并判断学生答案。
 - 使用数学服务计算双侧极限、左极限和右极限并判断学生答案。
@@ -30,6 +32,12 @@ gaoshu-agent/
 │  ├─ 05_反常积分补充.md
 │  ├─ 06_定积分的应用.md
 │  └─ 07—12 章各知识文件
+├─ deploy/
+│  ├─ wsgi_app.py
+│  ├─ demo_chat.py
+│  ├─ templates/demo.html
+│  ├─ static/katex/
+│  └─ pythonanywhere_wsgi.py
 ├─ scripts/
 │  ├─ start-demo.cmd
 │  ├─ start-demo.ps1
@@ -92,7 +100,7 @@ python -m pip install -r requirements.txt
 
 演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的部署与验收说明见 `DEPLOYMENT.md`。
 
-数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。当前 18 项测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置和公网演示页。
+数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。当前 25 项测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置和独立对话演示页。
 
 也可以直接使用 Python 命令运行：
 
@@ -112,9 +120,20 @@ python -m pip install -r requirements.txt
 
 - 健康检查：`http://127.0.0.1:8000/health`
 - OpenAPI 文档：`http://127.0.0.1:8000/docs`
-- 独立数学计算演示：`http://127.0.0.1:5000/demo`
+- 独立对话演示：`http://127.0.0.1:5000/demo`
 
 ## 接口说明
+
+### 独立对话演示
+
+```http
+POST /demo/api/chat
+Content-Type: application/json
+
+{"message":"积分 0 到 1 x^2"}
+```
+
+该接口把自然语言中的求导、积分或极限请求转换为确定性数学计算，返回适合对话页展示的意图、公式和计算结果。它是无需登录的公开演示接口，不使用或返回扣子的会话记录。
 
 ### 健康检查
 
@@ -234,7 +253,7 @@ $env:CALCULATION_WORKERS = "4"
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
-公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。无需登录的数学计算演示页位于 `https://cfyyy.pythonanywhere.com/demo`，可体验求导、积分和极限计算。后续仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
+公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。无需登录的对话演示页位于 `https://cfyyy.pythonanywhere.com/demo`，可连续体验求导、积分和极限计算。KaTeX 公式资源随项目一起部署，不依赖外部 CDN；聊天历史只保存在访问者自己的浏览器中。后续仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
 
 ## 当前状态
 
@@ -245,11 +264,11 @@ $env:CALCULATION_WORKERS = "4"
 - 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup` 三个工作流；极限判定接口已经提供，扣子侧暂未单独绑定极限工作流。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 已通过 18 项自动回归，左右极限为无穷大时的判题错误也已修复。
+- 已通过 25 项自动回归，左右极限为无穷大时的判题错误也已修复。
 - 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
 - 同济版高等数学第 1—12 章知识文件已经整理完成。
-- 已提供无需登录的独立数学计算演示页 `/demo`，支持求导、积分、极限和候选答案判断。
-
+- 已提供无需登录的独立对话演示页 `/demo`，支持连续输入求导、积分、极限和候选答案判断。
+- 演示页公式资源已改为项目内自托管，聊天记录只保存在当前浏览器，不与其他用户共享。
 - 已部署到 PythonAnywhere，固定公网地址为 `https://cfyyy.pythonanywhere.com`，不再依赖本机 LocalTunnel。
 - 已通过扣子实测求导 `f(x)=x^2` 和不定积分 `∫x^2 dx` 两条完整链路。
 
