@@ -234,7 +234,7 @@ def _store_chat_response(
     response: dict[str, Any],
 ) -> None:
     if (
-        response.get("intent") in {"history", "unknown"}
+        response.get("intent") in {"general", "history", "unknown"}
         or response.get("history_used")
     ):
         return

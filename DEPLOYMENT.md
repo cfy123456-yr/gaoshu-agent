@@ -39,6 +39,8 @@ https://cfyyy.pythonanywhere.com
 
 独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前公网部署已启用 `MATH_API_KEY`；扣子的 5 个计算工作流 HTTP 节点必须增加 `X-API-Key` 请求头，并与 PythonAnywhere 环境变量保持一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 不需要 API Key。
 
+普通问答默认关闭。需要在独立对话页回答非数学问题时，在 PythonAnywhere 的环境变量中配置 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL`，然后重新加载 Web 应用。配置后，非数学问题内容会发送给该模型服务；数学题仍由本项目的 SymPy 接口计算。
+
 ## 扣子节点
 
 已将修改过的工作流地址从 LocalTunnel 替换为 PythonAnywhere：

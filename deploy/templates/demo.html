@@ -657,10 +657,55 @@
       opacity: 0.62;
     }
 
+    .formula-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    .formula-group {
+      padding: 14px 15px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fbfdff;
+    }
+
+    .formula-group h3 {
+      margin: 0 0 10px;
+      color: var(--blue-dark);
+      font-size: 0.86rem;
+    }
+
+    .formula-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+    }
+
+    .formula-item {
+      display: grid;
+      gap: 4px;
+    }
+
+    .formula-item code {
+      color: var(--ink);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 1rem;
+      line-height: 1.5;
+      white-space: normal;
+    }
+
+    .formula-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
     html[data-theme="dark"] .solver-field input,
     html[data-theme="dark"] .solver-field select,
     html[data-theme="dark"] .solver-field textarea,
-    html[data-theme="dark"] .solver-footer {
+    html[data-theme="dark"] .solver-footer,
+    html[data-theme="dark"] .formula-group {
       border-color: var(--line);
       background: #101b2c;
     }
@@ -1484,15 +1529,27 @@
         <details class="tools-menu">
           <summary>高数工具</summary>
           <div class="tool-list">
-            <button class="tool-button" type="button" data-prompt="求导 x^2">
+            <button
+              class="tool-button"
+              type="button"
+              data-formula-type="derivative"
+            >
               <span class="tool-icon" aria-hidden="true">d/dx</span>
               <span class="tool-label">求导</span>
             </button>
-            <button class="tool-button" type="button" data-prompt="积分 x^2">
+            <button
+              class="tool-button"
+              type="button"
+              data-formula-type="integral"
+            >
               <span class="tool-icon" aria-hidden="true">∫</span>
               <span class="tool-label">积分</span>
             </button>
-            <button class="tool-button" type="button" data-prompt="lim x→0 sin(x)/x">
+            <button
+              class="tool-button"
+              type="button"
+              data-formula-type="limit"
+            >
               <span class="tool-icon" aria-hidden="true">lim</span>
               <span class="tool-label">极限</span>
             </button>
@@ -1646,6 +1703,37 @@
     </form>
   </dialog>
 
+  <dialog
+    class="solver-dialog formula-dialog"
+    id="formulaDialog"
+    aria-labelledby="formulaTitle"
+  >
+    <div class="solver-shell">
+      <header class="solver-header">
+        <div>
+          <h2 id="formulaTitle">公式速查</h2>
+          <p id="formulaSubtitle">常用公式和简短知识点。</p>
+        </div>
+        <button
+          class="icon-button"
+          id="closeFormulaButton"
+          type="button"
+          aria-label="关闭公式速查"
+          title="关闭"
+        >×</button>
+      </header>
+      <div class="solver-body formula-body" id="formulaContent"></div>
+      <footer class="solver-footer">
+        <div class="solver-status"></div>
+        <div class="solver-actions">
+          <button class="solver-button primary" id="closeFormulaAction" type="button">
+            知道了
+          </button>
+        </div>
+      </footer>
+    </div>
+  </dialog>
+
   <script
     defer
     src="{{ url_for('static', filename='katex/katex.min.js') }}"
@@ -1677,6 +1765,77 @@
         "lim x→0 sin(x)/x",
         "我以前做过哪些题",
       ];
+      const FORMULA_GUIDES = {
+        derivative: {
+          title: "求导常用公式",
+          subtitle: "先看基本公式，再注意复合函数和商的求导。",
+          groups: [
+            {
+              heading: "基本公式",
+              items: [
+                ["(x^n)' = n x^(n-1)", "幂函数求导。"],
+                ["(sin x)' = cos x", "正弦函数求导。"],
+                ["(cos x)' = -sin x", "余弦函数求导注意负号。"],
+                ["(e^x)' = e^x", "指数函数保持不变。"],
+                ["(ln x)' = 1/x", "定义域 x > 0。"],
+              ],
+            },
+            {
+              heading: "运算规则",
+              items: [
+                ["(uv)' = u'v + uv'", "乘积求导。"],
+                ["(u/v)' = (u'v - uv')/v^2", "商求导，分母不能为 0。"],
+                ["[f(g(x))]' = f'(g(x))g'(x)", "复合函数链式法则。"],
+              ],
+            },
+          ],
+        },
+        integral: {
+          title: "积分常用公式",
+          subtitle: "不定积分不要漏掉任意常数 C。",
+          groups: [
+            {
+              heading: "基本公式",
+              items: [
+                ["∫ x^n dx = x^(n+1)/(n+1) + C", "当 n ≠ -1。"],
+                ["∫ 1/x dx = ln|x| + C", "x 不能为 0。"],
+                ["∫ e^x dx = e^x + C", "指数函数积分。"],
+                ["∫ sin x dx = -cos x + C", "正弦函数积分注意负号。"],
+                ["∫ cos x dx = sin x + C", "余弦函数积分。"],
+              ],
+            },
+            {
+              heading: "常用方法",
+              items: [
+                ["∫ u dv = uv - ∫ v du", "分部积分法。"],
+                ["换元后要同步换 dx 和积分上下限", "定积分换元时尤其重要。"],
+              ],
+            },
+          ],
+        },
+        limit: {
+          title: "极限常用公式",
+          subtitle: "先判断类型，再选择等价无穷小或洛必达法则。",
+          groups: [
+            {
+              heading: "常用极限",
+              items: [
+                ["lim(x→0) sin x / x = 1", "常见等价无穷小。"],
+                ["lim(x→0) (e^x - 1) / x = 1", "指数型常用极限。"],
+                ["lim(x→0) ln(1+x) / x = 1", "对数型常用极限。"],
+                ["lim(x→∞) (1 + 1/x)^x = e", "重要极限。"],
+              ],
+            },
+            {
+              heading: "使用提醒",
+              items: [
+                ["洛必达法则只用于 0/0 或 ∞/∞ 型", "使用前先检查条件。"],
+                ["先尝试代入、约分、等价无穷小", "不要一开始就套洛必达。"],
+              ],
+            },
+          ],
+        },
+      };
       const solverText = (
         key,
         label,
@@ -2245,6 +2404,12 @@
       const closeSolverButton = document.getElementById("closeSolverButton");
       const cancelSolverButton = document.getElementById("cancelSolverButton");
       const submitSolverButton = document.getElementById("submitSolverButton");
+      const formulaDialog = document.getElementById("formulaDialog");
+      const formulaTitle = document.getElementById("formulaTitle");
+      const formulaSubtitle = document.getElementById("formulaSubtitle");
+      const formulaContent = document.getElementById("formulaContent");
+      const closeFormulaButton = document.getElementById("closeFormulaButton");
+      const closeFormulaAction = document.getElementById("closeFormulaAction");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
 
       let messages = [];
@@ -2913,6 +3078,50 @@
         }
       }
 
+      function openFormulaDialog(type) {
+        const guide = FORMULA_GUIDES[type];
+        if (!guide) {
+          return;
+        }
+
+        formulaTitle.textContent = guide.title;
+        formulaSubtitle.textContent = guide.subtitle;
+        const fragment = document.createDocumentFragment();
+        guide.groups.forEach((group) => {
+          const section = element("section", "formula-group");
+          section.append(element("h3", "", group.heading));
+          const list = element("div", "formula-list");
+          group.items.forEach(([formula, note]) => {
+            const item = element("div", "formula-item");
+            item.append(
+              element("code", "", formula),
+              element("p", "formula-note", note),
+            );
+            list.append(item);
+          });
+          section.append(list);
+          fragment.append(section);
+        });
+        formulaContent.replaceChildren(fragment);
+
+        if (typeof formulaDialog.showModal === "function") {
+          formulaDialog.showModal();
+        } else {
+          formulaDialog.setAttribute("open", "");
+        }
+      }
+
+      function closeFormulaDialog() {
+        if (
+          formulaDialog.open
+          && typeof formulaDialog.close === "function"
+        ) {
+          formulaDialog.close();
+        } else {
+          formulaDialog.removeAttribute("open");
+        }
+      }
+
       async function submitSolverRequest(event) {
         event.preventDefault();
         if (requestInFlight) {
@@ -3362,6 +3571,14 @@
       newChatButton.addEventListener("click", startNewConversation);
 
       document.querySelector(".tools-menu").addEventListener("click", (event) => {
+        const formulaButton = event.target.closest("[data-formula-type]");
+        if (formulaButton) {
+          if (sidebarMedia.matches) {
+            setSidebarCollapsed(true);
+          }
+          openFormulaDialog(formulaButton.dataset.formulaType);
+          return;
+        }
         const button = event.target.closest("[data-prompt]");
         if (!button) {
           return;
@@ -3375,6 +3592,13 @@
       openSolverButton.addEventListener("click", openSolverDialog);
       closeSolverButton.addEventListener("click", closeSolverDialog);
       cancelSolverButton.addEventListener("click", closeSolverDialog);
+      closeFormulaButton.addEventListener("click", closeFormulaDialog);
+      closeFormulaAction.addEventListener("click", closeFormulaDialog);
+      formulaDialog.addEventListener("click", (event) => {
+        if (event.target === formulaDialog) {
+          closeFormulaDialog();
+        }
+      });
       solverChapter.addEventListener("change", populateSolverTopics);
       solverTopic.addEventListener("change", renderSolverFields);
       solverForm.addEventListener("submit", submitSolverRequest);

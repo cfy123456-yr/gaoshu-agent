@@ -1,8 +1,9 @@
 import itertools
+import json
 import unittest
 from unittest.mock import patch
 
-from deploy import wsgi_app
+from deploy import demo_chat, wsgi_app
 
 
 class DemoPageTest(unittest.TestCase):
@@ -46,6 +47,24 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('data.intent === "solve"', html)
         self.assertIn("populateSolverChapters();", html)
         self.assertIn('solverDialog.showModal()', html)
+
+    def test_demo_page_exposes_formula_guides(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn('id="formulaDialog"', html)
+        self.assertIn('data-formula-type="derivative"', html)
+        self.assertIn('data-formula-type="integral"', html)
+        self.assertIn('data-formula-type="limit"', html)
+        self.assertIn("const FORMULA_GUIDES = {", html)
+        self.assertIn(
+            "openFormulaDialog(formulaButton.dataset.formulaType)",
+            html,
+        )
+        self.assertNotIn('data-prompt="求导 x^2"', html)
+        self.assertNotIn('data-prompt="积分 x^2"', html)
+        self.assertNotIn('data-prompt="lim x→0 sin(x)/x"', html)
 
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
@@ -343,6 +362,47 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("needs_input", payload["status"])
         self.assertEqual("unknown", payload["intent"])
         self.assertIsNone(payload["calculation"])
+
+    def test_demo_chat_answers_general_question_when_configured(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def read(self):
+                return json.dumps(
+                    {
+                        "choices": [
+                            {"message": {"content": "这是普通问答的回答。"}}
+                        ]
+                    },
+                    ensure_ascii=False,
+                ).encode("utf-8")
+
+        with (
+            patch.object(demo_chat, "GENERAL_CHAT_API_KEY", "test-key"),
+            patch.object(demo_chat, "urlopen", return_value=FakeResponse()),
+        ):
+            response = self.chat("帮我制定一份复习计划")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("ok", payload["status"])
+        self.assertEqual("general", payload["intent"])
+        self.assertEqual("这是普通问答的回答。", payload["reply"])
+        self.assertIsNone(payload["calculation"])
+
+    def test_demo_chat_keeps_math_questions_out_of_general_chat(self):
+        with (
+            patch.object(demo_chat, "GENERAL_CHAT_API_KEY", "test-key"),
+            patch.object(demo_chat, "urlopen") as mocked_urlopen,
+        ):
+            response = self.chat("求导 x^2")
+
+        self.assertEqual("verify", response.get_json()["intent"])
+        mocked_urlopen.assert_not_called()
 
     def test_demo_chat_reuses_the_previous_question(self):
         response = self.client.post(

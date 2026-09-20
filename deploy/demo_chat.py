@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
 from typing import Any, Literal
 from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
@@ -31,6 +34,28 @@ class DemoChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=600)
     history: list[DemoChatHistoryMessage] = Field(default_factory=list, max_length=20)
 
+
+GENERAL_CHAT_API_URL = os.getenv(
+    "GENERAL_CHAT_API_URL",
+    "https://api.deepseek.com/chat/completions",
+).strip()
+GENERAL_CHAT_API_KEY = os.getenv("GENERAL_CHAT_API_KEY", "").strip()
+GENERAL_CHAT_MODEL = os.getenv("GENERAL_CHAT_MODEL", "deepseek-chat").strip()
+GENERAL_CHAT_TIMEOUT_SECONDS = 15.0
+
+GENERAL_CHAT_SYSTEM_PROMPT = """
+你是“知微老师”，中文回答，核心专长是高等数学，也可以回答学习方法、
+科学技术和生活常识等普通问题。回答要简洁、直接、诚实；不知道时明确说明，
+不要编造事实或来源。涉及医疗、法律、金融等专业决定时，只提供一般信息，
+并建议咨询专业人士。不要声称调用过数学工具；需要精确数学计算时，提醒用户
+使用求导、积分、极限或全章节解题功能。
+""".strip()
+
+_MATH_HINT_PATTERN = re.compile(
+    r"(?:求导|导数|微分|积分|极限|级数|收敛|发散|函数图像|函数图象|"
+    r"方程|向量|矩阵|偏导|梯度|重积分|曲线积分|曲面积分|\blim\b)",
+    re.IGNORECASE,
+)
 
 _TEXT_REPLACEMENTS = str.maketrans(
     {
@@ -543,7 +568,15 @@ def build_chat_response(
         response["history_used"] = previous_question
         return response
 
-    return _math_response(normalized)
+    math_response = _math_response(normalized)
+    if (
+        math_response.get("intent") == "unknown"
+        and not _MATH_HINT_PATTERN.search(normalized)
+    ):
+        general_response = _build_general_chat_response(normalized, history)
+        if general_response is not None:
+            return general_response
+    return math_response
 
 
 def _math_response(normalized: str) -> dict[str, Any]:
@@ -571,6 +604,74 @@ def _math_response(normalized: str) -> dict[str, Any]:
         "多元微分、重积分、曲线曲面积分和级数。"
         "你可以直接输入“求导 x^2”“画函数 y=sin(x)”或“判断级数 1/n^2 收敛”。"
     )
+
+
+def _build_general_chat_response(
+    message: str,
+    history: list[DemoChatHistoryMessage] | None,
+) -> dict[str, Any] | None:
+    if not GENERAL_CHAT_API_KEY or not GENERAL_CHAT_API_URL:
+        return None
+
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": GENERAL_CHAT_SYSTEM_PROMPT}
+    ]
+    for item in (history or [])[-6:]:
+        role = item.get("role") if isinstance(item, dict) else item.role
+        text = item.get("text") if isinstance(item, dict) else item.text
+        if role in {"user", "assistant"} and text.strip():
+            messages.append({"role": role, "content": text.strip()})
+    messages.append({"role": "user", "content": message})
+
+    payload = json.dumps(
+        {
+            "model": GENERAL_CHAT_MODEL,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 800,
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    request = Request(
+        GENERAL_CHAT_API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {GENERAL_CHAT_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=GENERAL_CHAT_TIMEOUT_SECONDS) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        reply = data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return _general_chat_error()
+
+    if not reply:
+        return _general_chat_error()
+    return {
+        "status": "ok",
+        "intent": "general",
+        "reply": reply,
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": _HELP_SUGGESTIONS,
+    }
+
+
+def _general_chat_error() -> dict[str, Any]:
+    return {
+        "status": "error",
+        "intent": "general",
+        "reply": "普通问答服务暂时不可用，请稍后再试；高数计算仍可继续使用。",
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": _HELP_SUGGESTIONS,
+    }
 
 
 def _build_extended_chapter_response(
