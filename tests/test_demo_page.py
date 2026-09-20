@@ -164,6 +164,21 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("image/svg+xml", response.mimetype)
         self.assertIn("<svg", response.get_data(as_text=True))
 
+    def test_demo_chat_returns_function_plot(self):
+        response = self.chat("画函数 y=sin(x)，x 从 -3 到 3")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("plot", payload["intent"])
+        self.assertEqual("sin(x)", payload["calculation"]["expression"])
+
+        plot_url = payload["calculation"]["plot_url"]
+        self.assertIn("/demo/api/plot.svg?", plot_url)
+
+        image = self.client.get(plot_url)
+        self.assertEqual(200, image.status_code)
+        self.assertEqual("image/svg+xml", image.mimetype)
+        self.assertIn("<svg", image.get_data(as_text=True))
     def test_demo_chat_solves_series_convergence(self):
         cases = (
             ("判断级数 1/n^2 收敛", "收敛"),

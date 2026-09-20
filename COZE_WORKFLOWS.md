@@ -284,8 +284,71 @@ series
 | line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
 | series | sum, convergence, power_radius |
 
+## math_plot
+
+用途：根据显函数表达式生成函数图像。
+
+### 开始节点
+
+| 变量名 | 类型 | 必填 | 默认值 |
+| --- | --- | --- | --- |
+| expression | String | 是 | 无 |
+| variable | String | 否 | x |
+| x_min | String | 否 | -10 |
+| x_max | String | 否 | 10 |
+
+### HTTP 请求节点
+
+请求方式：
+
+```text
+POST
+```
+
+请求地址：
+
+```text
+https://cfyyy.pythonanywhere.com/plot-query
+```
+
+查询参数：
+
+| 参数名 | 参数值 |
+| --- | --- |
+| expression | {{expression}} |
+| variable | {{variable}} |
+| x_min | {{x_min}} |
+| x_max | {{x_max}} |
+| samples | 80 |
+| width | 640 |
+| height | 360 |
+
+请求体留空。`samples=80` 可以显著减小返回的 SVG 内容，加快智能体响应。
+
+### 图像显示格式
+
+智能体应将题目参数代入以下 Markdown 图片链接并原样输出：
+
+```text
+![函数图像](https://cfyyy.pythonanywhere.com/plot.svg?expression={{expression}}&variable={{variable}}&x_min={{x_min}}&x_max={{x_max}})
+```
+
+### 测试
+
+测试输入：
+
+```text
+expression = sin(x)
+variable = x
+x_min = -3
+x_max = 3
+```
+
+预期结果：`/plot-query` 返回 `svg` 字段，智能体对话中显示正弦函数图像。
+
 ## 当前状态
 
 - `math_limit`：试运行通过，已加入智能体。
 - `math_solve`：试运行通过，已加入智能体。
+- `math_plot`：试运行通过，已加入智能体，并可在对话中显示函数图像。
 - 待办：项目升级时统一重写提示词和调用路由规则。

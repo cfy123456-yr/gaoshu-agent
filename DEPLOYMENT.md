@@ -50,8 +50,11 @@ https://cfyyy.pythonanywhere.com
 | `math_integrate` | `https://cfyyy.pythonanywhere.com/integrate-query` |
 | `math_limit` | `https://cfyyy.pythonanywhere.com/limit-query` |
 | `math_solve` | `https://cfyyy.pythonanywhere.com/solve-query` |
+| `math_plot` | `https://cfyyy.pythonanywhere.com/plot-query`、`https://cfyyy.pythonanywhere.com/plot.svg` |
 
-后端接口已经全部提供；`math_verify`、`math_integrate`、`math_limit`、`math_solve` 和 `knowledge_lookup` 已加入智能体。所有扩展章节题型统一路由到 `math_solve`，避免为每个章节重复维护 HTTP 节点。提示词和调用路由规则留待项目升级时统一更新。
+后端接口已经全部提供；`math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` 和 `knowledge_lookup` 已加入智能体。所有扩展章节题型统一路由到 `math_solve`，函数图像由 `math_plot` 处理。提示词和调用路由规则留待项目升级时统一更新。
+
+`math_plot` 建议使用 `samples=80`、`width=640`、`height=360`，减少 SVG 体积并加快响应。智能体通过 `/plot.svg` 的 Markdown 图片链接显示图像。
 
 `math_solve` 使用查询参数请求，`inputs` 传入 JSON 字符串：
 

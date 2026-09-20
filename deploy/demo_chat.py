@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Literal
+from urllib.parse import urlencode
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
@@ -86,6 +87,7 @@ _HELP_SUGGESTIONS = [
     "积分 x^2",
     "积分 0 到 1 x^2",
     "lim x→0 sin(x)/x",
+    "画函数 y=sin(x)，x 从 -3 到 3",
     "判断级数 1/n^2 收敛",
     "积分 0 到 1 0 到 1 x*y",
     "解微分方程 y'-y=0",
@@ -562,10 +564,12 @@ def _math_response(normalized: str) -> dict[str, Any]:
         return _build_integral_response(normalized)
     if intent == "limit":
         return _build_limit_response(normalized)
+    if intent == "plot":
+        return _build_plot_response(normalized)
     return _needs_input(
-        "这个独立演示页支持求导、积分、极限，以及微分方程、向量、"
+        "这个独立演示页支持求导、积分、极限、函数图像，以及微分方程、向量、"
         "多元微分、重积分、曲线曲面积分和级数。"
-        "你可以直接输入“求导 x^2”或“判断级数 1/n^2 收敛”。"
+        "你可以直接输入“求导 x^2”“画函数 y=sin(x)”或“判断级数 1/n^2 收敛”。"
     )
 
 
@@ -610,7 +614,8 @@ def _recent_math_questions(
             continue
         normalized = _normalize_text(text)
         if (
-            _detect_intent(normalized) not in {"verify", "integrate", "limit"}
+            _detect_intent(normalized)
+            not in {"verify", "integrate", "limit", "plot"}
             and _resolve_extended_chapter(normalized) is None
         ):
             continue
@@ -709,7 +714,130 @@ def _detect_intent(value: str) -> str:
         return "integrate"
     if re.search(r"(?:求导|导数|导函数|微分|d\s*/\s*d)", lowered):
         return "verify"
+    if _PLOT_KEYWORDS.search(value):
+        return "plot"
     return "unknown"
+
+
+_PLOT_KEYWORDS = re.compile(
+    r"(?:画|绘制|画出|作出|作图|函数图像|函数图象|函数图形|图像|图象|plot)",
+    re.IGNORECASE,
+)
+
+_PLOT_RANGE_BRACKET = re.compile(
+    r"\[\s*(?P<low>-?\d+(?:\.\d+)?)\s*,\s*(?P<high>-?\d+(?:\.\d+)?)\s*\]"
+)
+
+_PLOT_RANGE_SPAN = re.compile(
+    r"(?P<low>-?\d+(?:\.\d+)?)\s*(?:到|至|~)\s*(?P<high>-?\d+(?:\.\d+)?)"
+)
+
+
+def _format_plot_number(value: float) -> str:
+    return f"{value:g}"
+
+
+def _is_parsable_expression(value: str) -> bool:
+    try:
+        parse_math_expression(value)
+    except Exception:
+        return False
+    return True
+
+
+def _parse_plot(message: str) -> tuple[str, str, float, float] | None:
+    text = message
+    x_min, x_max = -10.0, 10.0
+    span = _PLOT_RANGE_BRACKET.search(text) or _PLOT_RANGE_SPAN.search(text)
+    if span:
+        x_min = float(span.group("low"))
+        x_max = float(span.group("high"))
+        text = f"{text[: span.start()]} {text[span.end() :]}"
+        text = re.sub(
+            r"\s*(?:从|在|上|范围是|范围|区间|其中|∈)\s*$",
+            "",
+            text,
+        )
+        text = re.sub(r"[,，]\s*[A-Za-z]\s*$", "", text)
+    if x_min >= x_max:
+        return None
+
+    cleaned = re.sub(
+        r"^(?:帮我|请|麻烦|来|给我)?\s*"
+        r"(?:绘制|画出|作出|作图|作|画|plot)\s*",
+        "",
+        text.strip(),
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^(?:函数|曲线)\s*", "", cleaned)
+    cleaned = re.sub(r"^[yY]\s*=\s*", "", cleaned)
+    cleaned = re.sub(r"^f\s*\(\s*x\s*\)\s*=\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        r"\s*(?:的)?\s*(?:函数)?\s*(?:图像|图象|图形|曲线|图)\s*$",
+        "",
+        cleaned,
+    )
+    cleaned = _clean_expression(cleaned.strip(" ,，。;；"))
+    if not cleaned:
+        return None
+    if not _is_parsable_expression(cleaned):
+        trimmed = re.sub(r"[,，]?\s*[A-Za-z]\s*$", "", cleaned).strip(" ,，。;；")
+        if trimmed and _is_parsable_expression(trimmed):
+            cleaned = trimmed
+
+    variable = _infer_variable(message, cleaned)
+    return cleaned, variable, x_min, x_max
+
+
+def _build_plot_response(message: str) -> dict[str, Any]:
+    parsed = _parse_plot(message)
+    if parsed is None:
+        return _needs_input(
+            "请写出要画图的函数和自变量范围，例如"
+            "“画函数 y=sin(x)，x 从 -3 到 3”。"
+        )
+
+    expression, variable, x_min, x_max = parsed
+    if not _is_parsable_expression(expression):
+        return _needs_input(
+            "这个函数表达式暂时无法解析，请换一种写法，例如"
+            "“画函数 y=sin(x)，x 从 -3 到 3”。"
+        )
+
+    plot_url = "/demo/api/plot.svg?" + urlencode(
+        {
+            "expression": expression,
+            "variable": variable,
+            "x_min": _format_plot_number(x_min),
+            "x_max": _format_plot_number(x_max),
+            "samples": 80,
+            "width": 640,
+            "height": 360,
+        }
+    )
+    low = _format_plot_number(x_min)
+    high = _format_plot_number(x_max)
+    return _result_response(
+        intent="plot",
+        reply=(
+            f"函数图像已经画好，自变量 {variable} 的范围是 {low} 到 {high}。"
+            "你能指出它的单调区间吗？"
+        ),
+        formula_latex=rf"y={_to_latex(expression)}",
+        formula_text=f"y = {expression}",
+        calculation={
+            "expression": expression,
+            "variable": variable,
+            "x_min": x_min,
+            "x_max": x_max,
+            "plot_url": plot_url,
+        },
+        suggestions=[
+            "画函数 y=x^2，x 从 -3 到 3",
+            "画函数 y=sin(x)，x 从 -6 到 6",
+        ],
+    )
 
 
 def _build_derivative_response(message: str) -> dict[str, Any]:
@@ -1215,8 +1343,8 @@ def _help_response() -> dict[str, Any]:
         "intent": "help",
         "reply": (
             "你好，我是知微老师。你可以像聊天一样直接输入题目，"
-            "我会用确定性数学工具处理求导、积分、极限、微分方程、向量、"
-            "多元微分、重积分、曲线曲面积分和级数，再给你检查问题。"
+            "我会用确定性数学工具处理求导、积分、极限、函数图像、微分方程、"
+            "向量、多元微分、重积分、曲线曲面积分和级数，再给你检查问题。"
         ),
         "formula_latex": "",
         "formula_text": "",

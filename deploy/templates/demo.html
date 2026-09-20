@@ -983,6 +983,22 @@
       min-width: max-content;
     }
 
+    .function-plot {
+      width: 100%;
+      max-width: 100%;
+      margin: 13px 0 4px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+    }
+
+    .function-plot img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
     .verdict {
       display: inline-flex;
       align-items: center;
@@ -2255,6 +2271,7 @@
             resultLabel: String(item.resultLabel || ""),
             resultValue: String(item.resultValue || ""),
             verdict: typeof item.verdict === "boolean" ? item.verdict : null,
+            plotUrl: String(item.plotUrl || ""),
             createdAt: String(item.createdAt || currentTime()),
           }));
       }
@@ -2578,6 +2595,18 @@
             bubble.append(formula);
           }
 
+          if (message.plotUrl) {
+            const figure = element("figure", "function-plot");
+            const image = element("img");
+            image.src = message.plotUrl;
+            image.alt = message.formulaText
+              ? `函数图像：${message.formulaText}`
+              : "函数图像";
+            image.loading = "lazy";
+            figure.append(image);
+            bubble.append(figure);
+          }
+
           if (typeof message.verdict === "boolean") {
             const verdict = element(
               "div",
@@ -2693,6 +2722,7 @@
             typeof calculation.is_correct === "boolean"
               ? calculation.is_correct
               : null,
+          plotUrl: String(calculation.plot_url || ""),
           createdAt: currentTime(),
         };
       }
