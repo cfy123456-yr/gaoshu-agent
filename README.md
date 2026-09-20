@@ -316,7 +316,7 @@ $env:CALCULATION_WORKERS = "4"
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
-公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。无需登录的对话演示页位于 `https://cfyyy.pythonanywhere.com/demo`，可连续体验求导、积分和极限计算。KaTeX 公式资源随项目一起部署，不依赖外部 CDN；聊天历史只保存在访问者自己的浏览器中。后续仍需接入外部监控与告警。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
+公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。无需登录的对话演示页位于 `https://cfyyy.pythonanywhere.com/demo`，可连续体验求导、积分和极限计算。KaTeX 公式资源随项目一起部署，不依赖外部 CDN；聊天历史只保存在访问者自己的浏览器中。`.github/workflows/health-check.yml` 每 15 分钟检查一次公网健康状态和版本号，失败时 GitHub Actions 会发送失败通知。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
 
 ## 当前状态
 

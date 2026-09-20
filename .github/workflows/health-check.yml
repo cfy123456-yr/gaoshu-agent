@@ -1,0 +1,21 @@
+name: Public health check
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check public API
+        env:
+          HEALTH_CHECK_URL: https://cfyyy.pythonanywhere.com
+          EXPECTED_VERSION: "0.5.0"
+        run: python scripts/check_health.py
