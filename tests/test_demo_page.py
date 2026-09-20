@@ -86,6 +86,20 @@ class DemoPageTest(unittest.TestCase):
         self.assertNotIn('data-prompt="积分 x^2"', html)
         self.assertNotIn('data-prompt="lim x→0 sin(x)/x"', html)
 
+    def test_demo_page_lists_every_solver_topic_in_sidebar(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn('id="toolsNavList"', html)
+        self.assertIn('id="toolsMenuCount"', html)
+        self.assertIn("function renderToolsNavigation()", html)
+        self.assertIn("renderToolsNavigation();", html)
+        self.assertIn('button.dataset.solverTopic = topicKey;', html)
+        self.assertIn('button.dataset.solverChapter = chapterKey;', html)
+        self.assertIn('event.target.closest("[data-solver-topic]")', html)
+        self.assertIn("function openSolverTopic(chapterKey, topicKey)", html)
+
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
 

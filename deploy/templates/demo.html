@@ -201,6 +201,10 @@
       letter-spacing: -0.02em;
     }
 
+    .app-shell[data-sidebar-collapsed="true"] .tool-nav {
+      display: none;
+    }
+
     .sidebar-inner {
       display: flex;
       width: var(--sidebar-width);
@@ -430,14 +434,24 @@
     }
 
     .tools-menu {
-      flex: 0 0 auto;
+      min-height: 0;
+      max-height: 58%;
+      flex: 0 1 auto;
       margin-top: 12px;
-      padding-top: 12px;
+      padding-top: 10px;
+      overflow-x: hidden;
+      overflow-y: auto;
       border-top: 1px solid var(--line);
+      scrollbar-width: thin;
     }
 
-    .tools-menu summary {
-      padding: 5px 6px;
+    .tools-menu-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 32px;
+      padding: 3px 6px;
       color: var(--muted);
       font-size: 0.75rem;
       font-weight: 800;
@@ -445,17 +459,36 @@
       list-style: none;
     }
 
-    .tools-menu summary::-webkit-details-marker {
+    .tools-menu-summary::-webkit-details-marker {
       display: none;
     }
 
-    .tools-menu summary::after {
-      float: right;
-      content: "+";
-      font-size: 0.9rem;
+    .tools-menu-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
     }
 
-    .tools-menu[open] summary::after {
+    .tools-menu-count {
+      padding: 1px 7px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
+      font-size: 0.63rem;
+      font-weight: 800;
+    }
+
+    .tools-menu-marker {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .tools-menu-marker::before {
+      content: "+";
+    }
+
+    .tools-menu[open] .tools-menu-marker::before {
       content: "−";
     }
 
@@ -463,13 +496,13 @@
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
-      padding: 7px 4px 1px;
+      padding: 2px 4px 0;
     }
 
     .tool-button {
       display: grid;
       place-items: center;
-      min-height: 34px;
+      min-height: 33px;
       padding: 5px 4px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -477,6 +510,9 @@
       background: var(--surface);
       font-size: 0.73rem;
       font-weight: 800;
+      transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
     }
 
     .tool-icon {
@@ -490,6 +526,131 @@
 
     .tool-button.is-wide {
       grid-column: 1 / -1;
+    }
+
+    .tool-nav {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tool-nav-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 6px;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+
+    .tool-nav-heading::after {
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+      content: "";
+    }
+
+    .tool-nav-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .tool-chapter {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+    }
+
+    .tool-chapter[open] {
+      border-color: #c8dbf7;
+      background: var(--sidebar-hover);
+    }
+
+    .tool-chapter > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 34px;
+      padding: 6px 9px;
+      color: var(--ink);
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .tool-chapter > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .tool-chapter-count {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 0.65rem;
+      font-weight: 750;
+    }
+
+    .tool-chapter-arrow {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.66rem;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+
+    .tool-chapter[open] .tool-chapter-arrow {
+      transform: rotate(90deg);
+    }
+
+    .tool-chapter > summary:hover {
+      color: var(--blue-dark);
+      background: var(--soft-blue);
+    }
+
+    .tool-topic-list {
+      display: grid;
+      gap: 2px;
+      padding: 0 6px 7px;
+    }
+
+    .tool-topic {
+      display: block;
+      width: 100%;
+      padding: 6px 8px 6px 15px;
+      overflow: hidden;
+      border: 0;
+      border-radius: 7px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tool-topic:hover,
+    .tool-topic:focus-visible {
+      color: var(--blue-dark);
+      background: var(--surface);
+    }
+
+    html[data-theme="dark"] .tool-chapter[open] {
+      border-color: rgba(112, 166, 240, 0.32);
+    }
+
+    html[data-theme="dark"] .tool-chapter[open] > summary {
+      background: rgba(56, 126, 232, 0.12);
+    }
+
+    html[data-theme="dark"] .tool-topic:hover,
+    html[data-theme="dark"] .tool-topic:focus-visible {
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .solver-dialog {
@@ -1526,8 +1687,14 @@
           <div class="history-list" id="historyList"></div>
         </section>
 
-        <details class="tools-menu">
-          <summary>高数工具</summary>
+        <details class="tools-menu" open>
+          <summary class="tools-menu-summary">
+            <span class="tools-menu-title">
+              <span>高数工具</span>
+              <span class="tools-menu-count" id="toolsMenuCount"></span>
+            </span>
+            <span class="tools-menu-marker" aria-hidden="true"></span>
+          </summary>
           <div class="tool-list">
             <button
               class="tool-button"
@@ -1561,6 +1728,10 @@
               <span class="tool-icon" aria-hidden="true">∑</span>
               <span class="tool-label">全章节解题</span>
             </button>
+          </div>
+          <div class="tool-nav">
+            <div class="tool-nav-heading">全部题型</div>
+            <div class="tool-nav-list" id="toolsNavList"></div>
           </div>
         </details>
 
@@ -3148,6 +3319,61 @@
         populateSolverTopics();
       }
 
+      function renderToolsNavigation() {
+        const toolsNavList = document.getElementById("toolsNavList");
+        const toolsMenuCount = document.getElementById("toolsMenuCount");
+        if (!toolsNavList || !toolsMenuCount) {
+          return;
+        }
+
+        const chapterEntries = Object.entries(SOLVER_CHAPTERS);
+        const topicTotal = chapterEntries.reduce(
+          (total, [, chapter]) => total + Object.keys(chapter.topics).length,
+          0,
+        );
+        toolsMenuCount.textContent = String(topicTotal);
+
+        const fragment = document.createDocumentFragment();
+        chapterEntries.forEach(([chapterKey, chapter]) => {
+          const topicEntries = Object.entries(chapter.topics);
+          const details = document.createElement("details");
+          details.className = "tool-chapter";
+          details.dataset.chapter = chapterKey;
+
+          const summary = document.createElement("summary");
+          const name = element("span", "tool-chapter-name", chapter.label);
+          const count = element(
+            "span",
+            "tool-chapter-count",
+            `${topicEntries.length} 项`,
+          );
+          const arrow = element("span", "tool-chapter-arrow", "›");
+          arrow.setAttribute("aria-hidden", "true");
+          summary.append(name, count, arrow);
+
+          const list = element("div", "tool-topic-list");
+          topicEntries.forEach(([topicKey, topic]) => {
+            const button = element("button", "tool-topic", topic.label);
+            button.type = "button";
+            button.dataset.solverTopic = topicKey;
+            button.dataset.solverChapter = chapterKey;
+            button.title = `${chapter.label} · ${topic.label}`;
+            list.append(button);
+          });
+
+          details.append(summary, list);
+          fragment.append(details);
+        });
+        toolsNavList.replaceChildren(fragment);
+      }
+
+      function openSolverTopic(chapterKey, topicKey) {
+        if (!SOLVER_CHAPTERS[chapterKey]) {
+          return;
+        }
+        openSolverDialog(chapterKey, topicKey);
+      }
+
       function readSolverField(field) {
         const control = document.getElementById(`solver-${field.key}`);
         const raw = control ? control.value.trim() : "";
@@ -3221,11 +3447,21 @@
         }`;
       }
 
-      function openSolverDialog() {
+      function openSolverDialog(chapterKey, topicKey) {
         if (requestInFlight) {
           return;
         }
         populateSolverChapters();
+        const nextChapter =
+          chapterKey && SOLVER_CHAPTERS[chapterKey]
+            ? chapterKey
+            : solverChapter.value;
+        solverChapter.value = nextChapter;
+        populateSolverTopics();
+        if (topicKey && solverTopic.querySelector(`option[value="${topicKey}"]`)) {
+          solverTopic.value = topicKey;
+          renderSolverFields();
+        }
         solverStatus.textContent = "";
         if (typeof solverDialog.showModal === "function") {
           solverDialog.showModal();
@@ -3746,6 +3982,17 @@
           openFormulaDialog(formulaButton.dataset.formulaType);
           return;
         }
+        const solverTopicButton = event.target.closest("[data-solver-topic]");
+        if (solverTopicButton) {
+          if (sidebarMedia.matches) {
+            setSidebarCollapsed(true);
+          }
+          openSolverTopic(
+            solverTopicButton.dataset.solverChapter,
+            solverTopicButton.dataset.solverTopic,
+          );
+          return;
+        }
         const button = event.target.closest("[data-prompt]");
         if (!button) {
           return;
@@ -3960,6 +4207,7 @@
       );
 
       populateSolverChapters();
+      renderToolsNavigation();
       saveMessages();
       renderSuggestions(DEFAULT_SUGGESTIONS);
       renderMessages();
