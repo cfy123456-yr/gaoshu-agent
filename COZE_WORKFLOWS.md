@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.4.1`。
+先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.4.2`。
 
 ## math_limit
 

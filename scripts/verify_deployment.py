@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-EXPECTED_VERSION = "0.4.1"
+EXPECTED_VERSION = "0.4.2"
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
