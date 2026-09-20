@@ -55,7 +55,7 @@ https://cfyyy.pythonanywhere.com/limit-query
 | limit | HTTP 返回的 limit |
 | limit_latex | HTTP 返回的 limit_latex |
 | candidate | HTTP 返回的 candidate |
-| is_correct | HTTP 返回的 is_correct |
+| is_correct | 代码节点输出的字符串 is_correct（`"true"`、`"false"` 或空字符串） |
 
 ### 测试
 
@@ -142,8 +142,8 @@ https://cfyyy.pythonanywhere.com/solve-query
 | method | HTTP 返回的 method |
 | result | HTTP 返回的 result |
 | latex | HTTP 返回的 latex |
-| candidate | HTTP 返回的 candidate |
-| is_correct | HTTP 返回的 is_correct |
+| candidate | 代码节点输出的 candidate |
+| is_correct_text | 代码节点输出的字符串 is_correct_text（`"true"`、`"false"` 或空字符串） |
 | notes | HTTP 返回的 notes |
 
 ### 测试一：级数收敛
@@ -209,7 +209,7 @@ result = 1/4
 
 ```text
 result = 6*x
-is_correct = true
+is_correct_text = "true"
 ```
 
 ### 测试四：微分方程
@@ -351,4 +351,5 @@ x_max = 3
 - `math_limit`：试运行通过，已加入智能体。
 - `math_solve`：试运行通过，已加入智能体。
 - `math_plot`：试运行通过，已加入智能体，并可在对话中显示函数图像。
-- 统一提示词初稿已整理到 `COZE_AGENT_PROMPT.md`，待整体替换到扣子并完成回归测试。
+- 统一提示词已替换到扣子并发布。
+- 已完成空候选答案、正确候选答案、错误候选答案、级数求解和不定积分补 `C` 话术的回归测试。
