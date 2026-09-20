@@ -265,6 +265,8 @@ GET /plot.svg?expression=x^2&x_min=-5&x_max=5
 | `math_plot` | 生成显函数图像并返回 SVG | `/plot-query`、`/plot.svg` |
 | `knowledge_lookup` | 检索高数知识库 | 扣子知识库 |
 
+统一智能体提示词见 `COZE_AGENT_PROMPT.md`，可直接复制到扣子。
+
 ## 知识库
 
 - `knowledge/01_导数与微分基础.md`：导数定义、求导公式、求导法则、微分和常见错误。
