@@ -123,6 +123,42 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("1", payload["limit"])
         self.assertIs(True, payload["is_correct"])
 
+    def test_query_candidate_must_be_ignored_when_blank(self):
+        cases = (
+            (
+                "/verify-query",
+                {"expression": "x^2", "variable": "x", "candidate": ""},
+            ),
+            (
+                "/integrate-query",
+                {
+                    "expression": "x^2",
+                    "variable": "x",
+                    "lower": "",
+                    "upper": "",
+                    "candidate": "",
+                },
+            ),
+            (
+                "/limit-query",
+                {
+                    "expression": "sin(x)/x",
+                    "variable": "x",
+                    "point": "0",
+                    "direction": "",
+                    "candidate": "",
+                },
+            ),
+        )
+        for path, params in cases:
+            with self.subTest(path=path):
+                response = self.client.post(path, query_string=params)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertIsNone(payload["candidate"])
+                self.assertIsNone(payload["is_correct"])
+
     def test_demo_calculates_extended_chapter_solve(self):
         response = self.client.post(
             "/demo/api/solve",

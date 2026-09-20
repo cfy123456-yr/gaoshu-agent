@@ -278,7 +278,7 @@ def verify_with_query():
     model = VerifyRequest(
         expression=request.args.get("expression"),
         variable=request.args.get("variable", "x"),
-        candidate=request.args.get("candidate"),
+        candidate=request.args.get("candidate") or None,
     )
     return _json_response(verify_derivative(model, _=None))
 
@@ -295,9 +295,9 @@ def integrate_with_query():
     model = IntegrateRequest(
         expression=request.args.get("expression"),
         variable=request.args.get("variable", "x"),
-        lower=request.args.get("lower"),
-        upper=request.args.get("upper"),
-        candidate=request.args.get("candidate"),
+        lower=request.args.get("lower") or None,
+        upper=request.args.get("upper") or None,
+        candidate=request.args.get("candidate") or None,
     )
     return _json_response(calculate_integral(model, _=None))
 
@@ -314,9 +314,9 @@ def limit_with_query():
     model = LimitRequest(
         expression=request.args.get("expression"),
         variable=request.args.get("variable", "x"),
-        point=request.args.get("point", "0"),
-        direction=request.args.get("direction"),
-        candidate=request.args.get("candidate"),
+        point=request.args.get("point", "0") or "0",
+        direction=request.args.get("direction") or None,
+        candidate=request.args.get("candidate") or None,
     )
     return _json_response(calculate_limit(model, _=None))
 

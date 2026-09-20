@@ -519,7 +519,8 @@ def verify_derivative(
         variable = parse_symbol(request.variable)
         expression = parse_math_expression(request.expression)
         derivative = diff(expression, variable)
-        candidate = parse_math_expression(request.candidate) if request.candidate else None
+        candidate_text = request.candidate.strip() if request.candidate else None
+        candidate = parse_math_expression(candidate_text) if candidate_text else None
         is_correct = expressions_equal(derivative, candidate) if candidate is not None else None
 
         return VerifyResponse(
@@ -636,7 +637,8 @@ def calculate_limit(
         expression = parse_math_expression(request.expression)
         point = parse_math_expression(request.point)
         direction = parse_direction(request.direction)
-        candidate = parse_math_expression(request.candidate) if request.candidate else None
+        candidate_text = request.candidate.strip() if request.candidate else None
+        candidate = parse_math_expression(candidate_text) if candidate_text else None
 
         if direction is None:
             limit_expression = Limit(expression, variable, point)
