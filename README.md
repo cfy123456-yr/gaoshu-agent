@@ -89,6 +89,12 @@ python -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+部署后可运行多章节接口回归：
+
+```powershell
+.\scripts\verify-solve-regression.cmd --base-url https://cfyyy.pythonanywhere.com
+```
+
 ## 启动服务
 
 ```powershell

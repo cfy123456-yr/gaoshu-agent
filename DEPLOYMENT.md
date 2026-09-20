@@ -117,6 +117,12 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/solve-query' \
   --data-urlencode 'inputs={"expression":"1/n^2","variable":"n"}'
 ```
 
+部署后执行多章节回归，覆盖级数、重积分、高阶导数、微分方程、梯度、方向导数、曲线积分和曲面积分：
+
+```powershell
+.\scripts\verify-solve-regression.cmd --base-url https://cfyyy.pythonanywhere.com
+```
+
 以上接口已经验证返回 `is_correct: true`。
 
 对话接口：
