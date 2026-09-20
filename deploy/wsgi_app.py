@@ -47,6 +47,10 @@ def is_public_health_request() -> bool:
     return request.path == "/health"
 
 
+def is_public_plot_request() -> bool:
+    return request.path == "/plot.svg"
+
+
 def should_rate_limit_request() -> bool:
     if request.method == "OPTIONS":
         return False
@@ -61,6 +65,7 @@ def enforce_api_access():
         API_KEY
         and not is_public_demo_request()
         and not is_public_health_request()
+        and not is_public_plot_request()
         and request.headers.get("X-API-Key") != API_KEY
     ):
         raise HTTPException(status_code=401, detail="Invalid API key")

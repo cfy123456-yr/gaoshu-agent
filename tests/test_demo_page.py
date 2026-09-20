@@ -439,11 +439,35 @@ class DemoPageTest(unittest.TestCase):
                 "/verify",
                 json={"expression": "x^2", "variable": "x"},
             )
+            public_plot = self.client.get(
+                "/plot.svg",
+                query_string={
+                    "expression": "sin(x)",
+                    "variable": "x",
+                    "x_min": "-3",
+                    "x_max": "3",
+                    "samples": 80,
+                    "width": 320,
+                    "height": 240,
+                },
+            )
+            protected_plot = self.client.post(
+                "/plot-query",
+                query_string={
+                    "expression": "sin(x)",
+                    "variable": "x",
+                },
+            )
 
         self.assertEqual(200, page.status_code)
         self.assertEqual(200, demo_api.status_code)
         self.assertEqual(200, chat_api.status_code)
         self.assertEqual(401, protected_api.status_code)
+        self.assertEqual(200, public_plot.status_code)
+        self.assertTrue(
+            public_plot.content_type.startswith("image/svg+xml")
+        )
+        self.assertEqual(401, protected_plot.status_code)
 
 
 if __name__ == "__main__":

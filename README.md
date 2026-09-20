@@ -312,7 +312,7 @@ $env:CALCULATION_WORKERS = "4"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-设置 `MATH_API_KEY` 后，扣子 HTTP 节点必须增加请求头 `X-API-Key`，其值与 `MATH_API_KEY` 一致。未设置时仍保持本地演示可直接调用。
+当前公网服务已启用 `MATH_API_KEY`。扣子的 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` HTTP 节点必须增加请求头 `X-API-Key`，其值与 PythonAnywhere 的 `MATH_API_KEY` 一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 仍可直接访问。
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
