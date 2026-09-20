@@ -150,6 +150,18 @@ _EXTENDED_CHAPTER_HINTS = {
         "missing": "请写出三重积分、被积函数和三个积分变量，例如“三重积分 x+y+z 变量 x,y,z”。",
         "suggestions": ["三重积分 x+y+z 变量 x,y,z"],
     },
+    ("multiple_integrals", "triple_cylindrical"): {
+        "missing": "请写出柱面坐标三重积分，例如“柱面坐标三重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi z 0 到 1”。",
+        "suggestions": [
+            "柱面坐标三重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi z 0 到 1",
+        ],
+    },
+    ("multiple_integrals", "triple_spherical"): {
+        "missing": "请写出球面坐标三重积分，例如“球面坐标三重积分 1 rho 0 到 1 phi 0 到 pi theta 0 到 2*pi”。",
+        "suggestions": [
+            "球面坐标三重积分 1 rho 0 到 1 phi 0 到 pi theta 0 到 2*pi",
+        ],
+    },
     ("differential_equations", "dsolve"): {
         "missing": "请写出微分方程，例如“解微分方程 y'-y=0”。",
         "suggestions": ["解微分方程 y'-y=0"],
@@ -569,6 +581,88 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                 ),
                 "upper_theta": _strip_expression_tail(
                     polar_match.group("upper_theta")
+                ),
+            },
+        )
+
+    cylindrical_match = re.search(
+        r"(?:柱面坐标(?:三重积分)?|三重积分\s*柱面坐标)\s*"
+        r"(?P<expression>.+?)"
+        r"\s*(?:r|半径)\s*(?:从|:)?\s*(?P<lower_r>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_r>[^\s,，]+)"
+        r"\s*(?:theta|θ|角度)\s*(?:从|:)?\s*(?P<lower_theta>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_theta>[^\s,，]+)"
+        r"\s*(?:z|高度)\s*(?:从|:)?\s*(?P<lower_z>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_z>[^\s,，]+)",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if cylindrical_match:
+        return (
+            "multiple_integrals",
+            "triple_cylindrical",
+            {
+                "expression": _strip_expression_tail(
+                    cylindrical_match.group("expression")
+                ),
+                "lower_r": _strip_expression_tail(
+                    cylindrical_match.group("lower_r")
+                ),
+                "upper_r": _strip_expression_tail(
+                    cylindrical_match.group("upper_r")
+                ),
+                "lower_theta": _strip_expression_tail(
+                    cylindrical_match.group("lower_theta")
+                ),
+                "upper_theta": _strip_expression_tail(
+                    cylindrical_match.group("upper_theta")
+                ),
+                "lower_z": _strip_expression_tail(
+                    cylindrical_match.group("lower_z")
+                ),
+                "upper_z": _strip_expression_tail(
+                    cylindrical_match.group("upper_z")
+                ),
+            },
+        )
+
+    spherical_match = re.search(
+        r"(?:球面坐标(?:三重积分)?|三重积分\s*球面坐标)\s*"
+        r"(?P<expression>.+?)"
+        r"\s*(?:rho|ρ|半径)\s*(?:从|:)?\s*(?P<lower_rho>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_rho>[^\s,，]+)"
+        r"\s*(?:phi|φ|极角)\s*(?:从|:)?\s*(?P<lower_phi>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_phi>[^\s,，]+)"
+        r"\s*(?:theta|θ|方位角|角度)\s*(?:从|:)?\s*(?P<lower_theta>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_theta>[^\s,，]+)",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if spherical_match:
+        return (
+            "multiple_integrals",
+            "triple_spherical",
+            {
+                "expression": _strip_expression_tail(
+                    spherical_match.group("expression")
+                ),
+                "lower_rho": _strip_expression_tail(
+                    spherical_match.group("lower_rho")
+                ),
+                "upper_rho": _strip_expression_tail(
+                    spherical_match.group("upper_rho")
+                ),
+                "lower_phi": _strip_expression_tail(
+                    spherical_match.group("lower_phi")
+                ),
+                "upper_phi": _strip_expression_tail(
+                    spherical_match.group("upper_phi")
+                ),
+                "lower_theta": _strip_expression_tail(
+                    spherical_match.group("lower_theta")
+                ),
+                "upper_theta": _strip_expression_tail(
+                    spherical_match.group("upper_theta")
                 ),
             },
         )

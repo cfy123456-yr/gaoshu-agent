@@ -55,6 +55,10 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("条件极值", html)
         self.assertIn("double_polar", html)
         self.assertIn("极坐标二重积分", html)
+        self.assertIn("triple_cylindrical", html)
+        self.assertIn("柱面坐标三重积分", html)
+        self.assertIn("triple_spherical", html)
+        self.assertIn("球面坐标三重积分", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -278,6 +282,27 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("solve", payload["intent"])
         self.assertEqual("pi/2", payload["calculation"]["result"])
         self.assertEqual("二重积分（极坐标）", payload["calculation"]["method"])
+
+    def test_demo_chat_solves_coordinate_triple_integrals(self):
+        cylindrical = self.chat(
+            "柱面坐标三重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi z 0 到 1"
+        )
+
+        self.assertEqual(200, cylindrical.status_code)
+        payload = cylindrical.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("pi/2", payload["calculation"]["result"])
+        self.assertEqual("三重积分（柱面坐标）", payload["calculation"]["method"])
+
+        spherical = self.chat(
+            "球面坐标三重积分 1 rho 0 到 1 phi 0 到 pi theta 0 到 2*pi"
+        )
+
+        self.assertEqual(200, spherical.status_code)
+        payload = spherical.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("4*pi/3", payload["calculation"]["result"])
+        self.assertEqual("三重积分（球面坐标）", payload["calculation"]["method"])
 
     def test_demo_chat_solves_differential_equation(self):
         response = self.chat("解微分方程 y'-y=0")

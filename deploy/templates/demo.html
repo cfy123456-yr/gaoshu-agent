@@ -2290,6 +2290,32 @@
                 solverText("upper_z", "z 上限", "例如：1", "1"),
               ],
             },
+            triple_cylindrical: {
+              label: "柱面坐标三重积分",
+              hint: "被积函数可写 x、y、z，自动代入柱面坐标并乘以 r。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverText("lower_r", "半径下限", "例如：0", "0"),
+                solverText("upper_r", "半径上限", "例如：1", "1"),
+                solverText("lower_theta", "角度下限", "例如：0", "0"),
+                solverText("upper_theta", "角度上限", "例如：2*pi", "2*pi"),
+                solverText("lower_z", "z 下限", "例如：0", "0"),
+                solverText("upper_z", "z 上限", "例如：1", "1"),
+              ],
+            },
+            triple_spherical: {
+              label: "球面坐标三重积分",
+              hint: "被积函数可写 x、y、z，自动代入球面坐标并乘以 rho^2*sin(phi)。",
+              fields: [
+                solverExpression("例如：1"),
+                solverText("lower_rho", "半径下限", "例如：0", "0"),
+                solverText("upper_rho", "半径上限", "例如：1", "1"),
+                solverText("lower_phi", "极角下限", "例如：0", "0"),
+                solverText("upper_phi", "极角上限", "例如：pi", "pi"),
+                solverText("lower_theta", "方位角下限", "例如：0", "0"),
+                solverText("upper_theta", "方位角上限", "例如：2*pi", "2*pi"),
+              ],
+            },
           },
         },
         line_surface_integrals: {

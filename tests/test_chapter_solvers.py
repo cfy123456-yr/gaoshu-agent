@@ -152,6 +152,24 @@ ALL_TOPIC_CASES = {
         "lower_z": "0",
         "upper_z": "1",
     },
+    ("multiple_integrals", "triple_cylindrical"): {
+        "expression": "x^2+y^2",
+        "lower_r": "0",
+        "upper_r": "1",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
+        "lower_z": "0",
+        "upper_z": "1",
+    },
+    ("multiple_integrals", "triple_spherical"): {
+        "expression": "1",
+        "lower_rho": "0",
+        "upper_rho": "1",
+        "lower_phi": "0",
+        "upper_phi": "pi",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
+    },
     ("line_surface_integrals", "line_scalar"): {
         "expression": "x+y",
         "parameter": "t",
@@ -264,6 +282,40 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertEqual("pi/2", payload["result"])
         self.assertEqual("二重积分（极坐标）", payload["method"])
+
+    def test_triple_cylindrical_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "triple_cylindrical",
+            {
+                "expression": "x^2+y^2",
+                "lower_r": "0",
+                "upper_r": "1",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+                "lower_z": "0",
+                "upper_z": "1",
+            },
+        )
+        self.assertEqual("pi/2", payload["result"])
+        self.assertEqual("三重积分（柱面坐标）", payload["method"])
+
+    def test_triple_spherical_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "triple_spherical",
+            {
+                "expression": "1",
+                "lower_rho": "0",
+                "upper_rho": "1",
+                "lower_phi": "0",
+                "upper_phi": "pi",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+            },
+        )
+        self.assertEqual("4*pi/3", payload["result"])
+        self.assertEqual("三重积分（球面坐标）", payload["method"])
 
     def test_vector_dot(self):
         payload = self.solve(

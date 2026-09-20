@@ -70,7 +70,15 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "conditional_extrema",
         }
     ),
-    "multiple_integrals": frozenset({"double", "double_polar", "triple"}),
+    "multiple_integrals": frozenset(
+        {
+            "double",
+            "double_polar",
+            "triple",
+            "triple_cylindrical",
+            "triple_spherical",
+        }
+    ),
     "line_surface_integrals": frozenset(
         {"line_scalar", "line_vector", "surface_scalar", "flux"}
     ),
@@ -1177,6 +1185,113 @@ def _triple_integral(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result}
 
 
+@_solver(method="三重积分（柱面坐标）")
+def _triple_cylindrical_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="r"),
+        "radial_variable",
+    )
+    angle = _parse_symbol(
+        view.text("angle_variable", required=False, default="theta"),
+        "angle_variable",
+    )
+    height = _parse_symbol(
+        view.text("height_variable", required=False, default="z"),
+        "height_variable",
+    )
+    if len({radial, angle, height}) != 3:
+        raise SolveError("柱面坐标的三个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    z_symbol = sympy.Symbol("z")
+    cartesian_symbols = {x_symbol, y_symbol, z_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.cos(angle),
+                y_symbol: radial * sympy.sin(angle),
+                z_symbol: height,
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_r"), "lower_r")
+    upper_radius = _parse_expression(view.text("upper_r"), "upper_r")
+    lower_angle = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_angle = _parse_expression(view.text("upper_theta"), "upper_theta")
+    lower_height = _parse_expression(view.text("lower_z"), "lower_z")
+    upper_height = _parse_expression(view.text("upper_z"), "upper_z")
+    integrand = simplify(expression * radial)
+    result = integrate(
+        integrate(
+            integrate(integrand, (height, lower_height, upper_height)),
+            (angle, lower_angle, upper_angle),
+        ),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用柱面坐标变换并乘以雅可比因子 r"],
+    }
+
+
+@_solver(method="三重积分（球面坐标）")
+def _triple_spherical_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="rho"),
+        "radial_variable",
+    )
+    polar = _parse_symbol(
+        view.text("polar_variable", required=False, default="phi"),
+        "polar_variable",
+    )
+    azimuthal = _parse_symbol(
+        view.text("azimuthal_variable", required=False, default="theta"),
+        "azimuthal_variable",
+    )
+    if len({radial, polar, azimuthal}) != 3:
+        raise SolveError("球面坐标的三个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    z_symbol = sympy.Symbol("z")
+    cartesian_symbols = {x_symbol, y_symbol, z_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.sin(polar) * sympy.cos(azimuthal),
+                y_symbol: radial * sympy.sin(polar) * sympy.sin(azimuthal),
+                z_symbol: radial * sympy.cos(polar),
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_rho"), "lower_rho")
+    upper_radius = _parse_expression(view.text("upper_rho"), "upper_rho")
+    lower_polar = _parse_expression(view.text("lower_phi"), "lower_phi")
+    upper_polar = _parse_expression(view.text("upper_phi"), "upper_phi")
+    lower_azimuthal = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_azimuthal = _parse_expression(view.text("upper_theta"), "upper_theta")
+    jacobian = radial**2 * sympy.sin(polar)
+    integrand = simplify(expression * jacobian)
+    result = integrate(
+        integrate(
+            integrate(integrand, (azimuthal, lower_azimuthal, upper_azimuthal)),
+            (polar, lower_polar, upper_polar),
+        ),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用球面坐标变换并乘以雅可比因子 rho^2*sin(phi)"],
+    }
+
+
 # Line and surface integrals
 
 
@@ -1580,6 +1695,14 @@ _SOLVERS = {
     ("multiple_integrals", "double"): _double_integral,
     ("multiple_integrals", "double_polar"): _double_polar_integral,
     ("multiple_integrals", "triple"): _triple_integral,
+    (
+        "multiple_integrals",
+        "triple_cylindrical",
+    ): _triple_cylindrical_integral,
+    (
+        "multiple_integrals",
+        "triple_spherical",
+    ): _triple_spherical_integral,
     ("line_surface_integrals", "line_scalar"): _line_scalar,
     ("line_surface_integrals", "line_vector"): _line_vector,
     ("line_surface_integrals", "surface_scalar"): _surface_scalar,
