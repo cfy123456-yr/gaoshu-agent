@@ -49,7 +49,7 @@ class MathApiSmokeTest(unittest.TestCase):
     def test_health_reports_current_version(self):
         payload = self.request("/health")
         self.assertEqual("ok", payload["status"])
-        self.assertEqual("0.4.0", payload["version"])
+        self.assertEqual("0.4.1", payload["version"])
         self.assertIn("api_key_enabled", payload)
 
     def test_derivative_result_and_candidate_check(self):
@@ -154,6 +154,19 @@ class MathApiSmokeTest(unittest.TestCase):
             },
         )
         self.assertIn("2*x*y", gradient["result"])
+
+        query_payload = self.request(
+            "/solve-query",
+            {
+                "chapter": "series",
+                "topic": "convergence",
+                "inputs": json.dumps(
+                    {"expression": "1/n^2", "variable": "n"},
+                    ensure_ascii=True,
+                ),
+            },
+        )
+        self.assertEqual("收敛", query_payload["result"])
 
     def test_invalid_expression_is_rejected(self):
         payload = self.request(

@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.4.0`。
+先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.4.1`。
 
 ## math_limit
 
@@ -113,24 +113,24 @@ POST
 请求地址：
 
 ```text
-https://cfyyy.pythonanywhere.com/solve
+https://cfyyy.pythonanywhere.com/solve-query
 ```
 
-请求头：
+查询参数：
 
-```text
-Content-Type: application/json
-```
+| 参数名 | 参数值 |
+| --- | --- |
+| chapter | {{chapter}} |
+| topic | {{topic}} |
+| inputs | {{inputs}} |
+| candidate | {{candidate}} |
 
-请求体类型选择 JSON：
+请求体留空。
+
+`inputs` 必须是 JSON 字符串，例如：
 
 ```json
-{
-  "chapter": "{{chapter}}",
-  "topic": "{{topic}}",
-  "inputs": {{inputs}},
-  "candidate": "{{candidate}}"
-}
+{"expression":"1/n^2","variable":"n"}
 ```
 
 ### 结束节点

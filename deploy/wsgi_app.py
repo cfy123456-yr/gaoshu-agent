@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 import time
 from typing import Any
@@ -300,6 +301,26 @@ def limit_with_query():
 def solve_with_json():
     payload = request.get_json(silent=False)
     model = SolveRequest.model_validate(payload)
+    return _json_response(solve_math(model, _=None))
+
+
+@application.post("/solve-query")
+def solve_with_query():
+    raw_inputs = request.args.get("inputs", "")
+    try:
+        inputs = json.loads(raw_inputs)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="inputs 必须是合法的 JSON 对象") from exc
+
+    if not isinstance(inputs, dict):
+        raise HTTPException(status_code=400, detail="inputs 必须是合法的 JSON 对象")
+
+    model = SolveRequest(
+        chapter=request.args.get("chapter"),
+        topic=request.args.get("topic"),
+        inputs=inputs,
+        candidate=request.args.get("candidate") or None,
+    )
     return _json_response(solve_math(model, _=None))
 
 

@@ -62,7 +62,7 @@ LOG_FILE = os.getenv(
 LOG_MAX_BYTES = read_int_env("LOG_MAX_BYTES", 5 * 1024 * 1024)
 LOG_BACKUP_COUNT = read_int_env("LOG_BACKUP_COUNT", 3, minimum=0)
 API_KEY = os.getenv("MATH_API_KEY", "").strip()
-SERVICE_VERSION = "0.4.0"
+SERVICE_VERSION = "0.4.1"
 SERVICE_STARTED_AT = datetime.now(timezone.utc)
 SERVICE_STARTED_MONOTONIC = time.monotonic()
 
@@ -668,3 +668,30 @@ def solve_math(
         raise
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"solve 请求无法完成：{exc}") from exc
+
+
+@app.post("/solve-query", response_model=SolveResponse)
+def solve_math_query(
+    chapter: str = Query(min_length=1, max_length=64),
+    topic: str = Query(min_length=1, max_length=64),
+    inputs: str = Query(min_length=2, max_length=4096),
+    candidate: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
+    _: None = Depends(enforce_api_access),
+):
+    try:
+        parsed_inputs = json.loads(inputs)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="inputs 必须是合法的 JSON 对象") from exc
+
+    if not isinstance(parsed_inputs, dict):
+        raise HTTPException(status_code=400, detail="inputs 必须是合法的 JSON 对象")
+
+    return solve_math(
+        SolveRequest(
+            chapter=chapter,
+            topic=topic,
+            inputs=parsed_inputs,
+            candidate=candidate or None,
+        ),
+        _=None,
+    )
