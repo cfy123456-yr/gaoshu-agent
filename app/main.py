@@ -231,7 +231,9 @@ SAFE_FUNCTIONS["ln"] = sympy.log
 SAFE_LOCAL_DICT = {
     **SAFE_FUNCTIONS,
     "pi": sympy.pi,
+    "PI": sympy.pi,
     "e": sympy.E,
+    "E": sympy.E,
     "oo": sympy.oo,
     "Symbol": sympy.Symbol,
     "Integer": sympy.Integer,

@@ -128,6 +128,19 @@ class MathApiSmokeTest(unittest.TestCase):
         self.assertEqual("-oo", left["limit"])
         self.assertIs(True, left["is_correct"])
 
+    def test_exponential_limit_candidate(self):
+        payload = self.request(
+            "/limit-query",
+            {
+                "expression": "(1+1/x)^x",
+                "variable": "x",
+                "point": "oo",
+                "candidate": "E",
+            },
+        )
+        self.assertEqual("E", payload["limit"])
+        self.assertIs(True, payload["is_correct"])
+
     def test_unified_solve_for_extended_chapters(self):
         payload = self.request(
             "/solve",

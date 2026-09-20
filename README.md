@@ -48,6 +48,10 @@ gaoshu-agent/
 │  ├─ stop-demo.cmd
 │  ├─ stop-demo.ps1
 │  ├─ verify-deployment.cmd
+│  ├─ verify-limit-regression.cmd
+│  ├─ verify_limit_regression.py
+│  ├─ verify-solve-regression.cmd
+│  ├─ verify_solve_regression.py
 │  └─ verify_deployment.py
 ├─ tests/
 │  ├─ test_math_api.py
@@ -93,6 +97,12 @@ python -m pip install -r requirements.txt
 
 ```powershell
 .\scripts\verify-solve-regression.cmd --base-url https://cfyyy.pythonanywhere.com
+```
+
+极限接口回归：
+
+```powershell
+.\scripts\verify-limit-regression.cmd --base-url https://cfyyy.pythonanywhere.com
 ```
 
 ## 启动服务

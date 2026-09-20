@@ -125,6 +125,12 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/solve-query' \
 
 以上接口已经验证返回 `is_correct: true`。
 
+极限接口回归，覆盖普通极限、无穷极限、左右极限和候选答案判断：
+
+```powershell
+.\scripts\verify-limit-regression.cmd --base-url https://cfyyy.pythonanywhere.com
+```
+
 对话接口：
 
 ```bash
