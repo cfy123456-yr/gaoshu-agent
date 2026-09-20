@@ -30,6 +30,14 @@ def is_public_demo_request() -> bool:
     return request.path == "/demo" or request.path.startswith("/demo/")
 
 
+def should_rate_limit_request() -> bool:
+    if request.method == "OPTIONS":
+        return False
+    if request.path.startswith("/static/"):
+        return False
+    return request.path not in {"/health", "/demo/api/health"}
+
+
 @application.before_request
 def enforce_api_access():
     if (
@@ -39,11 +47,12 @@ def enforce_api_access():
     ):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    client_key = forwarded_for.split(",")[0].strip()
-    if not client_key:
-        client_key = request.remote_addr or "unknown"
-    rate_limiter.check(client_key)
+    if should_rate_limit_request():
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        client_key = forwarded_for.split(",")[0].strip()
+        if not client_key:
+            client_key = request.remote_addr or "unknown"
+        rate_limiter.check(client_key)
 
 
 @application.errorhandler(HTTPException)

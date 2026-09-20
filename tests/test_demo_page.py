@@ -20,6 +20,7 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("/static/katex/katex.min.css", html)
         self.assertIn("/static/katex/katex.min.js", html)
         self.assertNotIn("cdn.jsdelivr.net", html)
+        self.assertIn("controller.abort(), 6000", html)
 
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
@@ -29,6 +30,23 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("ok", payload["status"])
         self.assertTrue(payload["demo"]["available"])
         self.assertEqual("/demo", payload["demo"]["page"])
+
+    def test_health_and_static_requests_do_not_consume_rate_limit(self):
+        with patch.object(wsgi_app.rate_limiter, "check") as check:
+            self.client.get("/demo/api/health")
+            self.client.get("/health")
+            self.client.get("/static/katex/katex.min.css").close()
+
+        check.assert_not_called()
+
+    def test_chat_requests_still_consume_rate_limit(self):
+        with patch.object(wsgi_app.rate_limiter, "check") as check:
+            self.client.post(
+                "/demo/api/chat",
+                json={"message": "x"},
+            )
+
+        check.assert_called_once()
 
     def test_missing_route_returns_json_404(self):
         response = self.client.get("/not-found")

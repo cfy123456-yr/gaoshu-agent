@@ -1012,8 +1012,13 @@
       }
 
       async function checkService() {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 6000);
         try {
-          const response = await fetch("/demo/api/health", { cache: "no-store" });
+          const response = await fetch("/demo/api/health", {
+            cache: "no-store",
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeoutId));
           if (!response.ok) {
             throw new Error("offline");
           }
