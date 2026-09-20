@@ -70,7 +70,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "conditional_extrema",
         }
     ),
-    "multiple_integrals": frozenset({"double", "triple"}),
+    "multiple_integrals": frozenset({"double", "double_polar", "triple"}),
     "line_surface_integrals": frozenset(
         {"line_scalar", "line_vector", "surface_scalar", "flux"}
     ),
@@ -1112,6 +1112,48 @@ def _double_integral(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result}
 
 
+@_solver(method="二重积分（极坐标）")
+def _double_polar_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="r"),
+        "radial_variable",
+    )
+    angle = _parse_symbol(
+        view.text("angle_variable", required=False, default="theta"),
+        "angle_variable",
+    )
+    if radial == angle:
+        raise SolveError("极坐标的两个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    cartesian_symbols = {x_symbol, y_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.cos(angle),
+                y_symbol: radial * sympy.sin(angle),
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_r"), "lower_r")
+    upper_radius = _parse_expression(view.text("upper_r"), "upper_r")
+    lower_angle = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_angle = _parse_expression(view.text("upper_theta"), "upper_theta")
+    integrand = simplify(expression * radial)
+    result = integrate(
+        integrate(integrand, (angle, lower_angle, upper_angle)),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用极坐标变换并乘以雅可比因子 r"],
+    }
+
+
 @_solver(method="三重积分")
 def _triple_integral(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
@@ -1536,6 +1578,7 @@ _SOLVERS = {
     ("multivariable_calculus", "multivariable_extrema"): _multivariable_extrema,
     ("multivariable_calculus", "conditional_extrema"): _conditional_extrema,
     ("multiple_integrals", "double"): _double_integral,
+    ("multiple_integrals", "double_polar"): _double_polar_integral,
     ("multiple_integrals", "triple"): _triple_integral,
     ("line_surface_integrals", "line_scalar"): _line_scalar,
     ("line_surface_integrals", "line_vector"): _line_vector,

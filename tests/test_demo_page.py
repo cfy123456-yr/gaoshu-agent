@@ -53,6 +53,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("方程组确定函数求偏导", html)
         self.assertIn("conditional_extrema", html)
         self.assertIn("条件极值", html)
+        self.assertIn("double_polar", html)
+        self.assertIn("极坐标二重积分", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -265,6 +267,17 @@ class DemoPageTest(unittest.TestCase):
         triple = self.chat("三重积分 x+y+z 变量 x,y,z")
         self.assertEqual("solve", triple.get_json()["intent"])
         self.assertEqual("3/2", triple.get_json()["calculation"]["result"])
+
+    def test_demo_chat_solves_polar_double_integral(self):
+        response = self.chat(
+            "极坐标二重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi"
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("pi/2", payload["calculation"]["result"])
+        self.assertEqual("二重积分（极坐标）", payload["calculation"]["method"])
 
     def test_demo_chat_solves_differential_equation(self):
         response = self.chat("解微分方程 y'-y=0")

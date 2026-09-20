@@ -135,6 +135,13 @@ ALL_TOPIC_CASES = {
         "lower_y": "0",
         "upper_y": "1",
     },
+    ("multiple_integrals", "double_polar"): {
+        "expression": "x^2+y^2",
+        "lower_r": "0",
+        "upper_r": "1",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
+    },
     ("multiple_integrals", "triple"): {
         "expression": "x+y+z",
         "variables": ["x", "y", "z"],
@@ -242,6 +249,21 @@ class ChapterSolverTest(unittest.TestCase):
             },
         )
         self.assertEqual("1/4", payload["result"])
+
+    def test_double_polar_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "double_polar",
+            {
+                "expression": "x^2+y^2",
+                "lower_r": "0",
+                "upper_r": "1",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+            },
+        )
+        self.assertEqual("pi/2", payload["result"])
+        self.assertEqual("二重积分（极坐标）", payload["method"])
 
     def test_vector_dot(self):
         payload = self.solve(

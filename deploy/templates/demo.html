@@ -2260,6 +2260,17 @@
                 solverText("upper_y", "第二个变量上限", "例如：1", "1"),
               ],
             },
+            double_polar: {
+              label: "极坐标二重积分",
+              hint: "被积函数可写 x、y，自动代入极坐标并乘以 r。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverText("lower_r", "半径下限", "例如：0", "0"),
+                solverText("upper_r", "半径上限", "例如：1", "1"),
+                solverText("lower_theta", "角度下限", "例如：0", "0"),
+                solverText("upper_theta", "角度上限", "例如：2*pi", "2*pi"),
+              ],
+            },
             triple: {
               label: "三重积分",
               hint: "按变量列表顺序填写对应上下限，支持 x、y、z。",

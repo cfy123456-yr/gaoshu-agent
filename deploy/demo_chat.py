@@ -140,6 +140,12 @@ _EXTENDED_CHAPTER_HINTS = {
         "missing": "请写出二重积分和被积函数，例如“积分 0 到 1 0 到 1 x*y”。",
         "suggestions": ["积分 0 到 1 0 到 1 x*y"],
     },
+    ("multiple_integrals", "double_polar"): {
+        "missing": "请写出极坐标二重积分和内外积分限，例如“极坐标二重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi”。",
+        "suggestions": [
+            "极坐标二重积分 x^2+y^2 r 0 到 1 theta 0 到 2*pi",
+        ],
+    },
     ("multiple_integrals", "triple"): {
         "missing": "请写出三重积分、被积函数和三个积分变量，例如“三重积分 x+y+z 变量 x,y,z”。",
         "suggestions": ["三重积分 x+y+z 变量 x,y,z"],
@@ -538,6 +544,34 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
         vectors = _extract_vector_operands(compact)
         if vectors:
             return "vectors", "distance", {"left": vectors[0], "right": vectors[1]}
+
+    polar_match = re.search(
+        r"极坐标(?:二重积分)?\s*(?P<expression>.+?)"
+        r"\s*(?:r|半径)\s*(?:从|:)?\s*(?P<lower_r>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_r>[^\s,，]+)"
+        r"\s*(?:theta|θ|角度)\s*(?:从|:)?\s*(?P<lower_theta>[^\s,，]+)"
+        r"\s*到\s*(?P<upper_theta>[^\s,，]+)",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if polar_match:
+        return (
+            "multiple_integrals",
+            "double_polar",
+            {
+                "expression": _strip_expression_tail(
+                    polar_match.group("expression")
+                ),
+                "lower_r": _strip_expression_tail(polar_match.group("lower_r")),
+                "upper_r": _strip_expression_tail(polar_match.group("upper_r")),
+                "lower_theta": _strip_expression_tail(
+                    polar_match.group("lower_theta")
+                ),
+                "upper_theta": _strip_expression_tail(
+                    polar_match.group("upper_theta")
+                ),
+            },
+        )
 
     triple = _extract_integral_triple(compact)
     if triple is not None and ("三重" in compact or re.search(r"∫\s*∫\s*∫", compact)):

@@ -157,7 +157,7 @@ candidate
 | differential_equations | dsolve |
 | vectors | dot, cross, norm, angle, distance, projection |
 | multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, system_implicit_derivative, multivariable_extrema, conditional_extrema |
-| multiple_integrals | double, triple |
+| multiple_integrals | double, double_polar, triple |
 | line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
 | series | sum, convergence, power_radius |
 
@@ -170,7 +170,7 @@ candidate
 4. 参数方程求导使用 `derivatives/parametric_derivative`，输入 `x_expression`、`y_expression` 和可选 `parameter`（默认 `t`）。
 5. 由方程组确定的隐函数求导使用 `multivariable_calculus/system_implicit_derivative`，输入 `equations`、`dependents`、`variable` 和 `dependent`；方程个数必须等于因变量个数。
 6. 二元函数在一条等式约束下的条件极值使用 `multivariable_calculus/conditional_extrema`，输入 `expression`、`variables` 和 `constraint`。
-7. 二重积分和三重积分使用 `multiple_integrals/double` 或 `multiple_integrals/triple`。
+7. 二重积分直角坐标使用 `multiple_integrals/double`；极坐标使用 `multiple_integrals/double_polar`，输入 `expression`、`lower_r`、`upper_r`、`lower_theta` 和 `upper_theta`，其中 `expression` 可写 `x`、`y`，系统会自动代入并乘以雅可比因子 `r`；三重积分使用 `multiple_integrals/triple`。
 8. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
 9. 微分方程使用 `differential_equations/dsolve`。
 10. 如果题目不属于当前支持列表，如实说明该题型暂不能由计算工作流确定性验证，只提供思路，不编造最终答案。

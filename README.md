@@ -292,6 +292,25 @@ Content-Type: application/json
 }
 ```
 
+极坐标二重积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multiple_integrals",
+  "topic": "double_polar",
+  "inputs": {
+    "expression": "x^2+y^2",
+    "lower_r": "0",
+    "upper_r": "1",
+    "lower_theta": "0",
+    "upper_theta": "2*pi"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：
