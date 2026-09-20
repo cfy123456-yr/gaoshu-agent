@@ -662,16 +662,21 @@
       "use strict";
 
       const STORAGE_KEY = "zhiwei-demo-chat-v1";
+      const SESSION_KEY = "zhiwei-demo-session-v1";
       const MAX_STORED_MESSAGES = 40;
+      const MAX_REQUEST_HISTORY = 20;
+      const RESPONSE_CACHE_LIMIT = 20;
+      const REQUEST_TIMEOUT_MS = 20000;
       const DEFAULT_SUGGESTIONS = [
         "求导 x^2",
         "判断 2x 是不是 x^2 的导数",
         "积分 x^2",
         "积分 0 到 1 x^2",
         "lim x→0 sin(x)/x",
+        "我以前做过哪些题",
       ];
       const WELCOME_TEXT =
-        "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。";
+        "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。想回顾之前的题目，直接问我“我以前做过哪些题”，也可以说“再算一遍上一题”。";
 
       const messageList = document.getElementById("messageList");
       const suggestions = document.getElementById("suggestions");
@@ -685,10 +690,29 @@
       let messages = [];
       let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
+      const responseCache = new Map();
 
       function makeId() {
         return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
+
+      function sessionId() {
+        try {
+          let value = window.localStorage.getItem(SESSION_KEY);
+          if (!value) {
+            value =
+              window.crypto && window.crypto.randomUUID
+                ? window.crypto.randomUUID()
+                : `session-${makeId()}`;
+            window.localStorage.setItem(SESSION_KEY, value);
+          }
+          return value;
+        } catch (error) {
+          return "session-fallback";
+        }
+      }
+
+      const demoSessionId = sessionId();
 
       function currentTime() {
         return new Date().toLocaleTimeString("zh-CN", {
@@ -749,6 +773,32 @@
           );
         } catch (error) {
           // The conversation still works when browser storage is unavailable.
+        }
+      }
+
+      function requestHistory() {
+        return messages
+          .filter((message) => !message.loading)
+          .slice(-MAX_REQUEST_HISTORY)
+          .map((message) => ({
+            role: message.role,
+            text: message.text.slice(0, 600),
+          }))
+          .filter((message) => message.text);
+      }
+
+      function cacheResponse(question, data) {
+        if (!data || data.history_used || data.intent === "history") {
+          return;
+        }
+        const key = question.trim();
+        if (!key) {
+          return;
+        }
+        responseCache.delete(key);
+        responseCache.set(key, data);
+        while (responseCache.size > RESPONSE_CACHE_LIMIT) {
+          responseCache.delete(responseCache.keys().next().value);
         }
       }
 
@@ -864,7 +914,7 @@
 
       function renderSuggestions(items) {
         currentSuggestions = Array.isArray(items) && items.length
-          ? items.slice(0, 5)
+          ? items.slice(0, 6)
           : DEFAULT_SUGGESTIONS;
         const fragment = document.createDocumentFragment();
         currentSuggestions.forEach((text) => {
@@ -924,6 +974,7 @@
         if (!text || requestInFlight) {
           return;
         }
+        const history = requestHistory();
 
         messages.push({
           id: makeId(),
@@ -958,13 +1009,33 @@
         saveMessages();
 
         const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+        const timeoutId = window.setTimeout(
+          () => controller.abort(),
+          REQUEST_TIMEOUT_MS,
+        );
 
         try {
+          const cachedResponse = responseCache.get(text);
+          if (cachedResponse) {
+            window.clearTimeout(timeoutId);
+            await new Promise((resolve) => window.setTimeout(resolve, 120));
+            const cachedIndex = messages.findIndex(
+              (message) => message.id === loadingId,
+            );
+            if (cachedIndex !== -1) {
+              messages[cachedIndex] = responseToMessage(cachedResponse);
+            }
+            renderSuggestions(cachedResponse.suggestions);
+            return;
+          }
+
           const response = await fetch("/demo/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text }),
+            headers: {
+              "Content-Type": "application/json",
+              "X-Demo-Session": demoSessionId,
+            },
+            body: JSON.stringify({ message: text, history }),
             signal: controller.signal,
           }).finally(() => window.clearTimeout(timeoutId));
 
@@ -983,6 +1054,7 @@
           if (index !== -1) {
             messages[index] = responseToMessage(data);
           }
+          cacheResponse(text, data);
           renderSuggestions(data.suggestions);
         } catch (error) {
           const index = messages.findIndex((message) => message.id === loadingId);
@@ -992,7 +1064,7 @@
               role: "assistant",
               text:
                 error.name === "AbortError"
-                  ? "这次计算超时了，请把题目简化后重试。"
+                  ? "这次等待时间有点长，已停止等待。可以再发一次同一题，系统会复用已有结果。"
                   : error.message || "计算服务暂时不可用，请稍后重试。",
               formulaLatex: "",
               formulaText: "",
@@ -1060,6 +1132,7 @@
           return;
         }
         messages = [welcomeMessage()];
+        responseCache.clear();
         renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();

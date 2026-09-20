@@ -1,3 +1,4 @@
+import itertools
 import unittest
 from unittest.mock import patch
 
@@ -7,6 +8,17 @@ from deploy import wsgi_app
 class DemoPageTest(unittest.TestCase):
     def setUp(self):
         self.client = wsgi_app.application.test_client()
+        wsgi_app._chat_response_cache.clear()
+        self.session_counter = itertools.count(1)
+
+    def chat(self, message, history=None, session=None):
+        session_id = session or next(self.session_counter)
+        headers = {"X-Demo-Session": f"test-session-{session_id}"}
+        return self.client.post(
+            "/demo/api/chat",
+            json={"message": message, "history": history or []},
+            headers=headers,
+        )
 
     def test_demo_page_is_available(self):
         response = self.client.get("/demo")
@@ -184,6 +196,86 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("needs_input", payload["status"])
         self.assertEqual("unknown", payload["intent"])
         self.assertIsNone(payload["calculation"])
+
+    def test_demo_chat_reuses_the_previous_question(self):
+        response = self.client.post(
+            "/demo/api/chat",
+            json={
+                "message": "再算一遍上一题",
+                "history": [
+                    {"role": "user", "text": "求导 x^2"},
+                    {"role": "assistant", "text": "导数是 2*x。"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("verify", payload["intent"])
+        self.assertEqual("2*x", payload["calculation"]["derivative"])
+        self.assertIn("x^2", payload["history_used"])
+
+    def test_demo_chat_lists_recent_questions(self):
+        response = self.client.post(
+            "/demo/api/chat",
+            json={
+                "message": "我以前做过哪些题",
+                "history": [
+                    {"role": "user", "text": "求导 x^2"},
+                    {"role": "user", "text": "积分 0 到 1 x^2"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("history", payload["intent"])
+        self.assertEqual(2, len(payload["history_questions"]))
+
+    def test_demo_page_sends_limited_history_and_caches_repeated_questions(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn("MAX_REQUEST_HISTORY = 20", html)
+        self.assertIn("history }", html)
+        self.assertIn("responseCache", html)
+        self.assertIn("REQUEST_TIMEOUT_MS = 20000", html)
+        self.assertIn("X-Demo-Session", html)
+
+    def test_demo_chat_caches_repeated_questions_per_session(self):
+        first = self.chat("求导 x^2", session="shared")
+        second = self.chat("求导 x^2", session="shared")
+        other_session = self.chat("求导 x^2", session="other")
+
+        self.assertEqual(200, first.status_code)
+        self.assertIsNot(True, first.get_json().get("cached"))
+        self.assertIs(True, second.get_json()["cached"])
+        self.assertIsNot(True, other_session.get_json().get("cached"))
+
+    def test_demo_chat_does_not_cache_history_answers(self):
+        first = self.chat("我以前做过哪些题", session="history")
+        second = self.chat("我以前做过哪些题", session="history")
+
+        self.assertEqual("history", first.get_json()["intent"])
+        self.assertIsNot(True, second.get_json().get("cached"))
+
+    def test_demo_chat_does_not_repeat_a_history_followup(self):
+        response = self.chat(
+            "再算一遍上一题",
+            history=[
+                {"role": "user", "text": "继续"},
+                {"role": "user", "text": "求导 x^2"},
+                {"role": "user", "text": "再算一遍上一题"},
+            ],
+            session="followup",
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("verify", payload["intent"])
+        self.assertEqual("2*x", payload["calculation"]["derivative"])
+        self.assertEqual("求导 x^2", payload["history_used"])
 
     def test_demo_remains_public_when_api_key_is_enabled(self):
         with patch.object(wsgi_app, "API_KEY", "test-secret"):

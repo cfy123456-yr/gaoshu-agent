@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import copy
+import re
+import time
 from typing import Any
 
 from fastapi import HTTPException
@@ -20,10 +23,15 @@ from app.main import (
     rate_limiter,
     verify_derivative,
 )
-from deploy.demo_chat import DemoChatRequest, build_chat_response
+from deploy.demo_chat import DemoChatRequest, _normalize_text, build_chat_response
 
 
 application = Flask(__name__)
+
+_CHAT_CACHE_TTL_SECONDS = 300
+_CHAT_CACHE_MAX_PER_SESSION = 40
+_CHAT_CACHE_MAX_SESSIONS = 100
+_chat_response_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
 
 
 def is_public_demo_request() -> bool:
@@ -145,7 +153,76 @@ def demo_limit():
 def demo_chat():
     payload = request.get_json(silent=False)
     model = DemoChatRequest.model_validate(payload)
-    return jsonify(build_chat_response(model.message))
+    session_id = _demo_session_id()
+    normalized = _normalize_text(model.message)
+    cache_key = (session_id, normalized)
+    cached = _cached_chat_response(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+
+    response = build_chat_response(model.message, model.history)
+    _store_chat_response(cache_key, session_id, response)
+    return jsonify(response)
+
+
+def _demo_session_id() -> str:
+    value = (request.headers.get("X-Demo-Session") or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{8,80}", value):
+        return value
+    return "anonymous"
+
+
+def _cached_chat_response(
+    cache_key: tuple[str, str],
+) -> dict[str, Any] | None:
+    cached = _chat_response_cache.get(cache_key)
+    if cached is None:
+        return None
+    created_at, response = cached
+    if time.time() - created_at > _CHAT_CACHE_TTL_SECONDS:
+        _chat_response_cache.pop(cache_key, None)
+        return None
+    payload = copy.deepcopy(response)
+    payload["cached"] = True
+    return payload
+
+
+def _store_chat_response(
+    cache_key: tuple[str, str],
+    session_id: str,
+    response: dict[str, Any],
+) -> None:
+    if (
+        response.get("intent") in {"history", "unknown"}
+        or response.get("history_used")
+    ):
+        return
+
+    _prune_chat_cache()
+    _chat_response_cache[cache_key] = (
+        time.time(),
+        copy.deepcopy(response),
+    )
+    session_keys = [
+        key for key in _chat_response_cache if key[0] == session_id
+    ]
+    for stale_key in session_keys[:-_CHAT_CACHE_MAX_PER_SESSION]:
+        _chat_response_cache.pop(stale_key, None)
+
+
+def _prune_chat_cache() -> None:
+    now = time.time()
+    for key, (created_at, _) in list(_chat_response_cache.items()):
+        if now - created_at > _CHAT_CACHE_TTL_SECONDS:
+            _chat_response_cache.pop(key, None)
+
+    if len(_chat_response_cache) <= _CHAT_CACHE_MAX_SESSIONS:
+        return
+    oldest_key = min(
+        _chat_response_cache,
+        key=lambda item: _chat_response_cache[item][0],
+    )
+    _chat_response_cache.pop(oldest_key, None)
 
 
 @application.get("/health")

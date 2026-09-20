@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
@@ -20,8 +20,14 @@ from app.main import (
 )
 
 
+class DemoChatHistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=600)
+
+
 class DemoChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=600)
+    history: list[DemoChatHistoryMessage] = Field(default_factory=list, max_length=20)
 
 
 _TEXT_REPLACEMENTS = str.maketrans(
@@ -79,11 +85,37 @@ _HELP_SUGGESTIONS = [
     "积分 x^2",
     "积分 0 到 1 x^2",
     "lim x→0 sin(x)/x",
+    "我以前做过哪些题",
 ]
 
 
-def build_chat_response(message: str) -> dict[str, Any]:
+def build_chat_response(
+    message: str,
+    history: list[DemoChatHistoryMessage] | None = None,
+) -> dict[str, Any]:
     normalized = _normalize_text(message)
+    recent_questions = _recent_math_questions(history)
+    if _is_history_query(normalized):
+        return _history_response(recent_questions)
+
+    if _is_history_followup(normalized):
+        if not recent_questions:
+            return _needs_input(
+                "我这边还没有找到上一道题，请把题目重新发给我。"
+            )
+        previous_question = recent_questions[-1]
+        response = _math_response(previous_question)
+        response["reply"] = (
+            f"我找到了上一题“{previous_question}”，下面重新给你核对。\n"
+            f"{response['reply']}"
+        )
+        response["history_used"] = previous_question
+        return response
+
+    return _math_response(normalized)
+
+
+def _math_response(normalized: str) -> dict[str, Any]:
     if not normalized:
         return _needs_input("请先输入一道高等数学题目。")
 
@@ -101,6 +133,86 @@ def build_chat_response(message: str) -> dict[str, Any]:
         "这个独立演示页目前可以连续处理求导、积分和极限。"
         "你可以直接输入“求导 x^2”或“积分 0 到 1 x^2”。"
     )
+
+
+def _recent_math_questions(
+    history: list[DemoChatHistoryMessage] | None,
+) -> list[str]:
+    questions: list[str] = []
+    for item in history or []:
+        role = item.get("role") if isinstance(item, dict) else item.role
+        text = item.get("text") if isinstance(item, dict) else item.text
+        if role != "user":
+            continue
+        normalized = _normalize_text(text)
+        if _detect_intent(normalized) not in {"verify", "integrate", "limit"}:
+            continue
+        questions.append(normalized)
+
+    unique_questions: list[str] = []
+    for question in reversed(questions):
+        if question not in unique_questions:
+            unique_questions.append(question)
+    unique_questions.reverse()
+    return unique_questions[-8:]
+
+
+def _is_history_query(value: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:历史题目|以前的题目|之前的题目|最近(?:做|问)过的?题|"
+            r"(?:做过|问过)(?:哪些|什么)题|我(?:以前|之前)问过什么)",
+            value,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _is_history_followup(value: str) -> bool:
+    compact = re.sub(r"[\s,，。！!?？]", "", value)
+    return bool(
+        re.fullmatch(
+            r"(?:请)?(?:再|重新)?(?:算|做|讲|看)?(?:一遍|一下)?"
+            r"(?:上一题|刚才(?:那|的)?题|上道题|前一道题|上一个问题)(?:吧|呢)?",
+            compact,
+        )
+        or re.fullmatch(r"(?:继续|接着讲|然后呢)", compact)
+    )
+
+
+def _history_response(questions: list[str]) -> dict[str, Any]:
+    if not questions:
+        return {
+            "status": "ok",
+            "intent": "history",
+            "reply": (
+                "我这边还没有找到历史题目。"
+                "先发一道求导、积分或极限题，我就能记住。"
+            ),
+            "formula_latex": "",
+            "formula_text": "",
+            "calculation": None,
+            "history_questions": [],
+            "suggestions": _HELP_SUGGESTIONS,
+        }
+
+    recent = questions[-5:]
+    numbered = "\n".join(
+        f"{index}. {question}" for index, question in enumerate(recent, start=1)
+    )
+    return {
+        "status": "ok",
+        "intent": "history",
+        "reply": (
+            f"我最近记得这些题目：\n{numbered}\n"
+            "你可以重新发其中一道，或者说“再算一遍上一题”。"
+        ),
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "history_questions": recent,
+        "suggestions": _HELP_SUGGESTIONS,
+    }
 
 
 def _normalize_text(value: str) -> str:
