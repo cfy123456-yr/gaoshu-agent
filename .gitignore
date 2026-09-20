@@ -16,3 +16,4 @@ tools/
 logs/
 .DS_Store
 Thumbs.db
+.edge-profile-*/

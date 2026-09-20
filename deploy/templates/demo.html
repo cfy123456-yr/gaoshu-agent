@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="知微高数求导、积分和极限计算演示">
+  <title>知微高数计算演示</title>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
+    crossorigin="anonymous"
+  >
+  <style>
+    :root {
+      --ink: #17231f;
+      --muted: #5e6d67;
+      --line: #d5ded9;
+      --line-strong: #b7c6bf;
+      --surface: #ffffff;
+      --canvas: #f2f5f3;
+      --soft: #e8f0ec;
+      --green: #1c6b57;
+      --green-dark: #145242;
+      --amber: #a85e19;
+      --red: #b42318;
+      --blue: #275f8f;
+      --shadow: 0 12px 30px rgba(23, 35, 31, 0.07);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: light;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      line-height: 1.55;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .masthead {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .masthead-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      width: min(1160px, 100%);
+      margin: 0 auto;
+      padding: 18px 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--green-dark);
+      background: var(--soft);
+      font-weight: 800;
+    }
+
+    .eyebrow {
+      margin: 0 0 1px;
+      color: var(--green);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      font-size: 1.34rem;
+      line-height: 1.25;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      min-height: 34px;
+      padding: 6px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #f8faf9;
+      font-size: 0.82rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+
+    .status-chip[data-state="online"] {
+      color: var(--green-dark);
+      border-color: #b9d4c9;
+      background: #edf7f2;
+    }
+
+    .status-chip[data-state="online"] .status-dot {
+      background: #238b67;
+    }
+
+    .status-chip[data-state="offline"] {
+      color: var(--red);
+      border-color: #efc2bd;
+      background: #fff4f2;
+    }
+
+    .status-chip[data-state="offline"] .status-dot {
+      background: var(--red);
+    }
+
+    .page {
+      width: min(1160px, 100%);
+      margin: 0 auto;
+      padding: 28px 24px 44px;
+    }
+
+    .calculator-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .calculator-header h2 {
+      margin-bottom: 4px;
+      font-size: 1.16rem;
+    }
+
+    .calculator-header p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(76px, 1fr));
+      gap: 4px;
+      flex: 0 0 auto;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #e8ece9;
+    }
+
+    .segmented button {
+      min-width: 0;
+      min-height: 38px;
+      padding: 7px 15px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .segmented button:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .segmented button[aria-pressed="true"] {
+      color: var(--green-dark);
+      border-color: var(--line-strong);
+      background: var(--surface);
+      box-shadow: 0 2px 5px rgba(23, 35, 31, 0.07);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(330px, 0.92fr);
+      align-items: start;
+      gap: 18px;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .form-panel {
+      padding: 22px;
+    }
+
+    .result-panel {
+      min-height: 488px;
+      padding: 22px;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding-bottom: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-heading h3 {
+      margin-bottom: 0;
+      font-size: 1rem;
+    }
+
+    .panel-heading-note {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .sample-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .sample-button {
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 6px;
+      color: var(--blue);
+      background: #f8fbfd;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .sample-button:hover {
+      border-style: solid;
+      border-color: #8fb1cc;
+      background: #eef6fb;
+    }
+
+    .sample-button[hidden] {
+      display: none;
+    }
+
+    .form-grid,
+    .field-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(130px, 0.3fr);
+      gap: 14px;
+    }
+
+    .field-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-grid {
+      margin-bottom: 15px;
+    }
+
+    .field-wide {
+      grid-column: 1 / -1;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field[hidden],
+    .dynamic-fields[hidden],
+    .form-error[hidden],
+    .result-state[hidden],
+    #resultContent[hidden] {
+      display: none;
+    }
+
+    label,
+    .field-label {
+      color: #31423b;
+      font-size: 0.84rem;
+      font-weight: 750;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 43px;
+      padding: 9px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #fdfefe;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(28, 107, 87, 0.12);
+    }
+
+    input::placeholder {
+      color: #89958f;
+    }
+
+    .field-help {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 21px;
+    }
+
+    .primary-button,
+    .secondary-button {
+      min-height: 43px;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-weight: 750;
+    }
+
+    .primary-button {
+      flex: 1;
+      border: 1px solid var(--green-dark);
+      color: #fff;
+      background: var(--green);
+    }
+
+    .primary-button:hover {
+      background: var(--green-dark);
+    }
+
+    .primary-button:disabled {
+      cursor: wait;
+      opacity: 0.68;
+    }
+
+    .secondary-button {
+      border: 1px solid var(--line-strong);
+      color: var(--ink);
+      background: #f8faf9;
+    }
+
+    .secondary-button:hover {
+      background: #edf1ef;
+    }
+
+    .form-error {
+      margin: 13px 0 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--red);
+      color: #7a1d16;
+      background: #fff4f2;
+      font-size: 0.85rem;
+    }
+
+    .result-state {
+      display: grid;
+      min-height: 380px;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .state-inner {
+      max-width: 290px;
+    }
+
+    .state-inner strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 12px;
+      border: 3px solid #d6e4de;
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation-duration: 1.8s;
+      }
+    }
+
+    .formula-box {
+      display: grid;
+      min-height: 120px;
+      margin-bottom: 16px;
+      padding: 16px 8px;
+      place-items: center;
+      overflow-x: auto;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: #102e25;
+      background: #fbfdfc;
+      font-size: 1.2rem;
+    }
+
+    .formula-box .katex {
+      font-size: 1.24em;
+    }
+
+    .answer-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--line-strong);
+      background: #f5f7f6;
+      font-size: 0.88rem;
+      font-weight: 750;
+    }
+
+    .answer-state[data-result="correct"] {
+      border-color: #238b67;
+      color: var(--green-dark);
+      background: #edf7f2;
+    }
+
+    .answer-state[data-result="incorrect"] {
+      border-color: var(--red);
+      color: #7a1d16;
+      background: #fff4f2;
+    }
+
+    .answer-state[data-result="empty"] {
+      border-color: #8ba4b8;
+      color: #274f71;
+      background: #f1f7fb;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      margin: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .meta-row dt {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .meta-row dd {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.84rem;
+    }
+
+    details {
+      margin-top: 14px;
+    }
+
+    summary {
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    pre {
+      max-height: 220px;
+      margin: 10px 0 0;
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #dcebe5;
+      background: #1d2b26;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.76rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .page-footer {
+      width: min(1160px, 100%);
+      margin: 0 auto;
+      padding: 0 24px 30px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 860px) {
+      .masthead-inner,
+      .calculator-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .status-chip,
+      .segmented {
+        width: 100%;
+        align-self: stretch;
+      }
+
+      .segmented {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .status-chip {
+        justify-content: center;
+        white-space: normal;
+      }
+
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .result-panel {
+        min-height: 420px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .masthead-inner,
+      .page,
+      .page-footer {
+        padding-right: 15px;
+        padding-left: 15px;
+      }
+
+      .page {
+        padding-top: 20px;
+      }
+
+      .form-panel,
+      .result-panel {
+        padding: 16px;
+      }
+
+      .form-grid,
+      .field-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .segmented {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .segmented button {
+        padding-right: 8px;
+        padding-left: 8px;
+      }
+
+      .actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .secondary-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">知微</div>
+        <div>
+          <p class="eyebrow">高等数学工具</p>
+          <h1>知微高数计算演示</h1>
+        </div>
+      </div>
+      <div class="status-chip" id="serviceStatus" data-state="checking" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="serviceStatusText">正在检查计算服务</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section aria-labelledby="calculatorTitle">
+      <div class="calculator-header">
+        <div>
+          <h2 id="calculatorTitle">选择计算类型</h2>
+          <p>求导、积分与极限结果由 SymPy 确定性计算。</p>
+        </div>
+        <div class="segmented" role="group" aria-label="计算类型">
+          <button type="button" data-mode="verify" aria-pressed="true">求导</button>
+          <button type="button" data-mode="integrate" aria-pressed="false">积分</button>
+          <button type="button" data-mode="limit" aria-pressed="false">极限</button>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <form class="panel form-panel" id="calculatorForm" novalidate>
+          <div class="panel-heading">
+            <h3>输入题目</h3>
+            <span class="panel-heading-note" id="modeHint">求导模式</span>
+          </div>
+
+          <div class="sample-row" aria-label="示例">
+            <button class="sample-button" type="button" data-sample="verify-basic" data-sample-for="verify">x^2</button>
+            <button class="sample-button" type="button" data-sample="verify-trig" data-sample-for="verify">sin(x)</button>
+            <button class="sample-button" type="button" data-sample="integrate-basic" data-sample-for="integrate" hidden>x^2 不定积分</button>
+            <button class="sample-button" type="button" data-sample="integrate-definite" data-sample-for="integrate" hidden>x^2 定积分</button>
+            <button class="sample-button" type="button" data-sample="limit-classic" data-sample-for="limit" hidden>sin(x)/x</button>
+            <button class="sample-button" type="button" data-sample="limit-one-sided" data-sample-for="limit" hidden>1/x 右极限</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="field field-wide">
+              <label for="expression">函数表达式</label>
+              <input
+                id="expression"
+                name="expression"
+                type="text"
+                value="x^2"
+                maxlength="300"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="例如：x^2 + sin(x)"
+                required
+              >
+            </div>
+
+            <div class="field field-wide">
+              <label for="variable">自变量</label>
+              <input
+                id="variable"
+                name="variable"
+                type="text"
+                value="x"
+                maxlength="32"
+                autocomplete="off"
+                spellcheck="false"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="dynamic-fields" data-fields="verify">
+            <div class="field">
+              <label for="verifyCandidate">候选答案</label>
+              <input
+                id="verifyCandidate"
+                name="verifyCandidate"
+                type="text"
+                maxlength="300"
+                autocomplete="off"
+                spellcheck="false"
+                value="2x"
+                placeholder="可选，例如：2x"
+              >
+              <p class="field-help">填写后可判断答案是否正确。</p>
+            </div>
+          </div>
+
+          <div class="dynamic-fields" data-fields="integrate" hidden>
+            <div class="field-grid">
+              <div class="field">
+                <label for="lower">积分下限</label>
+                <input
+                  id="lower"
+                  name="lower"
+                  type="text"
+                  maxlength="300"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="可选，例如：0"
+                >
+              </div>
+              <div class="field">
+                <label for="upper">积分上限</label>
+                <input
+                  id="upper"
+                  name="upper"
+                  type="text"
+                  maxlength="300"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="可选，例如：1"
+                >
+              </div>
+            </div>
+            <div class="field">
+              <label for="integrateCandidate">候选答案</label>
+              <input
+                id="integrateCandidate"
+                name="integrateCandidate"
+                type="text"
+                maxlength="300"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="可选，例如：x^3/3"
+              >
+              <p class="field-help">不定积分显示结果时需补上任意常数 C。</p>
+            </div>
+          </div>
+
+          <div class="dynamic-fields" data-fields="limit" hidden>
+            <div class="field-grid">
+              <div class="field">
+                <label for="limitPoint">趋近点</label>
+                <input
+                  id="limitPoint"
+                  name="limitPoint"
+                  type="text"
+                  maxlength="300"
+                  autocomplete="off"
+                  spellcheck="false"
+                  value="0"
+                  required
+                >
+              </div>
+              <div class="field">
+                <label for="direction">趋近方向</label>
+                <select id="direction" name="direction">
+                  <option value="">双侧</option>
+                  <option value="+">右极限</option>
+                  <option value="-">左极限</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="limitCandidate">候选答案</label>
+              <input
+                id="limitCandidate"
+                name="limitCandidate"
+                type="text"
+                maxlength="300"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="可选，例如：1"
+              >
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary-button" id="submitButton" type="submit">开始求导</button>
+            <button class="secondary-button" id="resetButton" type="button">清空结果</button>
+          </div>
+          <p class="form-error" id="formError" role="alert" hidden></p>
+        </form>
+
+        <section class="panel result-panel" aria-labelledby="resultTitle" aria-live="polite">
+          <div class="panel-heading">
+            <h3 id="resultTitle">计算结果</h3>
+            <span class="panel-heading-note" id="resultLabel">等待计算</span>
+          </div>
+
+          <div class="result-state" id="emptyState">
+            <div class="state-inner">
+              <strong>输入题目后开始计算</strong>
+              <span>公式将在这里显示。</span>
+            </div>
+          </div>
+
+          <div class="result-state" id="loadingState" hidden>
+            <div class="state-inner">
+              <div class="spinner" aria-hidden="true"></div>
+              <strong>正在计算</strong>
+              <span>复杂表达式可能需要几秒钟。</span>
+            </div>
+          </div>
+
+          <div class="result-state" id="errorState" hidden>
+            <div class="state-inner">
+              <strong>计算没有完成</strong>
+              <span id="errorMessage">请检查表达式后重试。</span>
+            </div>
+          </div>
+
+          <div id="resultContent" hidden>
+            <div class="formula-box" id="formulaBox"></div>
+            <div class="answer-state" id="answerState" hidden></div>
+            <dl class="meta-grid">
+              <div class="meta-row">
+                <dt>计算结果</dt>
+                <dd id="rawResult">-</dd>
+              </div>
+              <div class="meta-row">
+                <dt>识别输入</dt>
+                <dd id="rawExpression">-</dd>
+              </div>
+            </dl>
+            <details>
+              <summary>接口原始返回</summary>
+              <pre id="rawJson"></pre>
+            </details>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    知微高数项目 · SymPy 计算服务
+  </footer>
+
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const MODE_CONFIG = {
+        verify: {
+          endpoint: "/demo/api/verify",
+          hint: "求导模式",
+          submit: "开始求导",
+          resultLabel: "导数结果",
+        },
+        integrate: {
+          endpoint: "/demo/api/integrate",
+          hint: "积分模式",
+          submit: "开始积分",
+          resultLabel: "积分结果",
+        },
+        limit: {
+          endpoint: "/demo/api/limit",
+          hint: "极限模式",
+          submit: "开始求极限",
+          resultLabel: "极限结果",
+        },
+      };
+
+      const SAMPLES = {
+        "verify-basic": {
+          mode: "verify",
+          values: { expression: "x^2", variable: "x", verifyCandidate: "2x" },
+        },
+        "verify-trig": {
+          mode: "verify",
+          values: { expression: "sin(x)", variable: "x", verifyCandidate: "cos(x)" },
+        },
+        "integrate-basic": {
+          mode: "integrate",
+          values: {
+            expression: "x^2",
+            variable: "x",
+            lower: "",
+            upper: "",
+            integrateCandidate: "x^3/3",
+          },
+        },
+        "integrate-definite": {
+          mode: "integrate",
+          values: {
+            expression: "x^2",
+            variable: "x",
+            lower: "0",
+            upper: "1",
+            integrateCandidate: "1/3",
+          },
+        },
+        "limit-classic": {
+          mode: "limit",
+          values: {
+            expression: "sin(x)/x",
+            variable: "x",
+            limitPoint: "0",
+            direction: "",
+            limitCandidate: "1",
+          },
+        },
+        "limit-one-sided": {
+          mode: "limit",
+          values: {
+            expression: "1/x",
+            variable: "x",
+            limitPoint: "0",
+            direction: "+",
+            limitCandidate: "oo",
+          },
+        },
+      };
+
+      const form = document.getElementById("calculatorForm");
+      const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
+      const fieldGroups = Array.from(document.querySelectorAll("[data-fields]"));
+      const samples = Array.from(document.querySelectorAll("[data-sample]"));
+      const submitButton = document.getElementById("submitButton");
+      const resetButton = document.getElementById("resetButton");
+      const formError = document.getElementById("formError");
+      const emptyState = document.getElementById("emptyState");
+      const loadingState = document.getElementById("loadingState");
+      const errorState = document.getElementById("errorState");
+      const errorMessage = document.getElementById("errorMessage");
+      const resultContent = document.getElementById("resultContent");
+      const resultLabel = document.getElementById("resultLabel");
+      const modeHint = document.getElementById("modeHint");
+      const formulaBox = document.getElementById("formulaBox");
+      const answerState = document.getElementById("answerState");
+      const rawResult = document.getElementById("rawResult");
+      const rawExpression = document.getElementById("rawExpression");
+      const rawJson = document.getElementById("rawJson");
+      const serviceStatus = document.getElementById("serviceStatus");
+      const serviceStatusText = document.getElementById("serviceStatusText");
+
+      let currentMode = "verify";
+      let requestInFlight = false;
+
+      function setMode(mode) {
+        if (!MODE_CONFIG[mode] || requestInFlight) {
+          return;
+        }
+
+        currentMode = mode;
+        modeButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+        });
+        fieldGroups.forEach((group) => {
+          group.hidden = group.dataset.fields !== mode;
+        });
+        samples.forEach((button) => {
+          button.hidden = button.dataset.sampleFor !== mode;
+        });
+
+        const config = MODE_CONFIG[mode];
+        modeHint.textContent = config.hint;
+        submitButton.textContent = config.submit;
+        hideFormError();
+        showState("empty");
+      }
+
+      function setSample(sampleId) {
+        const sample = SAMPLES[sampleId];
+        if (!sample || sample.mode !== currentMode) {
+          return;
+        }
+
+        Object.entries(sample.values).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (element) {
+            element.value = value;
+          }
+        });
+        hideFormError();
+        showState("empty");
+      }
+
+      function trimOrNull(value) {
+        const trimmed = value.trim();
+        return trimmed || null;
+      }
+
+      function buildPayload() {
+        const expression = document.getElementById("expression").value.trim();
+        const variable = document.getElementById("variable").value.trim();
+
+        if (!expression) {
+          throw new Error("请填写函数表达式。");
+        }
+        if (!variable) {
+          throw new Error("请填写自变量。");
+        }
+        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(variable)) {
+          throw new Error("自变量必须以字母开头，只能包含字母、数字和下划线。");
+        }
+
+        if (currentMode === "verify") {
+          return {
+            expression,
+            variable,
+            candidate: trimOrNull(document.getElementById("verifyCandidate").value),
+          };
+        }
+
+        if (currentMode === "integrate") {
+          const lower = trimOrNull(document.getElementById("lower").value);
+          const upper = trimOrNull(document.getElementById("upper").value);
+          if ((lower && !upper) || (!lower && upper)) {
+            throw new Error("定积分需要同时填写积分下限和积分上限。");
+          }
+          return {
+            expression,
+            variable,
+            lower,
+            upper,
+            candidate: trimOrNull(document.getElementById("integrateCandidate").value),
+          };
+        }
+
+        const point = document.getElementById("limitPoint").value.trim();
+        if (!point) {
+          throw new Error("请填写趋近点。");
+        }
+        return {
+          expression,
+          variable,
+          point,
+          direction: trimOrNull(document.getElementById("direction").value),
+          candidate: trimOrNull(document.getElementById("limitCandidate").value),
+        };
+      }
+
+      async function requestCalculation(payload) {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+        const response = await fetch(MODE_CONFIG[currentMode].endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        }).finally(() => window.clearTimeout(timeoutId));
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (error) {
+          throw new Error("计算服务返回了无法识别的内容。");
+        }
+
+        if (!response.ok) {
+          throw new Error(data.detail || `计算服务返回错误（${response.status}）。`);
+        }
+        return data;
+      }
+
+      function showState(state) {
+        emptyState.hidden = state !== "empty";
+        loadingState.hidden = state !== "loading";
+        errorState.hidden = state !== "error";
+        resultContent.hidden = state !== "result";
+      }
+
+      function showError(message) {
+        errorMessage.textContent = message;
+        resultLabel.textContent = "计算失败";
+        showState("error");
+      }
+
+      function hideFormError() {
+        formError.hidden = true;
+        formError.textContent = "";
+      }
+
+      function showFormError(message) {
+        formError.textContent = message;
+        formError.hidden = false;
+      }
+
+      function escapeLatexText(value) {
+        return String(value)
+          .replace(/\\/g, "\\textbackslash{}")
+          .replace(/([{}_$%#&])/g, "\\$1");
+      }
+
+      function formatPoint(value) {
+        if (value === "oo") {
+          return "\\infty";
+        }
+        if (value === "-oo") {
+          return "-\\infty";
+        }
+        return escapeLatexText(value);
+      }
+
+      function directionMark(direction) {
+        if (direction === "+") {
+          return "^+";
+        }
+        if (direction === "-") {
+          return "^-";
+        }
+        return "";
+      }
+
+      function formulaFor(data, payload) {
+        const expression = escapeLatexText(data.expression);
+        const variable = escapeLatexText(data.variable);
+
+        if (currentMode === "verify") {
+          return {
+            latex: `\\frac{d}{d${variable}}\\left(${expression}\\right)=${data.derivative_latex}`,
+            fallback: `d/d${data.variable} (${data.expression}) = ${data.derivative}`,
+          };
+        }
+
+        if (currentMode === "integrate") {
+          const lower = payload.lower;
+          const upper = payload.upper;
+          if (lower && upper) {
+            return {
+              latex: `\\int_{${escapeLatexText(lower)}}^{${escapeLatexText(upper)}} ${expression}\\,d${variable}=${data.integral_latex}`,
+              fallback: `Integral of ${data.expression} from ${lower} to ${upper} = ${data.integral}`,
+            };
+          }
+          return {
+            latex: `\\int ${expression}\\,d${variable}=${data.integral_latex}+C`,
+            fallback: `Integral of ${data.expression} d${data.variable} = ${data.integral} + C`,
+          };
+        }
+
+        const point = formatPoint(data.point);
+        const direction = directionMark(data.direction);
+        return {
+          latex: `\\lim_{${variable}\\to ${point}${direction}}\\left(${expression}\\right)=${data.limit_latex}`,
+          fallback: `limit ${data.expression} as ${data.variable} -> ${data.point} = ${data.limit}`,
+        };
+      }
+
+      function renderFormula(data, payload) {
+        const formula = formulaFor(data, payload);
+        formulaBox.textContent = "";
+
+        if (window.katex) {
+          try {
+            window.katex.render(formula.latex, formulaBox, {
+              displayMode: true,
+              throwOnError: true,
+              strict: false,
+              trust: false,
+            });
+            return;
+          } catch (error) {
+            // Fall back to readable plain text if KaTeX cannot render a value.
+          }
+        }
+        formulaBox.textContent = formula.fallback;
+      }
+
+      function renderAnswerState(data) {
+        answerState.hidden = false;
+        answerState.removeAttribute("data-result");
+
+        if (data.is_correct === true) {
+          answerState.dataset.result = "correct";
+          answerState.textContent = "候选答案正确";
+        } else if (data.is_correct === false) {
+          answerState.dataset.result = "incorrect";
+          answerState.textContent = "候选答案不正确";
+        } else {
+          answerState.dataset.result = "empty";
+          answerState.textContent = "未填写候选答案，仅展示计算结果";
+        }
+      }
+
+      function renderResult(data, payload) {
+        const resultValue =
+          currentMode === "verify"
+            ? data.derivative
+            : currentMode === "integrate"
+              ? data.integral
+              : data.limit;
+
+        renderFormula(data, payload);
+        renderAnswerState(data);
+        rawResult.textContent = resultValue;
+        rawExpression.textContent = `${data.expression}; 自变量 ${data.variable}`;
+        rawJson.textContent = JSON.stringify(data, null, 2);
+        resultLabel.textContent = MODE_CONFIG[currentMode].resultLabel;
+        showState("result");
+      }
+
+      async function handleSubmit(event) {
+        event.preventDefault();
+        if (requestInFlight) {
+          return;
+        }
+
+        hideFormError();
+        let payload;
+        try {
+          payload = buildPayload();
+        } catch (error) {
+          showFormError(error.message);
+          return;
+        }
+
+        requestInFlight = true;
+        submitButton.disabled = true;
+        submitButton.textContent = "正在计算...";
+        resultLabel.textContent = "正在计算";
+        showState("loading");
+
+        try {
+          const data = await requestCalculation(payload);
+          renderResult(data, payload);
+        } catch (error) {
+          const message =
+            error.name === "AbortError"
+              ? "计算超时，请简化表达式后重试。"
+              : error.message || "计算服务暂时不可用。";
+          showError(message);
+        } finally {
+          requestInFlight = false;
+          submitButton.disabled = false;
+          submitButton.textContent = MODE_CONFIG[currentMode].submit;
+        }
+      }
+
+      function resetOutput() {
+        hideFormError();
+        resultLabel.textContent = "等待计算";
+        showState("empty");
+      }
+
+      async function checkService() {
+        try {
+          const response = await fetch("/demo/api/health", { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error("offline");
+          }
+          serviceStatus.dataset.state = "online";
+          serviceStatusText.textContent = "计算服务在线";
+        } catch (error) {
+          serviceStatus.dataset.state = "offline";
+          serviceStatusText.textContent = "计算服务暂时离线";
+        }
+      }
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => setMode(button.dataset.mode));
+      });
+      samples.forEach((button) => {
+        button.addEventListener("click", () => setSample(button.dataset.sample));
+      });
+      form.addEventListener("submit", handleSubmit);
+      resetButton.addEventListener("click", resetOutput);
+
+      setMode("verify");
+      checkService();
+    })();
+  </script>
+</body>
+</html>

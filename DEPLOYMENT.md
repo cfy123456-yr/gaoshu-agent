@@ -26,12 +26,14 @@ https://cfyyy.pythonanywhere.com
 
 | 接口 | 地址 |
 | --- | --- |
+| 独立数学计算演示 | `https://cfyyy.pythonanywhere.com/demo` |
+| 演示页健康检查 | `https://cfyyy.pythonanywhere.com/demo/api/health` |
 | 健康检查 | `https://cfyyy.pythonanywhere.com/health` |
 | 求导与导数判题 | `https://cfyyy.pythonanywhere.com/verify-query` |
 | 积分与积分判题 | `https://cfyyy.pythonanywhere.com/integrate-query` |
 | 极限与极限判题 | `https://cfyyy.pythonanywhere.com/limit-query` |
 
-当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
+独立演示页及其 `/demo/api/*` 接口始终允许浏览器直接访问，并继续受频率限制保护。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
 扣子 HTTP 节点必须增加 `X-API-Key` 请求头，并与环境变量保持一致。
 
 ## 扣子节点
@@ -91,6 +93,15 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/limit-query' --data-url
 
 以上接口已经验证返回 `is_correct: true`。
 
+演示页验收：
+
+```text
+https://cfyyy.pythonanywhere.com/demo
+https://cfyyy.pythonanywhere.com/demo/api/health
+```
+
+页面应能直接打开，不要求登录或 API Key，并可完成求导、积分和极限计算。
+
 ## 长期运行注意事项
 
 1. 每月登录一次 PythonAnywhere。
@@ -98,4 +109,4 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/limit-query' --data-url
 3. 修改工作流后，需要分别发布工作流，再重新发布扣子智能体。
 4. 定期访问 `/health`，确认服务仍返回 `"status": "ok"`。
 
-外部监控与告警、函数图像、语音和独立前端仍属于后续功能。
+外部监控与告警、函数图像和语音仍属于后续功能。

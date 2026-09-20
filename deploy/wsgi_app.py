@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import HTTPException
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 
@@ -25,9 +25,17 @@ from app.main import (
 application = Flask(__name__)
 
 
+def is_public_demo_request() -> bool:
+    return request.path == "/demo" or request.path.startswith("/demo/")
+
+
 @application.before_request
 def enforce_api_access():
-    if API_KEY and request.headers.get("X-API-Key") != API_KEY:
+    if (
+        API_KEY
+        and not is_public_demo_request()
+        and request.headers.get("X-API-Key") != API_KEY
+    ):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     forwarded_for = request.headers.get("X-Forwarded-For", "")
@@ -42,7 +50,9 @@ def enforce_api_access():
 def handle_http_exception(exc):
     detail = getattr(exc, "detail", None) or getattr(exc, "description", "")
     response = jsonify({"detail": detail})
-    response.status_code = exc.status_code
+    response.status_code = (
+        getattr(exc, "status_code", None) or getattr(exc, "code", 500) or 500
+    )
     for name, value in (getattr(exc, "headers", None) or {}).items():
         response.headers[name] = value
     return response
@@ -66,7 +76,12 @@ def service_index():
             "service": "math-tool",
             "status": "ok",
             "health": "/health",
+            "demo": "/demo",
             "endpoints": [
+                "/demo",
+                "/demo/api/verify",
+                "/demo/api/integrate",
+                "/demo/api/limit",
                 "/verify",
                 "/verify-query",
                 "/integrate",
@@ -76,6 +91,43 @@ def service_index():
             ],
         }
     )
+
+
+@application.get("/demo")
+def demo_page():
+    return render_template("demo.html")
+
+
+@application.get("/demo/api/health")
+def demo_health():
+    payload = health_check()
+    payload["demo"] = {
+        "available": True,
+        "page": "/demo",
+        "service": "math-tool",
+    }
+    return jsonify(payload)
+
+
+@application.post("/demo/api/verify")
+def demo_verify():
+    payload = request.get_json(silent=False)
+    model = VerifyRequest.model_validate(payload)
+    return _json_response(verify_derivative(model, _=None))
+
+
+@application.post("/demo/api/integrate")
+def demo_integrate():
+    payload = request.get_json(silent=False)
+    model = IntegrateRequest.model_validate(payload)
+    return _json_response(calculate_integral(model, _=None))
+
+
+@application.post("/demo/api/limit")
+def demo_limit():
+    payload = request.get_json(silent=False)
+    model = LimitRequest.model_validate(payload)
+    return _json_response(calculate_limit(model, _=None))
 
 
 @application.get("/health")
