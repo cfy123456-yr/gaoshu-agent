@@ -257,6 +257,24 @@ Content-Type: application/json
 }
 ```
 
+方程组确定函数求偏导示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "system_implicit_derivative",
+  "inputs": {
+    "equations": ["u+v=x", "u-v=y"],
+    "dependents": ["u", "v"],
+    "variable": "x",
+    "dependent": "u"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：

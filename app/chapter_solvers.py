@@ -65,6 +65,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "hessian",
             "directional_derivative",
             "implicit_derivative",
+            "system_implicit_derivative",
             "multivariable_extrema",
         }
     ),
@@ -902,6 +903,67 @@ def _implicit_derivative(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result}
 
 
+@_solver(method="方程组确定函数求偏导")
+def _system_implicit_derivative(view: _InputView) -> dict[str, Any]:
+    equation_values = view.items("equations")
+    dependent_values = view.items("dependents")
+    if len(equation_values) != len(dependent_values):
+        raise SolveError("方程个数必须与因变量个数一致")
+
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    dependents = _parse_symbol_list(dependent_values, "dependents")
+    if variable in dependents:
+        raise SolveError("自变量不能同时作为因变量")
+
+    target = _parse_symbol(
+        view.text("dependent", required=False, default=str(dependents[0])),
+        "dependent",
+    )
+    if target not in dependents:
+        raise SolveError("dependent 必须是 dependents 中的一个")
+
+    functions: list[sympy.Expr] = []
+    for index, raw_equation in enumerate(equation_values):
+        if not isinstance(raw_equation, str) or not raw_equation.strip():
+            raise SolveError(f"equations[{index}] 必须是方程文本")
+        equation_text = raw_equation.strip()
+        if "=" in equation_text:
+            left_text, right_text = equation_text.split("=", 1)
+            if not left_text.strip() or not right_text.strip():
+                raise SolveError(f"equations[{index}] 两边都不能为空")
+            left = _parse_expression(left_text, f"equations[{index}].left")
+            right = _parse_expression(right_text, f"equations[{index}].right")
+        else:
+            left = _parse_expression(equation_text, f"equations[{index}]")
+            right = sympy.Integer(0)
+        functions.append(left - right)
+
+    jacobian = Matrix(
+        [[diff(function, dependent) for dependent in dependents] for function in functions]
+    )
+    determinant = simplify(jacobian.det())
+    if determinant == 0:
+        raise SolveError("方程组雅可比行列式为零，不能唯一确定隐函数")
+
+    right_hand_side = Matrix([-diff(function, variable) for function in functions])
+    try:
+        derivatives = jacobian.LUsolve(right_hand_side)
+    except Exception as exc:
+        raise SolveError("方程组线性求解失败，请检查方程和变量设置") from exc
+
+    result = simplify(derivatives[dependents.index(target)])
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            "由 F_i(...)=0 对自变量求导，再用因变量雅可比矩阵求解目标偏导"
+        ],
+    }
+
+
 @_solver(method="多元函数极值")
 def _multivariable_extrema(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
@@ -1374,6 +1436,10 @@ _SOLVERS = {
     ("multivariable_calculus", "hessian"): _hessian,
     ("multivariable_calculus", "directional_derivative"): _directional_derivative,
     ("multivariable_calculus", "implicit_derivative"): _implicit_derivative,
+    (
+        "multivariable_calculus",
+        "system_implicit_derivative",
+    ): _system_implicit_derivative,
     ("multivariable_calculus", "multivariable_extrema"): _multivariable_extrema,
     ("multiple_integrals", "double"): _double_integral,
     ("multiple_integrals", "triple"): _triple_integral,

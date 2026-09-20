@@ -112,6 +112,12 @@ ALL_TOPIC_CASES = {
         "variable": "x",
         "dependent": "y",
     },
+    ("multivariable_calculus", "system_implicit_derivative"): {
+        "equations": ["u+v=x", "u-v=y"],
+        "dependents": ["u", "v"],
+        "variable": "x",
+        "dependent": "u",
+    },
     ("multivariable_calculus", "multivariable_extrema"): {
         "expression": "x^2+y^2",
         "variables": ["x", "y"],
@@ -296,6 +302,33 @@ class ChapterSolverTest(unittest.TestCase):
             {"equation": "x^2+y^2=1", "variable": "x", "dependent": "y"},
         )
         self.assertEqual("-x/y", payload["result"])
+
+    def test_system_implicit_derivative(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "system_implicit_derivative",
+            {
+                "equations": ["u+v=x", "u-v=y"],
+                "dependents": ["u", "v"],
+                "variable": "x",
+                "dependent": "u",
+            },
+        )
+        self.assertEqual("1/2", payload["result"])
+        self.assertEqual("方程组确定函数求偏导", payload["method"])
+
+    def test_system_implicit_derivative_requires_square_system(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "multivariable_calculus",
+                "system_implicit_derivative",
+                {
+                    "equations": ["u+v=x"],
+                    "dependents": ["u", "v"],
+                    "variable": "x",
+                    "dependent": "u",
+                },
+            )
 
     def test_parametric_derivative(self):
         payload = self.solve(

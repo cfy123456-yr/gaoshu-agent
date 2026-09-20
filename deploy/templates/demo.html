@@ -2206,6 +2206,26 @@
                 ),
               ],
             },
+            system_implicit_derivative: {
+              label: "方程组确定函数求偏导",
+              hint: "方程个数必须与因变量个数一致，用逗号分隔多个方程。",
+              fields: [
+                solverList(
+                  "equations",
+                  "方程组",
+                  "例如：u+v=x, u-v=y",
+                  "u+v=x, u-v=y",
+                ),
+                solverList(
+                  "dependents",
+                  "因变量列表",
+                  "例如：u, v",
+                  "u, v",
+                ),
+                solverVariable(),
+                solverText("dependent", "求偏导的因变量", "例如：u", "u"),
+              ],
+            },
             multivariable_extrema: {
               label: "二元函数极值",
               hint: "当前支持二元函数的驻点与极值类型判定。",

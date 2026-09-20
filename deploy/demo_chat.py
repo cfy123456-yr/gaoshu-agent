@@ -160,6 +160,12 @@ _EXTENDED_CHAPTER_HINTS = {
         "missing": "请写出隐函数方程，例如“隐函数 x^2+y^2=1 求 dy/dx”。",
         "suggestions": ["隐函数 x^2+y^2=1 求 dy/dx"],
     },
+    ("multivariable_calculus", "system_implicit_derivative"): {
+        "missing": "请写出方程组和因变量，例如“方程组 u+v=x; u-v=y，因变量 u,v，自变量 x，求 ∂u/∂x”。",
+        "suggestions": [
+            "方程组 u+v=x; u-v=y，因变量 u,v，自变量 x，求 ∂u/∂x",
+        ],
+    },
     ("derivatives", "parametric_derivative"): {
         "missing": "请写出参数方程，例如“参数方程 x=t^2, y=t^3 求 dy/dx”。",
         "suggestions": ["参数方程 x=t^2, y=t^3 求 dy/dx"],
@@ -338,7 +344,66 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
             "differential_equations",
             "dsolve",
             {"equation": equation, "variable": "x", "function": "y"},
+            )
+
+    if "方程组" in compact and (
+        "求导" in compact or "偏导" in compact or "∂" in compact
+    ):
+        equation_match = re.search(
+            r"方程组\s*(?:确定(?:的)?函数)?\s*[：:]?\s*(.+?)"
+            r"(?=(?:因变量|自变量|确定|求|计算|$))",
+            compact,
         )
+        dependents_match = re.search(
+            r"(?:因变量|确定)\s*([A-Za-z](?:\s*[,，]\s*[A-Za-z])*)",
+            compact,
+        )
+        variable_match = re.search(r"自变量\s*([A-Za-z])", compact)
+        target_match = re.search(
+            r"(?:求|计算)\s*(?:∂|d)\s*([A-Za-z])\s*/"
+            r"\s*(?:∂|d)\s*([A-Za-z])",
+            compact,
+        )
+        if equation_match and dependents_match:
+            equation_text = equation_match.group(1).strip().rstrip("，,；; ")
+            equations = [
+                part.strip().rstrip("，,。;；")
+                for part in re.split(r"[;；]", equation_text)
+                if part.strip()
+            ]
+            if len(equations) == 1:
+                equations = [
+                    part.strip().rstrip("，,。;；")
+                    for part in re.split(
+                        r"[,，](?=\s*[A-Za-z][A-Za-z0-9_]*\s*=)",
+                        equation_text,
+                    )
+                    if part.strip()
+                ]
+            dependents = _split_variables(dependents_match.group(1))
+            if equations and dependents:
+                return (
+                    "multivariable_calculus",
+                    "system_implicit_derivative",
+                    {
+                        "equations": equations,
+                        "dependents": dependents,
+                        "variable": (
+                            target_match.group(2)
+                            if target_match
+                            else (
+                                variable_match.group(1)
+                                if variable_match
+                                else "x"
+                            )
+                        ),
+                        "dependent": (
+                            target_match.group(1)
+                            if target_match
+                            else dependents[0]
+                        ),
+                    },
+                )
 
     if "隐函数" in compact:
         match = re.search(r"隐函数\s*(.+)", compact)

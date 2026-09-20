@@ -287,7 +287,7 @@ series
 | integrals | indefinite, definite, improper |
 | differential_equations | dsolve |
 | vectors | dot, cross, norm, angle, distance, projection |
-| multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, multivariable_extrema |
+| multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, system_implicit_derivative, multivariable_extrema |
 | multiple_integrals | double, triple |
 | line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
 | series | sum, convergence, power_radius |

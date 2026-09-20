@@ -49,6 +49,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('solverDialog.showModal()', html)
         self.assertIn("parametric_derivative", html)
         self.assertIn("参数方程求导", html)
+        self.assertIn("system_implicit_derivative", html)
+        self.assertIn("方程组确定函数求偏导", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -277,6 +279,16 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("solve", payload["intent"])
         self.assertEqual("3*t/2", payload["calculation"]["result"])
+
+    def test_demo_chat_solves_system_implicit_derivative(self):
+        response = self.chat(
+            "方程组 u+v=x; u-v=y，因变量 u,v，自变量 x，求 ∂u/∂x"
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("1/2", payload["calculation"]["result"])
 
     def test_demo_chat_solves_vector_dot_product(self):
         response = self.chat("向量 (1,2,3) 点乘 (4,5,6)")
