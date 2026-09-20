@@ -80,7 +80,16 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
         }
     ),
     "line_surface_integrals": frozenset(
-        {"line_scalar", "line_vector", "surface_scalar", "flux"}
+        {
+            "line_scalar",
+            "line_vector",
+            "line_scalar_explicit",
+            "line_vector_explicit",
+            "surface_scalar",
+            "flux",
+            "surface_scalar_explicit",
+            "flux_explicit",
+        }
     ),
     "series": frozenset({"sum", "convergence", "power_radius"}),
 }
@@ -1485,6 +1494,139 @@ def _surface_cross(
     return r_u.cross(r_v)
 
 
+def _explicit_plane_curve(
+    view: _InputView,
+) -> tuple[sympy.Symbol, sympy.Symbol, sympy.Expr, sympy.Expr, sympy.Expr]:
+    variables = _parse_symbol_list(
+        view.items("variables", required=False) or ["x", "y"],
+        "variables",
+    )
+    if len(variables) != 2:
+        raise SolveError("显式平面曲线需要两个变量")
+    variable, dependent = variables
+    curve = _parse_expression(view.text("y_expression"), "y_expression")
+    lower = _parse_expression(view.text("lower"), "lower")
+    upper = _parse_expression(view.text("upper"), "upper")
+    return variable, dependent, curve, lower, upper
+
+
+@_solver(method="第一类曲线积分（显式曲线）")
+def _line_scalar_explicit(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variable, dependent, curve, lower, upper = _explicit_plane_curve(view)
+    substitutions = {variable: variable, dependent: curve}
+    speed = sqrt(1 + diff(curve, variable) ** 2)
+    result = integrate(
+        simplify(expression.subs(substitutions) * speed),
+        (variable, lower, upper),
+    )
+    result = simplify(result)
+    return {"result": result, "comparison_value": result}
+
+
+@_solver(method="第二类曲线积分（显式曲线）")
+def _line_vector_explicit(view: _InputView) -> dict[str, Any]:
+    vector_values = view.items("vector_field")
+    variable, dependent, curve, lower, upper = _explicit_plane_curve(view)
+    if len(vector_values) != 2:
+        raise SolveError("显式平面曲线的 vector_field 必须是二维向量")
+    field_x = _parse_expression(vector_values[0], "vector_field[0]")
+    field_y = _parse_expression(vector_values[1], "vector_field[1]")
+    substitutions = {variable: variable, dependent: curve}
+    integrand = simplify(
+        field_x.subs(substitutions)
+        + field_y.subs(substitutions) * diff(curve, variable)
+    )
+    result = integrate(integrand, (variable, lower, upper))
+    result = simplify(result)
+    return {"result": result, "comparison_value": result}
+
+
+def _explicit_surface(
+    view: _InputView,
+) -> tuple[
+    tuple[sympy.Symbol, sympy.Symbol],
+    sympy.Expr,
+    tuple[sympy.Expr, sympy.Expr, sympy.Expr, sympy.Expr],
+    dict[sympy.Symbol, sympy.Expr],
+]:
+    variables = _parse_symbol_list(
+        view.items("variables", required=False) or ["x", "y"],
+        "variables",
+    )
+    if len(variables) != 2:
+        raise SolveError("显式曲面需要两个自变量")
+    variable, other_variable = variables
+    surface = _parse_expression(view.text("z_expression"), "z_expression")
+    bounds = (
+        _parse_expression(view.text("x_lower"), "x_lower"),
+        _parse_expression(view.text("x_upper"), "x_upper"),
+        _parse_expression(view.text("y_lower"), "y_lower"),
+        _parse_expression(view.text("y_upper"), "y_upper"),
+    )
+    substitutions = {
+        variable: variable,
+        other_variable: other_variable,
+        sympy.Symbol("z"): surface,
+    }
+    return (variable, other_variable), surface, bounds, substitutions
+
+
+@_solver(method="第一类曲面积分（显式曲面）")
+def _surface_scalar_explicit(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variables, surface, bounds, substitutions = _explicit_surface(view)
+    variable, other_variable = variables
+    x_lower, x_upper, y_lower, y_upper = bounds
+    area_factor = sqrt(
+        1
+        + diff(surface, variable) ** 2
+        + diff(surface, other_variable) ** 2
+    )
+    integrand = simplify(expression.subs(substitutions) * area_factor)
+    result = integrate(
+        integrate(integrand, (other_variable, y_lower, y_upper)),
+        (variable, x_lower, x_upper),
+    )
+    result = simplify(result)
+    return {"result": result, "comparison_value": result}
+
+
+@_solver(method="第二类曲面积分（显式曲面）")
+def _flux_explicit(view: _InputView) -> dict[str, Any]:
+    vector_values = view.items("vector_field")
+    variables, surface, bounds, substitutions = _explicit_surface(view)
+    variable, other_variable = variables
+    x_lower, x_upper, y_lower, y_upper = bounds
+    if len(vector_values) != 3:
+        raise SolveError("显式曲面的 vector_field 必须是三维向量")
+    field = Matrix(
+        [
+            _parse_expression(value, "vector_field").subs(substitutions)
+            for value in vector_values
+        ]
+    )
+    orientation = (view.text("orientation", required=False, default="up") or "up").lower()
+    if orientation not in {"up", "down"}:
+        raise SolveError("orientation 只能是 up 或 down")
+    normal = Matrix(
+        [
+            -diff(surface, variable),
+            -diff(surface, other_variable),
+            1,
+        ]
+    )
+    if orientation == "down":
+        normal = -normal
+    integrand = simplify((field.T * normal)[0])
+    result = integrate(
+        integrate(integrand, (other_variable, y_lower, y_upper)),
+        (variable, x_lower, x_upper),
+    )
+    result = simplify(result)
+    return {"result": result, "comparison_value": result}
+
+
 @_solver(method="第一类曲面积分")
 def _surface_scalar(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
@@ -1801,8 +1943,24 @@ _SOLVERS = {
     ): _triple_spherical_integral,
     ("line_surface_integrals", "line_scalar"): _line_scalar,
     ("line_surface_integrals", "line_vector"): _line_vector,
+    (
+        "line_surface_integrals",
+        "line_scalar_explicit",
+    ): _line_scalar_explicit,
+    (
+        "line_surface_integrals",
+        "line_vector_explicit",
+    ): _line_vector_explicit,
     ("line_surface_integrals", "surface_scalar"): _surface_scalar,
     ("line_surface_integrals", "flux"): _flux,
+    (
+        "line_surface_integrals",
+        "surface_scalar_explicit",
+    ): _surface_scalar_explicit,
+    (
+        "line_surface_integrals",
+        "flux_explicit",
+    ): _flux_explicit,
     ("series", "sum"): _series_sum,
     ("series", "convergence"): _series_convergence,
     ("series", "power_radius"): _power_radius,

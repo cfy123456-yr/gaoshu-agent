@@ -158,7 +158,7 @@ candidate
 | vectors | dot, cross, norm, angle, distance, projection |
 | multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, system_implicit_derivative, multivariable_extrema, conditional_extrema |
 | multiple_integrals | double, double_polar, triple, triple_cylindrical, triple_spherical |
-| line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
+| line_surface_integrals | line_scalar, line_vector, line_scalar_explicit, line_vector_explicit, surface_scalar, flux, surface_scalar_explicit, flux_explicit |
 | series | sum, convergence, power_radius |
 
 调用原则：
@@ -171,13 +171,15 @@ candidate
 5. 由方程组确定的隐函数求导使用 `multivariable_calculus/system_implicit_derivative`，输入 `equations`、`dependents`、`variable` 和 `dependent`；方程个数必须等于因变量个数。
 6. 条件极值使用 `multivariable_calculus/conditional_extrema`。单约束输入 `expression`、`variables`、`constraint`；多约束输入 `expression`、`variables`、`constraints`，多条约束用数组或分号分隔，约束数量必须少于变量数量。
 7. 二重积分直角坐标使用 `multiple_integrals/double`；极坐标使用 `multiple_integrals/double_polar`；三重积分直角坐标使用 `multiple_integrals/triple`；柱面坐标使用 `multiple_integrals/triple_cylindrical`；球面坐标使用 `multiple_integrals/triple_spherical`。坐标变换题型可写 `x`、`y`、`z`，系统会自动代入并乘以雅可比因子。
-8. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
-9. 微分方程使用 `differential_equations/dsolve`。
-10. 如果题目不属于当前支持列表，如实说明该题型暂不能由计算工作流确定性验证，只提供思路，不编造最终答案。
-11. 工作流返回的 `latex` 是公式的唯一标准。必须逐字放入 `$$...$$` 中使用，不得自行重写、改写或删除反斜杠。
-12. 禁止把 `\sum`、`\frac`、`\infty` 等 LaTeX 命令改写成 `sum`、`frac`、`infity`。
-13. 如果 `latex` 为空，只使用返回的 `result`，不要自行补写公式。
-14. 有非空 `candidate` 时，根据 `is_correct_text`（`"true"` 或 `"false"`）判断答案是否正确；空字符串时不判题。
+8. 显式平面曲线积分使用 `line_scalar_explicit` 或 `line_vector_explicit`，曲线写成 `y=f(x)`，填写 `variables`、`y_expression`、`lower`、`upper`。
+9. 显式曲面积分使用 `surface_scalar_explicit` 或 `flux_explicit`，曲面写成 `z=f(x,y)`，填写 `z_expression` 和 `x`、`y` 的矩形积分限；通量方向默认 `up`，可改为 `down`。
+10. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
+11. 微分方程使用 `differential_equations/dsolve`。
+12. 如果题目不属于当前支持列表，如实说明该题型暂不能由计算工作流确定性验证，只提供思路，不编造最终答案。
+13. 工作流返回的 `latex` 是公式的唯一标准。必须逐字放入 `$$...$$` 中使用，不得自行重写、改写或删除反斜杠。
+14. 禁止把 `\sum`、`\frac`、`\infty` 等 LaTeX 命令改写成 `sum`、`frac`、`infity`。
+15. 如果 `latex` 为空，只使用返回的 `result`，不要自行补写公式。
+16. 有非空 `candidate` 时，根据 `is_correct_text`（`"true"` 或 `"false"`）判断答案是否正确；空字符串时不判题。
 
 ### math_plot
 

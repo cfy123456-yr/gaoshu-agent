@@ -311,7 +311,7 @@ series
 | vectors | dot, cross, norm, angle, distance, projection |
 | multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, system_implicit_derivative, multivariable_extrema, conditional_extrema |
 | multiple_integrals | double, double_polar, triple, triple_cylindrical, triple_spherical |
-| line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
+| line_surface_integrals | line_scalar, line_vector, line_scalar_explicit, line_vector_explicit, surface_scalar, flux, surface_scalar_explicit, flux_explicit |
 | series | sum, convergence, power_radius |
 
 ## math_plot

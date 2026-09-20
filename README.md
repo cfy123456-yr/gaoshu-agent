@@ -372,6 +372,68 @@ Content-Type: application/json
 }
 ```
 
+显式曲线积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "line_surface_integrals",
+  "topic": "line_scalar_explicit",
+  "inputs": {
+    "expression": "x+y",
+    "variables": ["x", "y"],
+    "y_expression": "x",
+    "lower": "0",
+    "upper": "1"
+  }
+}
+```
+
+显式曲面积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "line_surface_integrals",
+  "topic": "surface_scalar_explicit",
+  "inputs": {
+    "expression": "1",
+    "variables": ["x", "y"],
+    "z_expression": "x",
+    "x_lower": "0",
+    "x_upper": "1",
+    "y_lower": "0",
+    "y_upper": "1"
+  }
+}
+```
+
+显式曲面通量示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "line_surface_integrals",
+  "topic": "flux_explicit",
+  "inputs": {
+    "vector_field": ["0", "0", "1"],
+    "variables": ["x", "y"],
+    "z_expression": "x",
+    "x_lower": "0",
+    "x_upper": "1",
+    "y_lower": "0",
+    "y_upper": "1",
+    "orientation": "up"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：

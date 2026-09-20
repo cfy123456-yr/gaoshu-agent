@@ -317,6 +317,59 @@ def _extract_vector_field(message: str) -> list[str] | None:
     return _split_variables(match.group(1))
 
 
+def _extract_explicit_curve(
+    message: str,
+) -> tuple[str, str, str] | None:
+    curve_match = re.search(
+        r"(?:曲线\s*)?y\s*=\s*(?P<curve>.+?)"
+        r"(?=\s*[,，;；]?\s*x\s*(?:从|:)|$)",
+        message,
+        flags=re.IGNORECASE,
+    )
+    bounds_match = re.search(
+        r"\bx\s*(?:从|:)?\s*(?P<lower>[^\s,，]+)\s*到\s*(?P<upper>[^\s,，]+)",
+        message,
+        flags=re.IGNORECASE,
+    )
+    if curve_match is None or bounds_match is None:
+        return None
+    return (
+        _strip_expression_tail(curve_match.group("curve")),
+        _strip_expression_tail(bounds_match.group("lower")),
+        _strip_expression_tail(bounds_match.group("upper")),
+    )
+
+
+def _extract_explicit_surface(
+    message: str,
+) -> tuple[str, str, str, str, str] | None:
+    surface_match = re.search(
+        r"(?:曲面\s*)?z\s*=\s*(?P<surface>.+?)"
+        r"(?=\s*[,，;；]?\s*x\s*(?:从|:)|$)",
+        message,
+        flags=re.IGNORECASE,
+    )
+    x_match = re.search(
+        r"\bx\s*(?:从|:)?\s*(?P<lower>[^\s,，]+)\s*到\s*(?P<upper>[^\s,，]+)",
+        message,
+        flags=re.IGNORECASE,
+    )
+    y_match = re.search(
+        r"\by\s*(?:从|:)?\s*(?P<lower>[^\s,，]+)\s*到\s*(?P<upper>[^\s,，]+)",
+        message,
+        flags=re.IGNORECASE,
+    )
+    if surface_match is None or x_match is None or y_match is None:
+        return None
+    return (
+        _strip_expression_tail(surface_match.group("surface")),
+        _strip_expression_tail(x_match.group("lower")),
+        _strip_expression_tail(x_match.group("upper")),
+        _strip_expression_tail(y_match.group("lower")),
+        _strip_expression_tail(y_match.group("upper")),
+    )
+
+
 def _extract_vector_operands(message: str) -> tuple[list[str], list[str]] | None:
     vectors = re.findall(r"[（(]([^（）()]+)[）)]", message)
     if len(vectors) < 2:
@@ -765,6 +818,114 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                         "upper_y": bounds[3],
                     },
                 )
+
+    if (
+        "第一类曲线积分" in compact
+        or ("对弧长" in compact and "曲线积分" in compact)
+    ):
+        curve = _extract_explicit_curve(compact)
+        expression_match = re.search(
+            r"(?:第一类|对弧长)?曲线积分\s*(.+?)"
+            r"\s*(?:沿|在)?\s*曲线\s*y\s*=",
+            compact,
+        )
+        if curve and expression_match:
+            curve_expression, lower, upper = curve
+            return (
+                "line_surface_integrals",
+                "line_scalar_explicit",
+                {
+                    "expression": _strip_expression_tail(
+                        expression_match.group(1)
+                    ),
+                    "variables": ["x", "y"],
+                    "y_expression": curve_expression,
+                    "lower": lower,
+                    "upper": upper,
+                },
+            )
+
+    if (
+        "第二类曲线积分" in compact
+        or ("对坐标" in compact and "曲线积分" in compact)
+    ):
+        vector_field = _extract_vector_field(compact)
+        curve = _extract_explicit_curve(compact)
+        if vector_field and curve:
+            curve_expression, lower, upper = curve
+            return (
+                "line_surface_integrals",
+                "line_vector_explicit",
+                {
+                    "vector_field": vector_field,
+                    "variables": ["x", "y"],
+                    "y_expression": curve_expression,
+                    "lower": lower,
+                    "upper": upper,
+                },
+            )
+
+    if "第一类曲面积分" in compact or "对面积" in compact:
+        surface = _extract_explicit_surface(compact)
+        expression_match = re.search(
+            r"(?:第一类|对面积)?曲面积分\s*(.+?)"
+            r"\s*(?:在)?\s*曲面\s*z\s*=",
+            compact,
+        )
+        if surface and expression_match:
+            (
+                surface_expression,
+                x_lower,
+                x_upper,
+                y_lower,
+                y_upper,
+            ) = surface
+            return (
+                "line_surface_integrals",
+                "surface_scalar_explicit",
+                {
+                    "expression": _strip_expression_tail(
+                        expression_match.group(1)
+                    ),
+                    "variables": ["x", "y"],
+                    "z_expression": surface_expression,
+                    "x_lower": x_lower,
+                    "x_upper": x_upper,
+                    "y_lower": y_lower,
+                    "y_upper": y_upper,
+                },
+            )
+
+    if "第二类曲面积分" in compact or "通量" in compact:
+        vector_field = _extract_vector_field(compact)
+        surface = _extract_explicit_surface(compact)
+        if vector_field and surface:
+            (
+                surface_expression,
+                x_lower,
+                x_upper,
+                y_lower,
+                y_upper,
+            ) = surface
+            orientation = (
+                "down"
+                if "向下" in compact or "down" in compact.lower()
+                else "up"
+            )
+            return (
+                "line_surface_integrals",
+                "flux_explicit",
+                {
+                    "vector_field": vector_field,
+                    "variables": ["x", "y"],
+                    "z_expression": surface_expression,
+                    "x_lower": x_lower,
+                    "x_upper": x_upper,
+                    "y_lower": y_lower,
+                    "y_upper": y_upper,
+                    "orientation": orientation,
+                },
+            )
 
     if "曲线积分" in compact:
         vector_field = _extract_vector_field(compact)

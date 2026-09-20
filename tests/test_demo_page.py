@@ -59,6 +59,14 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("柱面坐标三重积分", html)
         self.assertIn("triple_spherical", html)
         self.assertIn("球面坐标三重积分", html)
+        self.assertIn("line_scalar_explicit", html)
+        self.assertIn("第一类曲线积分（显式曲线）", html)
+        self.assertIn("line_vector_explicit", html)
+        self.assertIn("第二类曲线积分（显式曲线）", html)
+        self.assertIn("surface_scalar_explicit", html)
+        self.assertIn("第一类曲面积分（显式曲面）", html)
+        self.assertIn("flux_explicit", html)
+        self.assertIn("第二类曲面积分（显式曲面）", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -303,6 +311,39 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("solve", payload["intent"])
         self.assertEqual("4*pi/3", payload["calculation"]["result"])
         self.assertEqual("三重积分（球面坐标）", payload["calculation"]["method"])
+
+    def test_demo_chat_solves_explicit_curve_and_surface_integrals(self):
+        cases = (
+            (
+                "第一类曲线积分 x+y 沿曲线 y=x，x 从 0 到 1",
+                "第一类曲线积分（显式曲线）",
+                "sqrt(2)",
+            ),
+            (
+                "第二类曲线积分 向量场(x,y) 沿曲线 y=x，x 从 0 到 1",
+                "第二类曲线积分（显式曲线）",
+                "1",
+            ),
+            (
+                "第一类曲面积分 1 在曲面 z=x，x 从 0 到 1，y 从 0 到 1",
+                "第一类曲面积分（显式曲面）",
+                "sqrt(2)",
+            ),
+            (
+                "第二类曲面积分 向量场(0,0,1) 在曲面 z=x，x 从 0 到 1，y 从 0 到 1",
+                "第二类曲面积分（显式曲面）",
+                "1",
+            ),
+        )
+        for message, method, expected in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("solve", payload["intent"])
+                self.assertEqual(method, payload["calculation"]["method"])
+                self.assertEqual(expected, payload["calculation"]["result"])
 
     def test_demo_chat_solves_differential_equation(self):
         response = self.chat("解微分方程 y'-y=0")

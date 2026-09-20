@@ -177,10 +177,24 @@ ALL_TOPIC_CASES = {
         "lower": "0",
         "upper": "1",
     },
+    ("line_surface_integrals", "line_scalar_explicit"): {
+        "expression": "x+y",
+        "variables": ["x", "y"],
+        "y_expression": "x",
+        "lower": "0",
+        "upper": "1",
+    },
     ("line_surface_integrals", "line_vector"): {
         "vector_field": ["x", "y"],
         "parameter": "t",
         "components": {"x": "t", "y": "t"},
+        "lower": "0",
+        "upper": "1",
+    },
+    ("line_surface_integrals", "line_vector_explicit"): {
+        "vector_field": ["x", "y"],
+        "variables": ["x", "y"],
+        "y_expression": "x",
         "lower": "0",
         "upper": "1",
     },
@@ -193,6 +207,15 @@ ALL_TOPIC_CASES = {
         "v_lower": "0",
         "v_upper": "1",
     },
+    ("line_surface_integrals", "surface_scalar_explicit"): {
+        "expression": "1",
+        "variables": ["x", "y"],
+        "z_expression": "x",
+        "x_lower": "0",
+        "x_upper": "1",
+        "y_lower": "0",
+        "y_upper": "1",
+    },
     ("line_surface_integrals", "flux"): {
         "vector_field": ["0", "0", "1"],
         "parameters": ["u", "v"],
@@ -201,6 +224,15 @@ ALL_TOPIC_CASES = {
         "u_upper": "1",
         "v_lower": "0",
         "v_upper": "1",
+    },
+    ("line_surface_integrals", "flux_explicit"): {
+        "vector_field": ["0", "0", "1"],
+        "variables": ["x", "y"],
+        "z_expression": "x",
+        "x_lower": "0",
+        "x_upper": "1",
+        "y_lower": "0",
+        "y_upper": "1",
     },
     ("series", "sum"): {
         "expression": "1/n^2",
@@ -282,6 +314,83 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertEqual("pi/2", payload["result"])
         self.assertEqual("二重积分（极坐标）", payload["method"])
+
+    def test_explicit_curve_and_surface_integrals(self):
+        scalar_line = self.solve(
+            "line_surface_integrals",
+            "line_scalar_explicit",
+            {
+                "expression": "x+y",
+                "variables": ["x", "y"],
+                "y_expression": "x",
+                "lower": "0",
+                "upper": "1",
+            },
+        )
+        vector_line = self.solve(
+            "line_surface_integrals",
+            "line_vector_explicit",
+            {
+                "vector_field": ["x", "y"],
+                "variables": ["x", "y"],
+                "y_expression": "x",
+                "lower": "0",
+                "upper": "1",
+            },
+        )
+        scalar_surface = self.solve(
+            "line_surface_integrals",
+            "surface_scalar_explicit",
+            {
+                "expression": "1",
+                "variables": ["x", "y"],
+                "z_expression": "x",
+                "x_lower": "0",
+                "x_upper": "1",
+                "y_lower": "0",
+                "y_upper": "1",
+            },
+        )
+        flux_surface = self.solve(
+            "line_surface_integrals",
+            "flux_explicit",
+            {
+                "vector_field": ["0", "0", "1"],
+                "variables": ["x", "y"],
+                "z_expression": "x",
+                "x_lower": "0",
+                "x_upper": "1",
+                "y_lower": "0",
+                "y_upper": "1",
+            },
+        )
+
+        self.assertEqual("sqrt(2)", scalar_line["result"])
+        self.assertEqual("1", vector_line["result"])
+        self.assertEqual("sqrt(2)", scalar_surface["result"])
+        self.assertEqual("1", flux_surface["result"])
+        self.assertEqual(
+            "第二类曲面积分（显式曲面）",
+            flux_surface["method"],
+        )
+
+    def test_explicit_flux_honors_downward_orientation(self):
+        payload = self.solve(
+            "line_surface_integrals",
+            "flux_explicit",
+            {
+                "vector_field": ["0", "0", "1"],
+                "variables": ["x", "y"],
+                "z_expression": "x",
+                "x_lower": "0",
+                "x_upper": "1",
+                "y_lower": "0",
+                "y_upper": "1",
+                "orientation": "down",
+            },
+        )
+
+        self.assertEqual("-1", payload["result"])
 
     def test_triple_cylindrical_integral(self):
         payload = self.solve(
