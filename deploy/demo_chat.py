@@ -166,6 +166,10 @@ _EXTENDED_CHAPTER_HINTS = {
             "方程组 u+v=x; u-v=y，因变量 u,v，自变量 x，求 ∂u/∂x",
         ],
     },
+    ("multivariable_calculus", "conditional_extrema"): {
+        "missing": "请写出目标函数、约束和变量，例如“条件极值 x*y 约束 x+y=1 变量 x,y”。",
+        "suggestions": ["条件极值 x*y 约束 x+y=1 变量 x,y"],
+    },
     ("derivatives", "parametric_derivative"): {
         "missing": "请写出参数方程，例如“参数方程 x=t^2, y=t^3 求 dy/dx”。",
         "suggestions": ["参数方程 x=t^2, y=t^3 求 dy/dx"],
@@ -325,6 +329,54 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                     "parameter": (
                         parameter_match.group(1) if parameter_match else "t"
                     ),
+                },
+            )
+
+    if "条件极值" in compact or "拉格朗日" in compact:
+        variables_match = re.search(
+            r"变量\s*([A-Za-z](?:\s*[,，、]\s*[A-Za-z])*)",
+            compact,
+        )
+        variables = (
+            _split_variables(variables_match.group(1)) if variables_match else []
+        )
+        constraint_match = re.search(
+            r"约束(?:条件)?\s*(?:为|是)?\s*[：:]?\s*(.+?)"
+            r"(?=\s*(?:变量|自变量|求|计算|$))",
+            compact,
+        )
+        expression_text = ""
+        constraint_text = ""
+        if constraint_match:
+            constraint_text = _strip_expression_tail(constraint_match.group(1))
+            expression_match = re.search(
+                r"(?:条件极值|拉格朗日(?:乘数法)?)\s*(.+)",
+                compact[: constraint_match.start()],
+            )
+            if expression_match:
+                expression_text = _strip_expression_tail(expression_match.group(1))
+        else:
+            under_match = re.search(r"在\s*(.+?)\s*下", compact)
+            if under_match:
+                constraint_text = _strip_expression_tail(under_match.group(1))
+                expression_match = re.search(
+                    r"(?:条件极值|拉格朗日(?:乘数法)?)\s*(.+)",
+                    compact[: under_match.start()],
+                )
+                if expression_match:
+                    expression_text = _strip_expression_tail(
+                        expression_match.group(1)
+                    )
+        if expression_text and constraint_text:
+            if len(variables) != 2:
+                variables = _infer_variables(expression_text, 2)
+            return (
+                "multivariable_calculus",
+                "conditional_extrema",
+                {
+                    "expression": expression_text,
+                    "variables": variables,
+                    "constraint": constraint_text,
                 },
             )
 

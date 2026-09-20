@@ -51,6 +51,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("参数方程求导", html)
         self.assertIn("system_implicit_derivative", html)
         self.assertIn("方程组确定函数求偏导", html)
+        self.assertIn("conditional_extrema", html)
+        self.assertIn("条件极值", html)
 
     def test_demo_page_exposes_formula_guides(self):
         response = self.client.get("/demo")
@@ -289,6 +291,19 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("solve", payload["intent"])
         self.assertEqual("1/2", payload["calculation"]["result"])
+
+    def test_demo_chat_solves_conditional_extrema(self):
+        response = self.chat("条件极值 x*y 约束 x+y=1 变量 x,y")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual(
+            "条件极值（拉格朗日乘数法）",
+            payload["calculation"]["method"],
+        )
+        self.assertIn("x: 1/2", payload["calculation"]["result"])
+        self.assertIn("'kind': '极大值'", payload["calculation"]["result"])
 
     def test_demo_chat_solves_vector_dot_product(self):
         response = self.chat("向量 (1,2,3) 点乘 (4,5,6)")

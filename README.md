@@ -275,6 +275,23 @@ Content-Type: application/json
 }
 ```
 
+条件极值示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x*y",
+    "variables": ["x", "y"],
+    "constraint": "x+y=1"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：

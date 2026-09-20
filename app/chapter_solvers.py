@@ -67,6 +67,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "implicit_derivative",
             "system_implicit_derivative",
             "multivariable_extrema",
+            "conditional_extrema",
         }
     ),
     "multiple_integrals": frozenset({"double", "triple"}),
@@ -997,6 +998,98 @@ def _multivariable_extrema(view: _InputView) -> dict[str, Any]:
     return {"result": classified, "notes": ["使用二元函数极值判别法"]}
 
 
+@_solver(method="条件极值（拉格朗日乘数法）")
+def _conditional_extrema(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variables = _parse_symbol_list(view.items("variables"), "variables")
+    if len(variables) != 2:
+        raise SolveError("当前条件极值支持二元函数和一条等式约束")
+
+    constraint_text = view.text("constraint", required=True)
+    if constraint_text.count("=") != 1:
+        raise SolveError("constraint 必须是包含一个等号的等式")
+    left_text, right_text = constraint_text.split("=", 1)
+    constraint = simplify(
+        _parse_expression(left_text, "constraint.left")
+        - _parse_expression(right_text, "constraint.right")
+    )
+    if constraint == 0:
+        raise SolveError("constraint 不能是恒等式")
+
+    declared_symbols = set(variables)
+    actual_symbols = expression.free_symbols | constraint.free_symbols
+    undeclared = actual_symbols - declared_symbols
+    if undeclared:
+        raise SolveError(
+            f"expression 或 constraint 包含未声明变量：{sorted(map(str, undeclared))}"
+        )
+
+    lambda_symbol = _parse_symbol(
+        view.text("lambda", required=False, default="lambda"),
+        "lambda",
+    )
+    if lambda_symbol in declared_symbols:
+        raise SolveError("lambda 不能与 variables 重复")
+
+    lagrangian = expression + lambda_symbol * constraint
+    equations = [diff(lagrangian, variable) for variable in variables] + [constraint]
+    solutions = solve(equations, [*variables, lambda_symbol], dict=True)
+    if not solutions:
+        raise SolveError("未找到满足约束的条件驻点")
+
+    classified = []
+    for solution in solutions:
+        point = {variable: simplify(solution[variable]) for variable in variables}
+        lambda_value = simplify(solution[lambda_symbol])
+        substitutions = {**point, lambda_symbol: lambda_value}
+        first, second = variables
+        bordered_hessian = Matrix(
+            [
+                [0, diff(constraint, first), diff(constraint, second)],
+                [
+                    diff(constraint, first),
+                    diff(lagrangian, first, 2),
+                    diff(lagrangian, first, second),
+                ],
+                [
+                    diff(constraint, second),
+                    diff(lagrangian, second, first),
+                    diff(lagrangian, second, 2),
+                ],
+            ]
+        )
+        determinant = simplify(bordered_hessian.subs(substitutions).det())
+        if determinant.is_positive:
+            kind = "极大值"
+        elif determinant.is_negative:
+            kind = "极小值"
+        else:
+            kind = "需进一步判断"
+        classified.append(
+            {
+                "point": point,
+                "lambda": lambda_value,
+                "value": simplify(expression.subs(point)),
+                "kind": kind,
+            }
+        )
+
+    latex_parts = []
+    for item in classified:
+        coordinates = ", ".join(
+            f"{variable} = {latex(item['point'][variable])}" for variable in variables
+        )
+        latex_parts.append(
+            f"{coordinates},\\quad \\lambda = {latex(item['lambda'])},"
+            f"\\quad f = {latex(item['value'])},\\quad \\text{{{item['kind']}}}"
+        )
+    return {
+        "result": classified,
+        "latex": ",\\quad ".join(latex_parts),
+        "notes": ["使用拉格朗日乘数法和加边海森矩阵判断条件极值"],
+    }
+
+
 # Multiple integrals
 
 
@@ -1441,6 +1534,7 @@ _SOLVERS = {
         "system_implicit_derivative",
     ): _system_implicit_derivative,
     ("multivariable_calculus", "multivariable_extrema"): _multivariable_extrema,
+    ("multivariable_calculus", "conditional_extrema"): _conditional_extrema,
     ("multiple_integrals", "double"): _double_integral,
     ("multiple_integrals", "triple"): _triple_integral,
     ("line_surface_integrals", "line_scalar"): _line_scalar,

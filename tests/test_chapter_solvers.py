@@ -122,6 +122,11 @@ ALL_TOPIC_CASES = {
         "expression": "x^2+y^2",
         "variables": ["x", "y"],
     },
+    ("multivariable_calculus", "conditional_extrema"): {
+        "expression": "x*y",
+        "variables": ["x", "y"],
+        "constraint": "x+y=1",
+    },
     ("multiple_integrals", "double"): {
         "expression": "x*y",
         "variables": ["x", "y"],
@@ -329,6 +334,23 @@ class ChapterSolverTest(unittest.TestCase):
                     "dependent": "u",
                 },
             )
+
+    def test_conditional_extrema_lagrange(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "conditional_extrema",
+            {
+                "expression": "x*y",
+                "variables": ["x", "y"],
+                "constraint": "x+y=1",
+            },
+        )
+        self.assertIn("x: 1/2", payload["result"])
+        self.assertIn("y: 1/2", payload["result"])
+        self.assertIn("'lambda': -1/2", payload["result"])
+        self.assertIn("'value': 1/4", payload["result"])
+        self.assertIn("'kind': '极大值'", payload["result"])
+        self.assertEqual("条件极值（拉格朗日乘数法）", payload["method"])
 
     def test_parametric_derivative(self):
         payload = self.solve(
