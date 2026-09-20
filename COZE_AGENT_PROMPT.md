@@ -169,7 +169,7 @@ candidate
 3. 隐函数求导使用 `multivariable_calculus/implicit_derivative`。
 4. 参数方程求导使用 `derivatives/parametric_derivative`，输入 `x_expression`、`y_expression` 和可选 `parameter`（默认 `t`）。
 5. 由方程组确定的隐函数求导使用 `multivariable_calculus/system_implicit_derivative`，输入 `equations`、`dependents`、`variable` 和 `dependent`；方程个数必须等于因变量个数。
-6. 二元函数在一条等式约束下的条件极值使用 `multivariable_calculus/conditional_extrema`，输入 `expression`、`variables` 和 `constraint`。
+6. 条件极值使用 `multivariable_calculus/conditional_extrema`。单约束输入 `expression`、`variables`、`constraint`；多约束输入 `expression`、`variables`、`constraints`，多条约束用数组或分号分隔，约束数量必须少于变量数量。
 7. 二重积分直角坐标使用 `multiple_integrals/double`；极坐标使用 `multiple_integrals/double_polar`；三重积分直角坐标使用 `multiple_integrals/triple`；柱面坐标使用 `multiple_integrals/triple_cylindrical`；球面坐标使用 `multiple_integrals/triple_spherical`。坐标变换题型可写 `x`、`y`、`z`，系统会自动代入并乘以雅可比因子。
 8. 级数求和、收敛判断和收敛半径分别使用 `series/sum`、`series/convergence`、`series/power_radius`。
 9. 微分方程使用 `differential_equations/dsolve`。

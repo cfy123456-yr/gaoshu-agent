@@ -426,6 +426,33 @@ class ChapterSolverTest(unittest.TestCase):
         self.assertIn("'kind': '极大值'", payload["result"])
         self.assertEqual("条件极值（拉格朗日乘数法）", payload["method"])
 
+    def test_conditional_extrema_multiple_constraints(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "conditional_extrema",
+            {
+                "expression": "x^2+y^2+z^2",
+                "variables": ["x", "y", "z"],
+                "constraints": ["x=0", "y=0"],
+            },
+        )
+        self.assertIn("lambda1: 0", payload["result"])
+        self.assertIn("lambda2: 0", payload["result"])
+        self.assertIn("'kind': '极小值'", payload["result"])
+        self.assertIn("\\lambda_{1}", payload["latex"])
+
+    def test_conditional_extrema_rejects_too_many_constraints(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "multivariable_calculus",
+                "conditional_extrema",
+                {
+                    "expression": "x^2+y^2",
+                    "variables": ["x", "y"],
+                    "constraints": ["x=0", "y=0"],
+                },
+            )
+
     def test_parametric_derivative(self):
         payload = self.solve(
             "derivatives",

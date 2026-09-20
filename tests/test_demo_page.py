@@ -343,6 +343,21 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("x: 1/2", payload["calculation"]["result"])
         self.assertIn("'kind': '极大值'", payload["calculation"]["result"])
 
+    def test_demo_chat_solves_conditional_extrema_with_multiple_constraints(self):
+        response = self.chat(
+            "条件极值 x^2+y^2+z^2 约束 x=0; y=0 变量 x,y,z"
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual(
+            "条件极值（拉格朗日乘数法）",
+            payload["calculation"]["method"],
+        )
+        self.assertIn("lambda1: 0", payload["calculation"]["result"])
+        self.assertIn("'kind': '极小值'", payload["calculation"]["result"])
+
     def test_demo_chat_solves_vector_dot_product(self):
         response = self.chat("向量 (1,2,3) 点乘 (4,5,6)")
 

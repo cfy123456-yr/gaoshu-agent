@@ -262,6 +262,28 @@ C1*exp(x)
 x**2
 ```
 
+### 测试六：多约束条件极值
+
+```json
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x^2+y^2+z^2",
+    "variables": ["x", "y", "z"],
+    "constraints": ["x=0", "y=0"]
+  },
+  "candidate": null
+}
+```
+
+预期结果包含：
+
+```text
+point: x=0, y=0, z=0
+kind: 极小值
+```
+
 ## 章节与题型
 
 支持的 `chapter`：

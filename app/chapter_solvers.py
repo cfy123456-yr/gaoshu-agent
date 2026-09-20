@@ -298,6 +298,43 @@ def _parse_symbol_list(
     return symbols
 
 
+def _constraint_texts(view: _InputView) -> list[str]:
+    raw_constraints = view.values.get("constraints")
+    if raw_constraints is None:
+        single = view.text("constraint", required=False)
+        if single is None:
+            raise SolveError("缺少输入项：constraints 或 constraint")
+        return [single]
+
+    values = view.items("constraints")
+    constraints: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            raise SolveError("constraints 必须是文本数组")
+        parts = re.split(r"[;；\n]+", value)
+        constraints.extend(part.strip() for part in parts if part.strip())
+    if not constraints:
+        raise SolveError("constraints 不能为空")
+    if len(constraints) > MAX_VECTOR_LENGTH:
+        raise SolveError(f"constraints 长度不能超过 {MAX_VECTOR_LENGTH}")
+    return constraints
+
+
+def _parse_constraint(value: str, field_name: str) -> sympy.Expr:
+    if value.count("=") != 1:
+        raise SolveError(f"{field_name} 必须是包含一个等号的等式")
+    left_text, right_text = value.split("=", 1)
+    if not left_text.strip() or not right_text.strip():
+        raise SolveError(f"{field_name} 等号两边不能为空")
+    constraint = simplify(
+        _parse_expression(left_text, f"{field_name}.left")
+        - _parse_expression(right_text, f"{field_name}.right")
+    )
+    if constraint == 0:
+        raise SolveError(f"{field_name} 不能是恒等式")
+    return constraint
+
+
 def _point_values(
     point: Sequence[Any] | None,
     symbols: Sequence[sympy.Symbol],
@@ -1010,91 +1047,150 @@ def _multivariable_extrema(view: _InputView) -> dict[str, Any]:
 def _conditional_extrema(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
     variables = _parse_symbol_list(view.items("variables"), "variables")
-    if len(variables) != 2:
-        raise SolveError("当前条件极值支持二元函数和一条等式约束")
-
-    constraint_text = view.text("constraint", required=True)
-    if constraint_text.count("=") != 1:
-        raise SolveError("constraint 必须是包含一个等号的等式")
-    left_text, right_text = constraint_text.split("=", 1)
-    constraint = simplify(
-        _parse_expression(left_text, "constraint.left")
-        - _parse_expression(right_text, "constraint.right")
-    )
-    if constraint == 0:
-        raise SolveError("constraint 不能是恒等式")
+    if len(variables) < 2:
+        raise SolveError("条件极值至少需要两个变量")
+    constraint_texts = _constraint_texts(view)
+    if len(constraint_texts) >= len(variables):
+        raise SolveError("等式约束数量必须少于变量数量")
+    constraints = [
+        _parse_constraint(value, f"constraints[{index}]")
+        for index, value in enumerate(constraint_texts)
+    ]
 
     declared_symbols = set(variables)
-    actual_symbols = expression.free_symbols | constraint.free_symbols
+    actual_symbols = expression.free_symbols
+    for constraint in constraints:
+        actual_symbols |= constraint.free_symbols
     undeclared = actual_symbols - declared_symbols
     if undeclared:
         raise SolveError(
-            f"expression 或 constraint 包含未声明变量：{sorted(map(str, undeclared))}"
+            f"expression 或 constraints 包含未声明变量：{sorted(map(str, undeclared))}"
         )
 
-    lambda_symbol = _parse_symbol(
-        view.text("lambda", required=False, default="lambda"),
-        "lambda",
-    )
-    if lambda_symbol in declared_symbols:
-        raise SolveError("lambda 不能与 variables 重复")
+    if len(constraints) == 1:
+        lambda_symbols = [
+            _parse_symbol(
+                view.text("lambda", required=False, default="lambda"),
+                "lambda",
+            )
+        ]
+    else:
+        lambda_inputs = view.items("lambdas", required=False)
+        if lambda_inputs:
+            if len(lambda_inputs) != len(constraints):
+                raise SolveError("lambdas 数量必须与 constraints 数量一致")
+            lambda_symbols = _parse_symbol_list(lambda_inputs, "lambdas")
+        else:
+            lambda_symbols = [
+                _parse_symbol(f"lambda{index}", f"lambdas[{index - 1}]")
+                for index in range(1, len(constraints) + 1)
+            ]
+    if len(set(lambda_symbols)) != len(lambda_symbols):
+        raise SolveError("拉格朗日乘子不能重复")
+    if declared_symbols.intersection(lambda_symbols):
+        raise SolveError("拉格朗日乘子不能与 variables 重复")
 
-    lagrangian = expression + lambda_symbol * constraint
-    equations = [diff(lagrangian, variable) for variable in variables] + [constraint]
-    solutions = solve(equations, [*variables, lambda_symbol], dict=True)
+    lagrangian = expression + sum(
+        lambda_symbol * constraint
+        for lambda_symbol, constraint in zip(
+            lambda_symbols,
+            constraints,
+            strict=True,
+        )
+    )
+    equations = [
+        diff(lagrangian, variable) for variable in variables
+    ] + constraints
+    solution_symbols = [*variables, *lambda_symbols]
+    solutions = solve(equations, solution_symbols, dict=True)
     if not solutions:
         raise SolveError("未找到满足约束的条件驻点")
 
     classified = []
     for solution in solutions:
+        if any(symbol not in solution for symbol in solution_symbols):
+            raise SolveError("条件驻点含有自由参数，暂不支持")
         point = {variable: simplify(solution[variable]) for variable in variables}
-        lambda_value = simplify(solution[lambda_symbol])
-        substitutions = {**point, lambda_symbol: lambda_value}
-        first, second = variables
-        bordered_hessian = Matrix(
+        lambda_values = {
+            lambda_symbol: simplify(solution[lambda_symbol])
+            for lambda_symbol in lambda_symbols
+        }
+        substitutions = {**point, **lambda_values}
+
+        constraint_jacobian = Matrix(
             [
-                [0, diff(constraint, first), diff(constraint, second)],
-                [
-                    diff(constraint, first),
-                    diff(lagrangian, first, 2),
-                    diff(lagrangian, first, second),
-                ],
-                [
-                    diff(constraint, second),
-                    diff(lagrangian, second, first),
-                    diff(lagrangian, second, 2),
-                ],
+                [diff(constraint, variable) for variable in variables]
+                for constraint in constraints
             ]
-        )
-        determinant = simplify(bordered_hessian.subs(substitutions).det())
-        if determinant.is_positive:
-            kind = "极大值"
-        elif determinant.is_negative:
-            kind = "极小值"
-        else:
-            kind = "需进一步判断"
+        ).subs(substitutions)
+        kind = "需进一步判断"
+        if constraint_jacobian.rank() == len(constraints):
+            tangent_basis = constraint_jacobian.nullspace()
+            if tangent_basis:
+                basis_matrix = Matrix.hstack(*tangent_basis)
+                hessian = Matrix(
+                    [
+                        [
+                            diff(lagrangian, left, right)
+                            for right in variables
+                        ]
+                        for left in variables
+                    ]
+                ).subs(substitutions)
+                projected_hessian = simplify(
+                    basis_matrix.T * hessian * basis_matrix
+                )
+                signs: set[int] = set()
+                uncertain = False
+                for eigenvalue in projected_hessian.eigenvals():
+                    eigenvalue = simplify(eigenvalue)
+                    if eigenvalue.is_positive:
+                        signs.add(1)
+                    elif eigenvalue.is_negative:
+                        signs.add(-1)
+                    elif eigenvalue.is_zero:
+                        signs.add(0)
+                    else:
+                        uncertain = True
+                if not uncertain:
+                    if signs == {1}:
+                        kind = "极小值"
+                    elif signs == {-1}:
+                        kind = "极大值"
+                    elif 1 in signs and -1 in signs:
+                        kind = "非极值点"
         classified.append(
             {
                 "point": point,
-                "lambda": lambda_value,
                 "value": simplify(expression.subs(point)),
                 "kind": kind,
             }
         )
+        if len(lambda_symbols) == 1:
+            classified[-1]["lambda"] = lambda_values[lambda_symbols[0]]
+        else:
+            classified[-1]["lambdas"] = lambda_values
 
     latex_parts = []
     for item in classified:
         coordinates = ", ".join(
             f"{variable} = {latex(item['point'][variable])}" for variable in variables
         )
+        if len(lambda_symbols) == 1:
+            lambda_latex = f"\\lambda = {latex(item['lambda'])}"
+        else:
+            lambda_latex = ", ".join(
+                f"\\lambda_{{{index}}} = {latex(item['lambdas'][lambda_symbol])}"
+                for index, lambda_symbol in enumerate(lambda_symbols, start=1)
+            )
         latex_parts.append(
-            f"{coordinates},\\quad \\lambda = {latex(item['lambda'])},"
+            f"{coordinates},\\quad {lambda_latex},"
             f"\\quad f = {latex(item['value'])},\\quad \\text{{{item['kind']}}}"
         )
     return {
         "result": classified,
         "latex": ",\\quad ".join(latex_parts),
-        "notes": ["使用拉格朗日乘数法和加边海森矩阵判断条件极值"],
+        "notes": ["使用拉格朗日乘数法和约束切空间投影 Hessian 判断条件极值"],
     }
 
 

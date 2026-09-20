@@ -208,6 +208,10 @@ def _split_variables(value: str) -> list[str]:
     return [part.strip() for part in re.split(r"[,，、\s]+", value) if part.strip()]
 
 
+def _split_constraints(value: str) -> list[str]:
+    return [part.strip() for part in re.split(r"[;；\n]+", value) if part.strip()]
+
+
 def _extract_integral_triple(message: str) -> tuple[str, str, str, str] | None:
     match = re.search(
         r"(-?[\w./^()*+\- ]+?)\s+d([A-Za-z])\s*d([A-Za-z])\s*d([A-Za-z])",
@@ -386,16 +390,24 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                         expression_match.group(1)
                     )
         if expression_text and constraint_text:
-            if len(variables) != 2:
-                variables = _infer_variables(expression_text, 2)
+            constraints = _split_constraints(constraint_text)
+            if len(variables) < 2:
+                variables = _infer_variables(
+                    expression_text,
+                    max(2, len(constraints) + 1),
+                )
+            inputs = {
+                "expression": expression_text,
+                "variables": variables,
+            }
+            if len(constraints) == 1:
+                inputs["constraint"] = constraints[0]
+            else:
+                inputs["constraints"] = constraints
             return (
                 "multivariable_calculus",
                 "conditional_extrema",
-                {
-                    "expression": expression_text,
-                    "variables": variables,
-                    "constraint": constraint_text,
-                },
+                inputs,
             )
 
     if (

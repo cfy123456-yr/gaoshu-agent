@@ -2236,11 +2236,16 @@
             },
             conditional_extrema: {
               label: "条件极值",
-              hint: "输入目标函数、变量列表和一条等式约束。",
+              hint: "支持多个变量和多条等式约束，约束数量必须少于变量数量。",
               fields: [
                 solverExpression("例如：x*y"),
                 solverList("variables", "变量列表", "例如：x, y", "x, y"),
-                solverText("constraint", "约束条件", "例如：x+y=1", "x+y=1"),
+                solverList(
+                  "constraints",
+                  "约束条件",
+                  "例如：x+y=1 或 x=0, y=0",
+                  "x+y=1",
+                ),
               ],
             },
           },

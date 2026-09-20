@@ -292,6 +292,25 @@ Content-Type: application/json
 }
 ```
 
+多变量、多约束条件极值：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x^2+y^2+z^2",
+    "variables": ["x", "y", "z"],
+    "constraints": ["x=0", "y=0"]
+  }
+}
+```
+
+`constraints` 也可写成 `"x=0; y=0"`。等式约束数量必须少于变量数量；单约束仍可用原有的 `constraint` 字段。
+
 极坐标二重积分示例：
 
 ```http
