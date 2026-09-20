@@ -10,12 +10,22 @@ BASE_URL = os.getenv("TEST_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 class MathApiSmokeTest(unittest.TestCase):
-    def request(self, path, params=None, expected_status=200):
+    def request(self, path, params=None, expected_status=200, json_payload=None):
         query = urlencode(params or {})
         url = f"{BASE_URL}{path}"
         if query:
             url = f"{url}?{query}"
-        request = Request(url, method="POST" if path != "/health" else "GET")
+        body = None
+        headers = {}
+        if json_payload is not None:
+            body = json.dumps(json_payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        request = Request(
+            url,
+            data=body,
+            headers=headers,
+            method="POST" if path != "/health" else "GET",
+        )
 
         try:
             with urlopen(request, timeout=10) as response:
@@ -39,7 +49,7 @@ class MathApiSmokeTest(unittest.TestCase):
     def test_health_reports_current_version(self):
         payload = self.request("/health")
         self.assertEqual("ok", payload["status"])
-        self.assertEqual("0.3.0", payload["version"])
+        self.assertEqual("0.4.0", payload["version"])
         self.assertIn("api_key_enabled", payload)
 
     def test_derivative_result_and_candidate_check(self):
@@ -117,6 +127,33 @@ class MathApiSmokeTest(unittest.TestCase):
         )
         self.assertEqual("-oo", left["limit"])
         self.assertIs(True, left["is_correct"])
+
+    def test_unified_solve_for_extended_chapters(self):
+        payload = self.request(
+            "/solve",
+            json_payload={
+                "chapter": "derivatives",
+                "topic": "higher_derivative",
+                "inputs": {
+                    "expression": "x^3",
+                    "variable": "x",
+                    "order": 2,
+                },
+                "candidate": "6x",
+            },
+        )
+        self.assertEqual("6*x", payload["result"])
+        self.assertIs(True, payload["is_correct"])
+
+        gradient = self.request(
+            "/solve",
+            json_payload={
+                "chapter": "multivariable_calculus",
+                "topic": "gradient",
+                "inputs": {"expression": "x^2*y", "variables": ["x", "y"]},
+            },
+        )
+        self.assertIn("2*x*y", gradient["result"])
 
     def test_invalid_expression_is_rejected(self):
         payload = self.request(

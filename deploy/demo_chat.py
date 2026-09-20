@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
 from sympy import latex
 
+from app.chapter_solvers import SolveError, solve_chapter
 from app.main import (
     IntegrateRequest,
     LimitRequest,
@@ -85,8 +86,436 @@ _HELP_SUGGESTIONS = [
     "积分 x^2",
     "积分 0 到 1 x^2",
     "lim x→0 sin(x)/x",
+    "判断级数 1/n^2 收敛",
+    "积分 0 到 1 0 到 1 x*y",
+    "解微分方程 y'-y=0",
     "我以前做过哪些题",
 ]
+
+_CJK_EXPRESSION_TAIL = re.compile(
+    r"\s*(?:是否|的|求|等于|等于多少|多少|呢|吗|请|帮忙|计算|判断).*$"
+)
+
+_EXTENDED_CHAPTER_HINTS = {
+    ("series", "convergence"): {
+        "missing": "请写出级数的一般项，例如“判断级数 1/n^2 收敛”。",
+        "suggestions": ["判断级数 1/n^2 收敛", "判断级数 2^n/n! 收敛"],
+    },
+    ("series", "sum"): {
+        "missing": "请写出级数的一般项，例如“级数求和 1/n^2”。",
+        "suggestions": ["级数求和 1/n^2"],
+    },
+    ("series", "power_radius"): {
+        "missing": "请写出幂级数系数，例如“幂级数 a_n=1/n 的收敛半径”。",
+        "suggestions": ["幂级数 a_n=1/n 的收敛半径"],
+    },
+    ("multiple_integrals", "double"): {
+        "missing": "请写出二重积分和被积函数，例如“积分 0 到 1 0 到 1 x*y”。",
+        "suggestions": ["积分 0 到 1 0 到 1 x*y"],
+    },
+    ("multiple_integrals", "triple"): {
+        "missing": "请写出三重积分、被积函数和三个积分变量，例如“三重积分 x+y+z 变量 x,y,z”。",
+        "suggestions": ["三重积分 x+y+z 变量 x,y,z"],
+    },
+    ("differential_equations", "dsolve"): {
+        "missing": "请写出微分方程，例如“解微分方程 y'-y=0”。",
+        "suggestions": ["解微分方程 y'-y=0"],
+    },
+    ("multivariable_calculus", "partial"): {
+        "missing": "请写出函数和求偏导的变量，例如“求偏导 x^2*y 对 x”。",
+        "suggestions": ["求偏导 x^2*y 对 x", "梯度 x^2+y^2 变量 x,y"],
+    },
+    ("multivariable_calculus", "gradient"): {
+        "missing": "请写出函数和变量，例如“梯度 x^2+y^2 变量 x,y”。",
+        "suggestions": ["梯度 x^2+y^2 变量 x,y"],
+    },
+    ("multivariable_calculus", "implicit_derivative"): {
+        "missing": "请写出隐函数方程，例如“隐函数 x^2+y^2=1 求 dy/dx”。",
+        "suggestions": ["隐函数 x^2+y^2=1 求 dy/dx"],
+    },
+    ("vectors", "dot"): {
+        "missing": "请写出两个向量，例如“向量 (1,2,3) 点乘 (4,5,6)”。",
+        "suggestions": ["向量 (1,2,3) 点乘 (4,5,6)"],
+    },
+}
+
+
+def _strip_expression_tail(value: str) -> str:
+    cleaned = _CJK_EXPRESSION_TAIL.sub("", str(value)).strip()
+    return cleaned.rstrip("，,。;；:：")
+
+
+def _split_variables(value: str) -> list[str]:
+    return [part.strip() for part in re.split(r"[,，、\s]+", value) if part.strip()]
+
+
+def _extract_integral_triple(message: str) -> tuple[str, str, str, str] | None:
+    match = re.search(
+        r"(-?[\w./^()*+\- ]+?)\s+d([A-Za-z])\s*d([A-Za-z])\s*d([A-Za-z])",
+        message,
+    )
+    if match is None:
+        return None
+    return (
+        _strip_expression_tail(match.group(1)),
+        match.group(2),
+        match.group(3),
+        match.group(4),
+    )
+
+
+def _extract_integral_double(message: str) -> tuple[str, str, str] | None:
+    match = re.search(
+        r"(-?[\w./^()*+\- ]+?)\s+d([A-Za-z])\s*d([A-Za-z])",
+        message,
+    )
+    if match is None:
+        return None
+    return (
+        _strip_expression_tail(match.group(1)),
+        match.group(2),
+        match.group(3),
+    )
+
+
+def _extract_nested_bounds(
+    value: str,
+    count: int,
+) -> tuple[list[str], str] | None:
+    bounds: list[str] = []
+    remaining = value.strip()
+    for _ in range(count):
+        match = re.match(
+            r"^([^\s到]+)\s+到\s+([^\s到]+)\s+(.+)$",
+            remaining,
+        )
+        if match is None:
+            return None
+        bounds.extend([match.group(1), match.group(2)])
+        remaining = match.group(3).strip()
+    if not remaining:
+        return None
+    return bounds, _strip_expression_tail(remaining)
+
+
+def _extract_bounds_and_expression(
+    value: str,
+) -> tuple[str, str, str, str, str] | None:
+    parsed = _extract_nested_bounds(value, 2)
+    if parsed is None:
+        return None
+    bounds, expression = parsed
+    return bounds[0], bounds[1], bounds[2], bounds[3], expression
+
+
+def _extract_parameter_bounds(message: str) -> tuple[str, str] | None:
+    match = re.search(r"([\w^()*+\-/]+)\s+到\s+([\w^()*+\-/]+)", message)
+    if match is None:
+        return None
+    return (
+        _strip_expression_tail(match.group(1)),
+        _strip_expression_tail(match.group(2)),
+    )
+
+
+def _infer_variables(expression: str, count: int) -> list[str]:
+    variables: list[str] = []
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9_]*", expression):
+        lowered = token.lower()
+        if lowered in _NON_VARIABLE_NAMES or lowered == "e":
+            continue
+        if token not in variables:
+            variables.append(token)
+    for fallback in ("x", "y", "z"):
+        if len(variables) >= count:
+            break
+        if fallback not in variables:
+            variables.append(fallback)
+    return variables[:count]
+
+
+def _extract_curve_components(message: str) -> dict[str, str]:
+    return {
+        name: value.strip()
+        for name, value in re.findall(
+            r"([xyz])\s*=\s*([\w./^()*+\-]+)",
+            message,
+        )
+    }
+
+
+def _extract_vector_field(message: str) -> list[str] | None:
+    match = re.search(
+        r"(?:向量场|力场|F)\s*[（(]([^）)]+)[）)]",
+        message,
+    )
+    if match is None:
+        return None
+    return _split_variables(match.group(1))
+
+
+def _extract_vector_operands(message: str) -> tuple[list[str], list[str]] | None:
+    vectors = re.findall(r"[（(]([^（）()]+)[）)]", message)
+    if len(vectors) < 2:
+        return None
+    left = _split_variables(vectors[0])
+    right = _split_variables(vectors[1])
+    if not left or not right:
+        return None
+    return left, right
+
+
+def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] | None:
+    compact = message.strip()
+
+    if (
+        "微分方程" in compact
+        or ("=" in compact and re.search(r"\bdy\s*/\s*dx\b", compact))
+        or re.search(r"\by\s*['′]\s*", compact)
+    ):
+        equation = re.sub(
+            r"^(?:请|帮我)?\s*(?:求解|解)?\s*微分方程\s*",
+            "",
+            compact,
+        )
+        equation = re.sub(r"^(?:请|帮我)?\s*(?:求解|解)\s*", "", equation)
+        equation = equation.replace("′", "'").replace("dy/dx", "y'")
+        return (
+            "differential_equations",
+            "dsolve",
+            {"equation": equation, "variable": "x", "function": "y"},
+        )
+
+    if "隐函数" in compact:
+        match = re.search(r"隐函数\s*(.+)", compact)
+        if match:
+            equation = re.split(r"\s*(?:求|计算|的)\s*dy\s*/\s*dx", match.group(1))[0]
+            equation = equation.strip().rstrip("，,。;；")
+            return (
+                "multivariable_calculus",
+                "implicit_derivative",
+                {"equation": equation, "variable": "x", "dependent": "y"},
+            )
+
+    if "梯度" in compact:
+        match = re.search(
+            r"梯度\s*(.+?)\s*(?:变量|对)\s*([A-Za-z](?:\s*[,，]\s*[A-Za-z])*)",
+            compact,
+        )
+        if match:
+            return (
+                "multivariable_calculus",
+                "gradient",
+                {
+                    "expression": _strip_expression_tail(match.group(1)),
+                    "variables": _split_variables(match.group(2)),
+                },
+            )
+
+    if "混合偏导" in compact:
+        match = re.search(r"混合偏导\s*(.+?)\s*(?:变量|对)\s*(.+)", compact)
+        if match:
+            return (
+                "multivariable_calculus",
+                "mixed_partial",
+                {
+                    "expression": _strip_expression_tail(match.group(1)),
+                    "variables": _split_variables(match.group(2)),
+                },
+            )
+
+    if "偏导" in compact or "∂" in compact:
+        match = re.search(
+            r"偏导\s*(.+?)\s*(?:对|关于|变量)\s*([A-Za-z])",
+            compact,
+        )
+        if match:
+            return (
+                "multivariable_calculus",
+                "partial",
+                {
+                    "expression": _strip_expression_tail(match.group(1)),
+                    "variables": [match.group(2)],
+                },
+            )
+
+    if "投影" in compact:
+        vectors = _extract_vector_operands(compact)
+        if vectors:
+            return (
+                "vectors",
+                "projection",
+                {"left": vectors[0], "right": vectors[1]},
+            )
+    if "点乘" in compact or "数量积" in compact:
+        vectors = _extract_vector_operands(compact)
+        if vectors:
+            return "vectors", "dot", {"left": vectors[0], "right": vectors[1]}
+    if "叉乘" in compact or "向量积" in compact:
+        vectors = _extract_vector_operands(compact)
+        if vectors:
+            return "vectors", "cross", {"left": vectors[0], "right": vectors[1]}
+    if "模长" in compact or "向量模" in compact:
+        match = re.search(r"[（(]([^（）()]+)[）)]", compact)
+        if match:
+            return "vectors", "norm", {"vector": _split_variables(match.group(1))}
+    if "夹角" in compact:
+        vectors = _extract_vector_operands(compact)
+        if vectors:
+            return "vectors", "angle", {"left": vectors[0], "right": vectors[1]}
+    if "距离" in compact:
+        vectors = _extract_vector_operands(compact)
+        if vectors:
+            return "vectors", "distance", {"left": vectors[0], "right": vectors[1]}
+
+    triple = _extract_integral_triple(compact)
+    if triple is not None and ("三重" in compact or re.search(r"∫\s*∫\s*∫", compact)):
+        expression, x_var, y_var, z_var = triple
+        return (
+            "multiple_integrals",
+            "triple",
+            {
+                "expression": expression,
+                "variables": [x_var, y_var, z_var],
+                "lower_x": "0",
+                "upper_x": "1",
+                "lower_y": "0",
+                "upper_y": "1",
+                "lower_z": "0",
+                "upper_z": "1",
+            },
+        )
+
+    if "三重" in compact and ("积分" in compact or "∫" in compact):
+        match = re.search(r"(?:三重)?\s*(?:积分|∫)\s*(.+)", compact)
+        if match:
+            tail = match.group(1).strip()
+            explicit = re.search(r"\s*变量\s*(.+)$", tail)
+            variables = (
+                [_strip_expression_tail(value) for value in _split_variables(explicit.group(1))]
+                if explicit
+                else []
+            )
+            expression_text = tail[: explicit.start()].strip() if explicit else tail
+            parsed_bounds = _extract_nested_bounds(expression_text, 3)
+            if parsed_bounds is not None:
+                bounds, expression_text = parsed_bounds
+            else:
+                bounds = ["0", "1", "0", "1", "0", "1"]
+            if not variables:
+                variables = _infer_variables(expression_text, 3)
+            return (
+                "multiple_integrals",
+                "triple",
+                {
+                    "expression": _strip_expression_tail(expression_text),
+                    "variables": variables,
+                    "lower_x": bounds[0],
+                    "upper_x": bounds[1],
+                    "lower_y": bounds[2],
+                    "upper_y": bounds[3],
+                    "lower_z": bounds[4],
+                    "upper_z": bounds[5],
+                },
+            )
+
+    double = _extract_integral_double(compact)
+    if double is not None and ("二重" in compact or re.search(r"∫\s*∫", compact)):
+        expression, x_var, y_var = double
+        return (
+            "multiple_integrals",
+            "double",
+            {
+                "expression": expression,
+                "variables": [x_var, y_var],
+                "lower_x": "0",
+                "upper_x": "1",
+                "lower_y": "0",
+                "upper_y": "1",
+            },
+        )
+
+    if "积分" in compact or "∫" in compact:
+        match = re.search(r"(?:积分|∫)\s*(.+)", compact)
+        if match:
+            tail = match.group(1).strip()
+            bounds = _extract_bounds_and_expression(tail)
+            if bounds is not None:
+                expression = bounds[4]
+                return (
+                    "multiple_integrals",
+                    "double",
+                    {
+                        "expression": expression,
+                        "variables": _infer_variables(expression, 2),
+                        "lower_x": bounds[0],
+                        "upper_x": bounds[1],
+                        "lower_y": bounds[2],
+                        "upper_y": bounds[3],
+                    },
+                )
+
+    if "曲线积分" in compact:
+        vector_field = _extract_vector_field(compact)
+        components = _extract_curve_components(compact)
+        bounds = _extract_parameter_bounds(compact)
+        if components and bounds:
+            inputs = {
+                "components": components,
+                "lower": bounds[0],
+                "upper": bounds[1],
+            }
+            if vector_field is not None:
+                inputs["vector_field"] = vector_field
+                return "line_surface_integrals", "line_vector", inputs
+            match = re.search(r"(?:对弧长|第一类)\s*([\w./^()*+\-]+)", compact)
+            if match:
+                inputs["expression"] = match.group(1)
+                return "line_surface_integrals", "line_scalar", inputs
+
+    if "第一类曲面积分" in compact or "曲面积分" in compact:
+        if "第一类" in compact or "面积" in compact:
+            match = re.search(r"(?:对面积|第一类)\s*([\w./^()*+\-]+)", compact)
+            if match:
+                return (
+                    "line_surface_integrals",
+                    "surface_scalar",
+                    {"expression": match.group(1)},
+                )
+
+    if "收敛半径" in compact:
+        match = re.search(
+            r"(?:a_?n\s*=|系数\s*)([A-Za-z0-9^()*+\-/., ]+?)\s*的\s*收敛半径",
+            compact,
+        )
+        if match:
+            return (
+                "series",
+                "power_radius",
+                {"coefficient": match.group(1).strip(), "variable": "n"},
+            )
+
+    if "级数" in compact or "∑" in compact:
+        if "求和" in compact or "和函数" in compact:
+            match = re.search(r"(?:级数求和|级数和|求和)\s*(.+)", compact)
+            if match:
+                return (
+                    "series",
+                    "sum",
+                    {"expression": _strip_expression_tail(match.group(1)), "variable": "n"},
+                )
+        if re.search(r"收敛|发散|敛散", compact):
+            match = re.search(r"(?:判断)?\s*级数\s*(.+?)\s*(?:是否|收敛|发散|的敛散性|敛散性)", compact)
+            if match is None:
+                match = re.search(r"一般项\s*(.+)", compact)
+            if match:
+                return (
+                    "series",
+                    "convergence",
+                    {"expression": _strip_expression_tail(match.group(1)), "variable": "n"},
+                )
+
+    return None
 
 
 def build_chat_response(
@@ -122,6 +551,10 @@ def _math_response(normalized: str) -> dict[str, Any]:
     if _is_greeting(normalized):
         return _help_response()
 
+    extended = _resolve_extended_chapter(normalized)
+    if extended is not None:
+        return _build_extended_chapter_response(*extended)
+
     intent = _detect_intent(normalized)
     if intent == "verify":
         return _build_derivative_response(normalized)
@@ -130,8 +563,39 @@ def _math_response(normalized: str) -> dict[str, Any]:
     if intent == "limit":
         return _build_limit_response(normalized)
     return _needs_input(
-        "这个独立演示页目前可以连续处理求导、积分和极限。"
-        "你可以直接输入“求导 x^2”或“积分 0 到 1 x^2”。"
+        "这个独立演示页支持求导、积分、极限，以及微分方程、向量、"
+        "多元微分、重积分、曲线曲面积分和级数。"
+        "你可以直接输入“求导 x^2”或“判断级数 1/n^2 收敛”。"
+    )
+
+
+def _build_extended_chapter_response(
+    chapter: str,
+    topic: str,
+    inputs: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        result = solve_chapter(chapter, topic, inputs)
+    except SolveError as exc:
+        return _calculation_error(exc)
+
+    method = result["method"]
+    value = result["result"]
+    notes = result.get("notes") or []
+    note_text = f" {notes[0]}。" if notes else ""
+    reply = (
+        f"确定性结果：{value}。"
+        f"使用的方法：{method}。{note_text}"
+        "你能说出这个方法最关键的使用条件吗？"
+    )
+    hint = _EXTENDED_CHAPTER_HINTS.get((chapter, topic), {})
+    return _result_response(
+        intent="solve",
+        reply=reply,
+        formula_latex=result["latex"],
+        formula_text=f"{method}: {value}",
+        calculation=result,
+        suggestions=hint.get("suggestions", _HELP_SUGGESTIONS),
     )
 
 
@@ -145,7 +609,10 @@ def _recent_math_questions(
         if role != "user":
             continue
         normalized = _normalize_text(text)
-        if _detect_intent(normalized) not in {"verify", "integrate", "limit"}:
+        if (
+            _detect_intent(normalized) not in {"verify", "integrate", "limit"}
+            and _resolve_extended_chapter(normalized) is None
+        ):
             continue
         questions.append(normalized)
 
@@ -748,7 +1215,8 @@ def _help_response() -> dict[str, Any]:
         "intent": "help",
         "reply": (
             "你好，我是知微老师。你可以像聊天一样直接输入题目，"
-            "我会调用确定性数学工具计算求导、积分和极限，再给你检查问题。"
+            "我会用确定性数学工具处理求导、积分、极限、微分方程、向量、"
+            "多元微分、重积分、曲线曲面积分和级数，再给你检查问题。"
         ),
         "formula_latex": "",
         "formula_text": "",
@@ -770,7 +1238,7 @@ def _needs_input(reply: str) -> dict[str, Any]:
 
 
 def _calculation_error(exc: Exception) -> dict[str, Any]:
-    detail = getattr(exc, "detail", None) or "表达式无法解析"
+    detail = getattr(exc, "detail", None) or str(exc) or "表达式无法解析"
     return {
         "status": "error",
         "intent": "calculation",

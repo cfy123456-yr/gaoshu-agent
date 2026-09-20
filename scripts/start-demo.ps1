@@ -284,6 +284,7 @@ Write-Host '      Agent: https://www.coze.cn/store/agent/7687155979821481999?bot
 Write-Host "      Verify endpoint: $publicBase/verify-query"
 Write-Host "      Integrate endpoint: $publicBase/integrate-query"
 Write-Host "      Limit endpoint: $publicBase/limit-query"
+Write-Host "      Solve endpoint: $publicBase/solve"
 
 if (-not $Check -and -not $NoPause) {
     Write-Host ''

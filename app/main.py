@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 import sympy
 from dotenv import load_dotenv
@@ -21,6 +22,8 @@ from sympy.parsing.sympy_parser import (
     parse_expr,
     standard_transformations,
 )
+
+from app.chapter_solvers import SUPPORTED_TOPICS, SolveError, solve_chapter
 
 
 load_dotenv()
@@ -59,7 +62,7 @@ LOG_FILE = os.getenv(
 LOG_MAX_BYTES = read_int_env("LOG_MAX_BYTES", 5 * 1024 * 1024)
 LOG_BACKUP_COUNT = read_int_env("LOG_BACKUP_COUNT", 3, minimum=0)
 API_KEY = os.getenv("MATH_API_KEY", "").strip()
-SERVICE_VERSION = "0.3.0"
+SERVICE_VERSION = "0.4.0"
 SERVICE_STARTED_AT = datetime.now(timezone.utc)
 SERVICE_STARTED_MONOTONIC = time.monotonic()
 
@@ -175,6 +178,24 @@ class LimitResponse(BaseModel):
     is_correct: bool | None
 
 
+class SolveRequest(BaseModel):
+    chapter: str = Field(min_length=1, max_length=64)
+    topic: str = Field(min_length=1, max_length=64)
+    inputs: dict[str, Any] = Field(default_factory=dict, max_length=32)
+    candidate: str | None = Field(default=None, max_length=MAX_EXPRESSION_LENGTH)
+
+
+class SolveResponse(BaseModel):
+    chapter: str
+    topic: str
+    method: str
+    result: str
+    latex: str
+    candidate: str | None
+    is_correct: bool | None
+    notes: list[str]
+
+
 SAFE_FUNCTIONS = {
     name: getattr(sympy, name)
     for name in (
@@ -197,6 +218,7 @@ SAFE_FUNCTIONS = {
         "acosh",
         "atanh",
         "exp",
+        "factorial",
         "log",
         "sqrt",
         "Abs",
@@ -217,7 +239,7 @@ SAFE_LOCAL_DICT = {
     "Rational": sympy.Rational,
 }
 ALLOWED_EXPRESSION_CHARS = frozenset(
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_+-*/^()., "
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_+-*/^().,! "
 )
 SYMBOL_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
@@ -246,7 +268,12 @@ def validate_expression_text(value: str, field_name: str = "expression") -> str:
 
 
 def parse_math_expression(value: str):
-    normalized = validate_expression_text(value).replace("^", "**")
+    normalized = validate_expression_text(value)
+    normalized = re.sub(
+        r"([A-Za-z][A-Za-z0-9_]*|\d+)!",
+        r"factorial(\1)",
+        normalized,
+    ).replace("^", "**")
     transformations = standard_transformations + (implicit_multiplication_application,)
     return parse_expr(
         normalized,
@@ -433,6 +460,10 @@ def health_check():
             "max_expression_length": MAX_EXPRESSION_LENGTH,
             "max_symbol_length": MAX_SYMBOL_LENGTH,
         },
+        "solve_topics": {
+            chapter: sorted(topics)
+            for chapter, topics in SUPPORTED_TOPICS.items()
+        },
     }
 
 
@@ -611,3 +642,29 @@ def calculate_limit_query(
             candidate=candidate,
         )
     )
+
+
+@app.post("/solve", response_model=SolveResponse)
+def solve_math(
+    request: SolveRequest,
+    _: None = Depends(enforce_api_access),
+):
+    def calculate():
+        try:
+            return SolveResponse(
+                **solve_chapter(
+                    chapter=request.chapter,
+                    topic=request.topic,
+                    inputs=request.inputs,
+                    candidate=request.candidate,
+                )
+            )
+        except SolveError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        return run_calculation(calculate, "solve")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"solve 请求无法完成：{exc}") from exc

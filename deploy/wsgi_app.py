@@ -16,11 +16,13 @@ from app.main import (
     API_KEY,
     IntegrateRequest,
     LimitRequest,
+    SolveRequest,
     VerifyRequest,
     calculate_integral,
     calculate_limit,
     health_check,
     rate_limiter,
+    solve_math,
     verify_derivative,
 )
 from deploy.demo_chat import DemoChatRequest, _normalize_text, build_chat_response
@@ -100,6 +102,7 @@ def service_index():
                 "/demo/api/verify",
                 "/demo/api/integrate",
                 "/demo/api/limit",
+                "/demo/api/solve",
                 "/demo/api/chat",
                 "/verify",
                 "/verify-query",
@@ -107,6 +110,7 @@ def service_index():
                 "/integrate-query",
                 "/limit",
                 "/limit-query",
+                "/solve",
             ],
         }
     )
@@ -147,6 +151,13 @@ def demo_limit():
     payload = request.get_json(silent=False)
     model = LimitRequest.model_validate(payload)
     return _json_response(calculate_limit(model, _=None))
+
+
+@application.post("/demo/api/solve")
+def demo_solve():
+    payload = request.get_json(silent=False)
+    model = SolveRequest.model_validate(payload)
+    return _json_response(solve_math(model, _=None))
 
 
 @application.post("/demo/api/chat")
@@ -283,6 +294,13 @@ def limit_with_query():
         candidate=request.args.get("candidate"),
     )
     return _json_response(calculate_limit(model, _=None))
+
+
+@application.post("/solve")
+def solve_with_json():
+    payload = request.get_json(silent=False)
+    model = SolveRequest.model_validate(payload)
+    return _json_response(solve_math(model, _=None))
 
 
 def _json_response(value: Any):

@@ -34,6 +34,19 @@ class DemoPageTest(unittest.TestCase):
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertIn("controller.abort(), 6000", html)
 
+    def test_demo_page_exposes_chapter_solver(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn('id="solverDialog"', html)
+        self.assertIn('id="openSolverButton"', html)
+        self.assertIn("const SOLVER_CHAPTERS = {", html)
+        self.assertIn('fetch("/demo/api/solve"', html)
+        self.assertIn('data.intent === "solve"', html)
+        self.assertIn("populateSolverChapters();", html)
+        self.assertIn('solverDialog.showModal()', html)
+
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
 
@@ -109,6 +122,67 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("1", payload["limit"])
         self.assertIs(True, payload["is_correct"])
+
+    def test_demo_calculates_extended_chapter_solve(self):
+        response = self.client.post(
+            "/demo/api/solve",
+            json={
+                "chapter": "series",
+                "topic": "sum",
+                "inputs": {
+                    "expression": "1/n^2",
+                    "variable": "n",
+                    "lower": 1,
+                    "upper": "oo",
+                },
+            },
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("pi**2/6", payload["result"])
+
+    def test_demo_chat_solves_series_convergence(self):
+        cases = (
+            ("判断级数 1/n^2 收敛", "收敛"),
+            ("判断级数 n^2 收敛", "发散"),
+        )
+        for message, expected in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("solve", payload["intent"])
+                self.assertEqual(expected, payload["calculation"]["result"])
+
+    def test_demo_chat_solves_multiple_integrals(self):
+        response = self.chat("积分 0 到 1 0 到 1 x*y")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("1/4", payload["calculation"]["result"])
+
+        triple = self.chat("三重积分 x+y+z 变量 x,y,z")
+        self.assertEqual("solve", triple.get_json()["intent"])
+        self.assertEqual("3/2", triple.get_json()["calculation"]["result"])
+
+    def test_demo_chat_solves_differential_equation(self):
+        response = self.chat("解微分方程 y'-y=0")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertIn("C1*exp(x)", payload["calculation"]["result"])
+
+    def test_demo_chat_solves_vector_dot_product(self):
+        response = self.chat("向量 (1,2,3) 点乘 (4,5,6)")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("32", payload["calculation"]["result"])
 
     def test_demo_chat_calculates_derivative(self):
         response = self.client.post(

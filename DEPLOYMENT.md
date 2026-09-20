@@ -33,6 +33,7 @@ https://cfyyy.pythonanywhere.com
 | 求导与导数判题 | `https://cfyyy.pythonanywhere.com/verify-query` |
 | 积分与积分判题 | `https://cfyyy.pythonanywhere.com/integrate-query` |
 | 极限与极限判题 | `https://cfyyy.pythonanywhere.com/limit-query` |
+| 章节统一求解 | `https://cfyyy.pythonanywhere.com/solve` |
 
 独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
 扣子 HTTP 节点必须增加 `X-API-Key` 请求头，并与环境变量保持一致。
@@ -45,8 +46,30 @@ https://cfyyy.pythonanywhere.com
 | --- | --- |
 | `math_verify` | `https://cfyyy.pythonanywhere.com/verify-query` |
 | `math_integrate` | `https://cfyyy.pythonanywhere.com/integrate-query` |
+| `math_limit` | `https://cfyyy.pythonanywhere.com/limit-query` |
+| `math_solve` | `https://cfyyy.pythonanywhere.com/solve` |
 
-极限接口已经提供，但当前扣子账号中还没有单独的极限工作流，因此暂未绑定。
+后端接口已经全部提供；扣子账号中是否已经绑定，以工作流列表实际状态为准。建议把所有章节题型都路由到 `math_solve`，避免为每个章节重复维护 HTTP 节点。
+
+`math_solve` 使用 JSON 请求：
+
+```json
+{
+  "chapter": "series",
+  "topic": "sum",
+  "inputs": {
+    "expression": "1/n^2",
+    "variable": "n",
+    "lower": 1,
+    "upper": "oo"
+  },
+  "candidate": null
+}
+```
+
+可用的 `chapter`：`limits`、`derivatives`、`integrals`、`differential_equations`、`vectors`、`multivariable_calculus`、`multiple_integrals`、`line_surface_integrals`、`series`。
+
+`inputs` 按题型传入，例如：导数用 `expression`、`variable`、`order`；切线用 `expression`、`point`；微分方程用 `equation`、`variable`、`function`；向量题用 `left`、`right` 或 `vector` 数组；二重积分用 `expression`、`variables`、`lower_x`、`upper_x`、`lower_y`、`upper_y`。完整题型列表可从 `/health` 的 `solve_topics` 读取。
 
 固定公网地址不需要请求头 `bypass-tunnel-reminder`。
 
@@ -90,6 +113,14 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/integrate-query' --data
 
 ```bash
 curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/limit-query' --data-urlencode 'expression=sin(x)/x' --data-urlencode 'variable=x' --data-urlencode 'point=0' --data-urlencode 'candidate=1'
+```
+
+章节统一求解接口：
+
+```bash
+curl -sS -X POST 'https://cfyyy.pythonanywhere.com/solve' \
+  -H 'Content-Type: application/json' \
+  -d '{"chapter":"derivatives","topic":"higher_derivative","inputs":{"expression":"x^3","variable":"x","order":2}}'
 ```
 
 以上接口已经验证返回 `is_correct: true`。

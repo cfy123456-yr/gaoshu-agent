@@ -488,6 +488,188 @@
       background: var(--sidebar-hover);
     }
 
+    .tool-button.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .solver-dialog {
+      width: min(720px, calc(100vw - 28px));
+      max-width: none;
+      max-height: min(780px, calc(100dvh - 28px));
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 16px;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 24px 70px rgba(20, 55, 110, 0.24);
+    }
+
+    .solver-dialog::backdrop {
+      background: rgba(11, 27, 52, 0.38);
+      backdrop-filter: blur(3px);
+    }
+
+    .solver-shell {
+      display: flex;
+      max-height: min(780px, calc(100dvh - 28px));
+      flex-direction: column;
+    }
+
+    .solver-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .solver-header h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 1.02rem;
+      line-height: 1.35;
+    }
+
+    .solver-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .solver-body {
+      min-height: 0;
+      padding: 16px 20px;
+      overflow-y: auto;
+    }
+
+    .solver-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .solver-field {
+      display: grid;
+      min-width: 0;
+      gap: 5px;
+    }
+
+    .solver-field.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .solver-field label {
+      color: #60708b;
+      font-size: 0.73rem;
+      font-weight: 800;
+    }
+
+    .solver-field input,
+    .solver-field select,
+    .solver-field textarea {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #d5e2f3;
+      border-radius: 9px;
+      color: var(--ink);
+      background: #fbfdff;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .solver-field textarea {
+      min-height: 70px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .solver-field input:focus,
+    .solver-field select:focus,
+    .solver-field textarea:focus {
+      border-color: #87afea;
+      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.08);
+    }
+
+    .solver-hint {
+      margin: 14px 0 0;
+      padding: 9px 11px;
+      border-radius: 9px;
+      color: #53647f;
+      background: var(--soft-blue);
+      font-size: 0.74rem;
+      line-height: 1.55;
+    }
+
+    .solver-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 20px 17px;
+      border-top: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .solver-status {
+      min-width: 0;
+      color: var(--red);
+      font-size: 0.75rem;
+    }
+
+    .solver-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .solver-button {
+      min-height: 38px;
+      padding: 7px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      color: var(--blue-dark);
+      background: var(--surface);
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .solver-button:hover {
+      border-color: #9ebce8;
+      background: var(--sidebar-hover);
+    }
+
+    .solver-button.primary {
+      border-color: var(--blue);
+      color: #ffffff;
+      background: var(--blue);
+    }
+
+    .solver-button.primary:hover {
+      border-color: var(--blue-dark);
+      background: var(--blue-dark);
+    }
+
+    .solver-button:disabled {
+      cursor: wait;
+      opacity: 0.62;
+    }
+
+    html[data-theme="dark"] .solver-field input,
+    html[data-theme="dark"] .solver-field select,
+    html[data-theme="dark"] .solver-field textarea,
+    html[data-theme="dark"] .solver-footer {
+      border-color: var(--line);
+      background: #101b2c;
+    }
+
+    html[data-theme="dark"] .solver-field label,
+    html[data-theme="dark"] .solver-hint {
+      color: var(--muted);
+    }
+
     .sidebar-footer {
       flex: 0 0 auto;
       padding-top: 12px;
@@ -1210,6 +1392,40 @@
         padding: 0 10px 12px;
       }
 
+      .solver-dialog {
+        width: calc(100vw - 16px);
+        max-height: calc(100dvh - 16px);
+        border-radius: 13px;
+      }
+
+      .solver-shell {
+        max-height: calc(100dvh - 16px);
+      }
+
+      .solver-header,
+      .solver-body,
+      .solver-footer {
+        padding-right: 14px;
+        padding-left: 14px;
+      }
+
+      .solver-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .solver-field.is-wide {
+        grid-column: auto;
+      }
+
+      .solver-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .solver-actions {
+        justify-content: flex-end;
+      }
+
       .send-button {
         min-width: 62px;
         padding-right: 13px;
@@ -1263,6 +1479,14 @@
             <button class="tool-button" type="button" data-prompt="lim x→0 sin(x)/x">
               <span class="tool-icon" aria-hidden="true">lim</span>
               <span class="tool-label">极限</span>
+            </button>
+            <button
+              class="tool-button is-wide"
+              id="openSolverButton"
+              type="button"
+            >
+              <span class="tool-icon" aria-hidden="true">∑</span>
+              <span class="tool-label">全章节解题</span>
             </button>
           </div>
         </details>
@@ -1363,6 +1587,49 @@
     </div>
   </div>
 
+  <dialog class="solver-dialog" id="solverDialog" aria-labelledby="solverTitle">
+    <form class="solver-shell" id="solverForm">
+      <header class="solver-header">
+        <div>
+          <h2 id="solverTitle">全章节解题</h2>
+          <p>选择题型和参数，结果由确定性数学工具计算。</p>
+        </div>
+        <button
+          class="icon-button"
+          id="closeSolverButton"
+          type="button"
+          aria-label="关闭全章节解题"
+          title="关闭"
+        >×</button>
+      </header>
+      <div class="solver-body">
+        <div class="solver-grid">
+          <div class="solver-field">
+            <label for="solverChapter">章节</label>
+            <select id="solverChapter"></select>
+          </div>
+          <div class="solver-field">
+            <label for="solverTopic">题型</label>
+            <select id="solverTopic"></select>
+          </div>
+        </div>
+        <div class="solver-grid" id="solverFields"></div>
+        <p class="solver-hint" id="solverHint"></p>
+      </div>
+      <footer class="solver-footer">
+        <div class="solver-status" id="solverStatus" role="status"></div>
+        <div class="solver-actions">
+          <button class="solver-button" id="cancelSolverButton" type="button">
+            取消
+          </button>
+          <button class="solver-button primary" id="submitSolverButton" type="submit">
+            开始计算
+          </button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
   <script
     defer
     src="{{ url_for('static', filename='katex/katex.min.js') }}"
@@ -1394,6 +1661,538 @@
         "lim x→0 sin(x)/x",
         "我以前做过哪些题",
       ];
+      const solverText = (
+        key,
+        label,
+        placeholder,
+        defaultValue = "",
+        options = {},
+      ) => ({
+        key,
+        label,
+        placeholder,
+        defaultValue,
+        type: "text",
+        ...options,
+      });
+      const solverNumber = (
+        key,
+        label,
+        placeholder,
+        defaultValue = "",
+        options = {},
+      ) => ({
+        ...solverText(key, label, placeholder, defaultValue, options),
+        type: "number",
+      });
+      const solverList = (
+        key,
+        label,
+        placeholder,
+        defaultValue = "",
+        options = {},
+      ) => ({
+        ...solverText(key, label, placeholder, defaultValue, options),
+        type: "list",
+      });
+      const solverJson = (
+        key,
+        label,
+        placeholder,
+        defaultValue = "",
+        options = {},
+      ) => ({
+        ...solverText(key, label, placeholder, defaultValue, options),
+        type: "json",
+        wide: true,
+      });
+      const optionalField = { required: false };
+      const solverExpression = (placeholder = "例如：x^2") =>
+        solverText("expression", "表达式", placeholder);
+      const solverVariable = (defaultValue = "x") =>
+        solverText("variable", "自变量", "例如：x", defaultValue);
+      const solverPoint = (required = true) =>
+        solverText(
+          "point",
+          "取值点",
+          "例如：1、pi/2",
+          "",
+          required ? {} : optionalField,
+        );
+      const solverBounds = () => [
+        solverText("lower", "下限", "例如：0"),
+        solverText("upper", "上限", "例如：1 或 oo"),
+      ];
+      const solverTwoVectors = () => [
+        solverList("left", "向量 a", "例如：1, 2, 3"),
+        solverList("right", "向量 b", "例如：4, 5, 6"),
+      ];
+
+      const SOLVER_CHAPTERS = {
+        limits: {
+          label: "极限",
+          topics: {
+            limit: {
+              label: "函数极限",
+              hint: "支持左右极限；方向可留空，也可填写 + 或 -。",
+              fields: [
+                solverExpression("例如：sin(x)/x"),
+                solverVariable(),
+                solverText("point", "趋近点", "例如：0、oo", "0"),
+                solverText(
+                  "direction",
+                  "方向",
+                  "留空、+ 或 -",
+                  "",
+                  optionalField,
+                ),
+              ],
+            },
+            sequence_limit: {
+              label: "数列极限",
+              hint: "计算 n 趋于正无穷时的数列极限。",
+              fields: [
+                solverExpression("例如：1/n"),
+                solverVariable("n"),
+              ],
+            },
+          },
+        },
+        derivatives: {
+          label: "导数与微分",
+          topics: {
+            derivative: {
+              label: "显函数求导",
+              hint: "计算指定阶数的导数，order 默认为 1。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                solverNumber("order", "阶数", "1", "1"),
+              ],
+            },
+            higher_derivative: {
+              label: "高阶导数",
+              hint: "填写阶数，例如 2 表示二阶导数。",
+              fields: [
+                solverExpression("例如：x^3"),
+                solverVariable(),
+                solverNumber("order", "阶数", "例如：2", "2"),
+              ],
+            },
+            differential: {
+              label: "微分",
+              hint: "计算 dy = f'(x)dx，可修改微分符号。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                solverText(
+                  "differential",
+                  "微分符号",
+                  "例如：dx",
+                  "dx",
+                  optionalField,
+                ),
+              ],
+            },
+            tangent: {
+              label: "切线方程",
+              hint: "计算函数在指定点处的切线方程。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                solverPoint(),
+              ],
+            },
+            normal: {
+              label: "法线方程",
+              hint: "计算函数在指定点处的法线方程。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                solverPoint(),
+              ],
+            },
+            mean_value: {
+              label: "拉格朗日中值定理",
+              hint: "求满足中值定理结论的点。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                ...solverBounds(),
+              ],
+            },
+            critical_points: {
+              label: "驻点求解",
+              hint: "由 f'(x)=0 求驻点。",
+              fields: [solverExpression(), solverVariable()],
+            },
+            monotonicity: {
+              label: "单调区间分析",
+              hint: "先求导数和驻点，用于继续划分单调区间。",
+              fields: [solverExpression(), solverVariable()],
+            },
+            extrema: {
+              label: "极值判定",
+              hint: "求驻点并使用二阶导数判断极值类型。",
+              fields: [solverExpression(), solverVariable()],
+            },
+            taylor: {
+              label: "泰勒展开",
+              hint: "order 表示展开到几阶。",
+              fields: [
+                solverExpression("例如：sin(x)"),
+                solverVariable(),
+                solverText(
+                  "point",
+                  "展开点",
+                  "例如：0",
+                  "0",
+                  optionalField,
+                ),
+                solverNumber("order", "阶数", "例如：5", "5", optionalField),
+              ],
+            },
+            curvature: {
+              label: "曲率计算",
+              hint: "可填写取值点；留空则返回曲率函数。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                solverPoint(false),
+              ],
+            },
+          },
+        },
+        integrals: {
+          label: "积分",
+          topics: {
+            indefinite: {
+              label: "不定积分",
+              hint: "结果省略常数 C，查看结果时请自行补上任意常数。",
+              fields: [solverExpression(), solverVariable()],
+            },
+            definite: {
+              label: "定积分",
+              hint: "上下限可使用 oo 表示无穷。",
+              fields: [
+                solverExpression(),
+                solverVariable(),
+                ...solverBounds(),
+              ],
+            },
+            improper: {
+              label: "反常积分",
+              hint: "上下限可出现无穷，也可包含瑕点。",
+              fields: [
+                solverExpression("例如：1/x^2"),
+                solverVariable(),
+                ...solverBounds(),
+              ],
+            },
+          },
+        },
+        differential_equations: {
+          label: "微分方程",
+          topics: {
+            dsolve: {
+              label: "常微分方程",
+              hint: "使用 y'、y'' 或 y 表示未知函数及其导数。",
+              fields: [
+                solverText(
+                  "equation",
+                  "方程",
+                  "例如：y' - y",
+                  "y' - y",
+                ),
+                solverVariable(),
+                solverText("function", "函数名", "例如：y", "y"),
+              ],
+            },
+          },
+        },
+        vectors: {
+          label: "空间解析几何",
+          topics: {
+            dot: {
+              label: "数量积",
+              hint: "向量分量使用英文逗号分隔。",
+              fields: solverTwoVectors(),
+            },
+            cross: {
+              label: "向量积",
+              hint: "两个向量都必须是三维向量。",
+              fields: solverTwoVectors(),
+            },
+            norm: {
+              label: "向量模",
+              hint: "计算向量的长度。",
+              fields: [
+                solverList("vector", "向量", "例如：1, 2, 3"),
+              ],
+            },
+            angle: {
+              label: "向量夹角",
+              hint: "返回两个非零向量之间的夹角。",
+              fields: solverTwoVectors(),
+            },
+            distance: {
+              label: "两点距离",
+              hint: "两个向量分别填写两个点的坐标。",
+              fields: solverTwoVectors(),
+            },
+            projection: {
+              label: "向量投影",
+              hint: "计算向量 a 在向量 b 上的投影向量。",
+              fields: solverTwoVectors(),
+            },
+          },
+        },
+        multivariable_calculus: {
+          label: "多元函数微分",
+          topics: {
+            partial: {
+              label: "偏导数",
+              hint: "variables 填写变量列表，默认对第一个变量求导。",
+              fields: [
+                solverExpression("例如：x^2*y"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+                solverNumber("order", "阶数", "1", "1", optionalField),
+              ],
+            },
+            mixed_partial: {
+              label: "混合偏导数",
+              hint: "按变量列表顺序依次求偏导。",
+              fields: [
+                solverExpression("例如：x^2*y"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+              ],
+            },
+            gradient: {
+              label: "梯度",
+              hint: "可填写取值点，留空则返回梯度函数。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+                solverList(
+                  "point",
+                  "取值点（可选）",
+                  "例如：1, 2",
+                  "",
+                  optionalField,
+                ),
+              ],
+            },
+            hessian: {
+              label: "海森矩阵",
+              hint: "计算二阶偏导数矩阵。",
+              fields: [
+                solverExpression("例如：x^2*y"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+              ],
+            },
+            directional_derivative: {
+              label: "方向导数",
+              hint: "计算函数在一点沿指定方向的方向导数。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+                solverList("point", "取值点", "例如：1, 2", "1, 2"),
+                solverList("direction", "方向向量", "例如：1, 1", "1, 1"),
+              ],
+            },
+            implicit_derivative: {
+              label: "隐函数求导",
+              hint: "方程可直接使用 =，例如 x^2+y^2=1。",
+              fields: [
+                solverText("equation", "隐函数方程", "例如：x^2+y^2=1"),
+                solverVariable(),
+                solverText("dependent", "因变量", "例如：y", "y"),
+                solverList(
+                  "point",
+                  "取值点（可选）",
+                  "例如：0, 1",
+                  "",
+                  { ...optionalField, wide: true },
+                ),
+              ],
+            },
+            multivariable_extrema: {
+              label: "二元函数极值",
+              hint: "当前支持二元函数的驻点与极值类型判定。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+              ],
+            },
+          },
+        },
+        multiple_integrals: {
+          label: "重积分",
+          topics: {
+            double: {
+              label: "二重积分",
+              hint: "按变量列表顺序填写对应上下限，先对第二个变量积分。",
+              fields: [
+                solverExpression("例如：x*y"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+                solverText("lower_x", "第一个变量下限", "例如：0", "0"),
+                solverText("upper_x", "第一个变量上限", "例如：1", "1"),
+                solverText("lower_y", "第二个变量下限", "例如：0", "0"),
+                solverText("upper_y", "第二个变量上限", "例如：1", "1"),
+              ],
+            },
+            triple: {
+              label: "三重积分",
+              hint: "按变量列表顺序填写对应上下限，支持 x、y、z。",
+              fields: [
+                solverExpression("例如：x+y+z"),
+                solverList(
+                  "variables",
+                  "变量列表",
+                  "例如：x, y, z",
+                  "x, y, z",
+                ),
+                solverText("lower_x", "x 下限", "例如：0", "0"),
+                solverText("upper_x", "x 上限", "例如：1", "1"),
+                solverText("lower_y", "y 下限", "例如：0", "0"),
+                solverText("upper_y", "y 上限", "例如：1", "1"),
+                solverText("lower_z", "z 下限", "例如：0", "0"),
+                solverText("upper_z", "z 上限", "例如：1", "1"),
+              ],
+            },
+          },
+        },
+        line_surface_integrals: {
+          label: "曲线与曲面积分",
+          topics: {
+            line_scalar: {
+              label: "第一类曲线积分",
+              hint: "components 使用 JSON 填写参数化曲线。",
+              fields: [
+                solverExpression("例如：x+y"),
+                solverText("parameter", "参数", "例如：t", "t"),
+                solverJson(
+                  "components",
+                  "参数方程",
+                  '例如：{"x":"t","y":"t^2"}',
+                  '{"x":"t","y":"t^2"}',
+                ),
+                ...solverBounds(),
+              ],
+            },
+            line_vector: {
+              label: "第二类曲线积分",
+              hint: "vector_field 与 components 的分量顺序必须一致。",
+              fields: [
+                solverList(
+                  "vector_field",
+                  "向量场",
+                  "例如：y, -x",
+                  "y, -x",
+                ),
+                solverText("parameter", "参数", "例如：t", "t"),
+                solverJson(
+                  "components",
+                  "参数方程",
+                  '例如：{"x":"cos(t)","y":"sin(t)"}',
+                  '{"x":"cos(t)","y":"sin(t)"}',
+                ),
+                ...solverBounds(),
+              ],
+            },
+            surface_scalar: {
+              label: "第一类曲面积分",
+              hint: "components 填写 x、y、z 关于 u、v 的参数方程。",
+              fields: [
+                solverExpression("例如：x+y+z"),
+                solverList(
+                  "parameters",
+                  "曲面参数",
+                  "默认：u, v",
+                  "u, v",
+                  optionalField,
+                ),
+                solverJson(
+                  "components",
+                  "曲面参数方程",
+                  '例如：{"x":"u","y":"v","z":"u*v"}',
+                  '{"x":"u","y":"v","z":"u*v"}',
+                ),
+                solverText("u_lower", "u 下限", "例如：0", "0"),
+                solverText("u_upper", "u 上限", "例如：1", "1"),
+                solverText("v_lower", "v 下限", "例如：0", "0"),
+                solverText("v_upper", "v 上限", "例如：1", "1"),
+              ],
+            },
+            flux: {
+              label: "第二类曲面积分",
+              hint: "默认按 r_u × r_v 的正向计算通量。",
+              fields: [
+                solverList(
+                  "vector_field",
+                  "向量场",
+                  "例如：0, 0, 1",
+                  "0, 0, 1",
+                ),
+                solverList(
+                  "parameters",
+                  "曲面参数",
+                  "默认：u, v",
+                  "u, v",
+                  optionalField,
+                ),
+                solverJson(
+                  "components",
+                  "曲面参数方程",
+                  '例如：{"x":"u","y":"v","z":"u*v"}',
+                  '{"x":"u","y":"v","z":"u*v"}',
+                ),
+                solverText("u_lower", "u 下限", "例如：0", "0"),
+                solverText("u_upper", "u 上限", "例如：1", "1"),
+                solverText("v_lower", "v 下限", "例如：0", "0"),
+                solverText("v_upper", "v 上限", "例如：1", "1"),
+              ],
+            },
+          },
+        },
+        series: {
+          label: "无穷级数",
+          topics: {
+            sum: {
+              label: "级数求和",
+              hint: "上限可使用 oo；无法确定性求和时会明确提示。",
+              fields: [
+                solverExpression("例如：1/n^2"),
+                solverVariable("n"),
+                solverText("lower", "起始项", "例如：1", "1"),
+                solverText("upper", "终止项", "例如：oo", "oo"),
+              ],
+            },
+            convergence: {
+              label: "级数敛散性",
+              hint: "判断级数是否收敛；无法确定时会提示补充条件。",
+              fields: [
+                solverExpression("例如：1/n"),
+                solverVariable("n"),
+                solverText("lower", "起始项", "例如：1", "1"),
+              ],
+            },
+            power_radius: {
+              label: "幂级数收敛半径",
+              hint: "coefficient 为幂级数的一般项系数 a_n。",
+              fields: [
+                solverText(
+                  "coefficient",
+                  "一般项系数",
+                  "例如：1/n",
+                  "1/n",
+                ),
+                solverVariable("n"),
+              ],
+            },
+          },
+        },
+      };
       const WELCOME_TEXT =
         "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。想回顾之前的题目，直接问我“我以前做过哪些题”，也可以说“再算一遍上一题”。";
 
@@ -1419,6 +2218,17 @@
       const toolsMenu = document.querySelector(".tools-menu");
       const sidebarResizer = document.getElementById("sidebarResizer");
       const sidebarScrim = document.getElementById("sidebarScrim");
+      const solverDialog = document.getElementById("solverDialog");
+      const solverForm = document.getElementById("solverForm");
+      const solverChapter = document.getElementById("solverChapter");
+      const solverTopic = document.getElementById("solverTopic");
+      const solverFields = document.getElementById("solverFields");
+      const solverHint = document.getElementById("solverHint");
+      const solverStatus = document.getElementById("solverStatus");
+      const openSolverButton = document.getElementById("openSolverButton");
+      const closeSolverButton = document.getElementById("closeSolverButton");
+      const cancelSolverButton = document.getElementById("cancelSolverButton");
+      const submitSolverButton = document.getElementById("submitSolverButton");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
 
       let messages = [];
@@ -1866,6 +2676,9 @@
         } else if (data.intent === "limit") {
           resultLabel = "极限";
           resultValue = calculation.limit || "";
+        } else if (data.intent === "solve") {
+          resultLabel = calculation.method || "章节求解";
+          resultValue = calculation.result || "";
         }
 
         return {
@@ -1882,6 +2695,286 @@
               : null,
           createdAt: currentTime(),
         };
+      }
+
+      function selectedSolverTopic() {
+        const chapterKey = solverChapter.value || Object.keys(SOLVER_CHAPTERS)[0];
+        const chapter = SOLVER_CHAPTERS[chapterKey];
+        if (!chapter) {
+          return null;
+        }
+        const topicKey =
+          solverTopic.value || Object.keys(chapter.topics)[0];
+        const topic = chapter.topics[topicKey];
+        if (!topic) {
+          return null;
+        }
+        return { chapterKey, chapter, topicKey, topic };
+      }
+
+      function renderSolverFields() {
+        const selected = selectedSolverTopic();
+        if (!selected) {
+          solverFields.replaceChildren();
+          solverHint.textContent = "";
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        selected.topic.fields.forEach((field) => {
+          const wrapper = element(
+            "div",
+            `solver-field${field.wide ? " is-wide" : ""}`,
+          );
+          const label = element("label", "", field.label);
+          label.htmlFor = `solver-${field.key}`;
+          const control = document.createElement(
+            field.type === "json" ? "textarea" : "input",
+          );
+          control.id = `solver-${field.key}`;
+          control.name = field.key;
+          control.placeholder = field.placeholder;
+          control.value = field.defaultValue;
+          if (field.type === "number") {
+            control.type = "number";
+          } else if (field.type !== "json") {
+            control.type = "text";
+          }
+          if (field.required !== false) {
+            control.required = true;
+          }
+          wrapper.append(label, control);
+          fragment.append(wrapper);
+        });
+
+        solverFields.replaceChildren(fragment);
+        solverHint.textContent = selected.topic.hint;
+        solverStatus.textContent = "";
+      }
+
+      function populateSolverTopics() {
+        const chapter = SOLVER_CHAPTERS[solverChapter.value];
+        if (!chapter) {
+          solverTopic.replaceChildren();
+          renderSolverFields();
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        Object.entries(chapter.topics).forEach(([topicKey, topic]) => {
+          const option = document.createElement("option");
+          option.value = topicKey;
+          option.textContent = topic.label;
+          fragment.append(option);
+        });
+        solverTopic.replaceChildren(fragment);
+        renderSolverFields();
+      }
+
+      function populateSolverChapters() {
+        if (solverChapter.options.length) {
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        Object.entries(SOLVER_CHAPTERS).forEach(([chapterKey, chapter]) => {
+          const option = document.createElement("option");
+          option.value = chapterKey;
+          option.textContent = chapter.label;
+          fragment.append(option);
+        });
+        solverChapter.replaceChildren(fragment);
+        populateSolverTopics();
+      }
+
+      function readSolverField(field) {
+        const control = document.getElementById(`solver-${field.key}`);
+        const raw = control ? control.value.trim() : "";
+        if (!raw) {
+          if (field.required !== false) {
+            throw new Error(`请填写${field.label}`);
+          }
+          return undefined;
+        }
+        if (field.type === "list") {
+          const values = raw
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+          if (!values.length) {
+            throw new Error(`${field.label}不能为空`);
+          }
+          return values;
+        }
+        if (field.type === "json") {
+          try {
+            const parsed = JSON.parse(raw);
+            if (
+              !parsed
+              || Array.isArray(parsed)
+              || typeof parsed !== "object"
+            ) {
+              throw new Error("not-object");
+            }
+            return parsed;
+          } catch (error) {
+            throw new Error(`${field.label}必须是 JSON 对象`);
+          }
+        }
+        return raw;
+      }
+
+      function buildSolverPayload() {
+        const selected = selectedSolverTopic();
+        if (!selected) {
+          throw new Error("请选择章节和题型");
+        }
+        const inputs = {};
+        selected.topic.fields.forEach((field) => {
+          const value = readSolverField(field);
+          if (value !== undefined) {
+            inputs[field.key] = value;
+          }
+        });
+        return {
+          chapter: selected.chapterKey,
+          topic: selected.topicKey,
+          inputs,
+        };
+      }
+
+      function solverSummary(selected, inputs) {
+        const details = selected.topic.fields
+          .filter((field) => inputs[field.key] !== undefined)
+          .map((field) => {
+            const value = inputs[field.key];
+            const text = Array.isArray(value)
+              ? value.join(", ")
+              : typeof value === "object"
+                ? JSON.stringify(value)
+                : value;
+            return `${field.label}：${text}`;
+          });
+        return `${selected.chapter.label} / ${selected.topic.label}${
+          details.length ? `；${details.join("；")}` : ""
+        }`;
+      }
+
+      function openSolverDialog() {
+        if (requestInFlight) {
+          return;
+        }
+        populateSolverChapters();
+        solverStatus.textContent = "";
+        if (typeof solverDialog.showModal === "function") {
+          solverDialog.showModal();
+        } else {
+          solverDialog.setAttribute("open", "");
+        }
+      }
+
+      function closeSolverDialog() {
+        if (
+          solverDialog.open
+          && typeof solverDialog.close === "function"
+        ) {
+          solverDialog.close();
+        } else {
+          solverDialog.removeAttribute("open");
+        }
+      }
+
+      async function submitSolverRequest(event) {
+        event.preventDefault();
+        if (requestInFlight) {
+          return;
+        }
+
+        let payload;
+        let selected;
+        try {
+          selected = selectedSolverTopic();
+          payload = buildSolverPayload();
+        } catch (error) {
+          solverStatus.textContent = error.message || "请检查输入参数";
+          return;
+        }
+
+        solverStatus.textContent = "";
+        submitSolverButton.disabled = true;
+        submitSolverButton.textContent = "计算中";
+        setRequestState(true);
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(
+          () => controller.abort(),
+          REQUEST_TIMEOUT_MS,
+        );
+        try {
+          const response = await fetch("/demo/api/solve", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeoutId));
+
+          let data;
+          try {
+            data = await response.json();
+          } catch (error) {
+            throw new Error("计算服务返回了无法识别的内容");
+          }
+          if (!response.ok) {
+            throw new Error(
+              data.detail
+              || `计算服务返回错误（${response.status}）`,
+            );
+          }
+
+          const notes = Array.isArray(data.notes) && data.notes.length
+            ? `\n\n提示：${data.notes.join("；")}`
+            : "";
+          messages.push(
+            {
+              id: makeId(),
+              role: "user",
+              text: `【全章节解题】${solverSummary(selected, payload.inputs)}`,
+              formulaLatex: "",
+              formulaText: "",
+              resultLabel: "",
+              resultValue: "",
+              verdict: null,
+              createdAt: currentTime(),
+            },
+            {
+              id: makeId(),
+              role: "assistant",
+              text: `已用“${data.method}”完成计算。${notes}`,
+              formulaLatex: String(data.latex || ""),
+              formulaText: String(data.result || ""),
+              resultLabel: String(data.method || ""),
+              resultValue: String(data.result || ""),
+              verdict:
+                typeof data.is_correct === "boolean"
+                  ? data.is_correct
+                  : null,
+              createdAt: currentTime(),
+            },
+          );
+          renderMessages();
+          saveMessages();
+          closeSolverDialog();
+        } catch (error) {
+          solverStatus.textContent =
+            error.name === "AbortError"
+              ? "等待时间过长，请稍后重试。"
+              : error.message || "计算服务暂时不可用";
+        } finally {
+          submitSolverButton.disabled = false;
+          submitSolverButton.textContent = "开始计算";
+          setRequestState(false);
+        }
       }
 
       async function sendMessage(rawMessage) {
@@ -2249,6 +3342,18 @@
         sendMessage(button.dataset.prompt);
       });
 
+      openSolverButton.addEventListener("click", openSolverDialog);
+      closeSolverButton.addEventListener("click", closeSolverDialog);
+      cancelSolverButton.addEventListener("click", closeSolverDialog);
+      solverChapter.addEventListener("change", populateSolverTopics);
+      solverTopic.addEventListener("change", renderSolverFields);
+      solverForm.addEventListener("submit", submitSolverRequest);
+      solverDialog.addEventListener("click", (event) => {
+        if (event.target === solverDialog) {
+          closeSolverDialog();
+        }
+      });
+
       themeToggle.addEventListener("click", () => {
         setTheme(
           document.documentElement.dataset.theme === "dark" ? "light" : "dark",
@@ -2433,6 +3538,7 @@
         false,
       );
 
+      populateSolverChapters();
       saveMessages();
       renderSuggestions(DEFAULT_SUGGESTIONS);
       renderMessages();
