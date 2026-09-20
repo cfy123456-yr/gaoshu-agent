@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f7f5">
+  <meta name="theme-color" content="#f4f8ff">
   <meta
     name="description"
     content="知微老师高等数学对话演示，支持求导、积分和极限计算。"
@@ -15,20 +15,19 @@
   >
   <style>
     :root {
-      --ink: #17231f;
-      --muted: #61706a;
-      --line: #d7e0db;
-      --line-strong: #b8c8c0;
-      --canvas: #f4f7f5;
+      --ink: #172033;
+      --muted: #6d7a91;
+      --line: #e4ecf7;
+      --line-strong: #cbdaf0;
+      --canvas: #f4f8ff;
       --surface: #ffffff;
-      --soft-green: #e7f1ec;
-      --green: #1d6b56;
-      --green-dark: #14503f;
-      --blue: #245f8c;
-      --blue-dark: #18486d;
-      --amber: #a25b16;
-      --red: #ad2d24;
-      --shadow: 0 16px 45px rgba(23, 35, 31, 0.09);
+      --soft-blue: #eaf2ff;
+      --blue: #2868d8;
+      --blue-dark: #174da3;
+      --blue-ink: #123f87;
+      --amber: #b77916;
+      --red: #c2413b;
+      --shadow: 0 12px 34px rgba(37, 99, 201, 0.09);
     }
 
     * {
@@ -48,9 +47,7 @@
       margin: 0;
       min-width: 320px;
       color: var(--ink);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 220px),
-        var(--canvas);
+      background: var(--canvas);
       font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
       line-height: 1.55;
     }
@@ -66,7 +63,7 @@
 
     button:focus-visible,
     textarea:focus-visible {
-      outline: 3px solid rgba(29, 107, 86, 0.2);
+      outline: 3px solid rgba(40, 104, 216, 0.18);
       outline-offset: 2px;
     }
 
@@ -84,15 +81,13 @@
 
     .app-shell {
       display: flex;
-      width: min(980px, 100%);
+      width: min(1120px, 100%);
       height: 100dvh;
       min-height: 540px;
       margin: 0 auto;
       overflow: hidden;
-      border-right: 1px solid var(--line);
-      border-left: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.72);
-      box-shadow: var(--shadow);
+      background: var(--surface);
+      box-shadow: 0 0 0 1px rgba(203, 218, 240, 0.72);
     }
 
     .chat-layout {
@@ -108,10 +103,10 @@
       justify-content: space-between;
       gap: 18px;
       flex: 0 0 auto;
-      min-height: 76px;
-      padding: 13px 22px;
+      min-height: 80px;
+      padding: 15px 28px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.94);
+      background: rgba(255, 255, 255, 0.97);
     }
 
     .brand {
@@ -127,10 +122,10 @@
       width: 44px;
       height: 44px;
       place-items: center;
-      border: 1px solid #a9c9bb;
+      border: 0;
       border-radius: 50%;
-      color: var(--green-dark);
-      background: var(--soft-green);
+      color: var(--blue-dark);
+      background: var(--soft-blue);
       font-size: 1.05rem;
       font-weight: 850;
     }
@@ -141,6 +136,7 @@
 
     .brand-copy h1 {
       margin: 0;
+      color: var(--ink);
       font-size: 1.1rem;
       line-height: 1.25;
     }
@@ -179,7 +175,7 @@
       padding: 6px 11px;
       border: 1px solid var(--line);
       color: var(--muted);
-      background: #f7f9f8;
+      background: #f7faff;
     }
 
     .status-dot {
@@ -190,13 +186,13 @@
     }
 
     .status-chip[data-state="online"] {
-      border-color: #b8d7c8;
-      color: var(--green-dark);
-      background: #ecf7f1;
+      border-color: #c9dbf8;
+      color: var(--blue-dark);
+      background: #edf4ff;
     }
 
     .status-chip[data-state="online"] .status-dot {
-      background: #258463;
+      background: var(--blue);
     }
 
     .status-chip[data-state="offline"] {
@@ -212,32 +208,33 @@
     .clear-button {
       min-height: 34px;
       padding: 5px 12px;
-      border: 1px solid var(--line);
+      border: 1px solid transparent;
       color: var(--muted);
       background: transparent;
     }
 
     .clear-button:hover {
-      border-color: var(--line-strong);
-      color: var(--ink);
-      background: #f5f7f6;
+      border-color: var(--line);
+      color: var(--blue-dark);
+      background: #f4f8ff;
     }
 
     .messages {
       flex: 1 1 auto;
       min-height: 0;
-      padding: 24px 22px;
+      padding: 30px 30px 22px;
       overflow-x: hidden;
       overflow-y: auto;
       overscroll-behavior: contain;
       scroll-behavior: smooth;
+      background: #f8fbff;
     }
 
     .message {
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .message[data-role="user"] {
@@ -251,18 +248,18 @@
       height: 34px;
       margin-top: 20px;
       place-items: center;
-      border: 1px solid var(--line-strong);
+      border: 0;
       border-radius: 50%;
-      color: var(--green-dark);
-      background: var(--soft-green);
+      color: var(--blue-dark);
+      background: var(--soft-blue);
       font-size: 0.8rem;
       font-weight: 850;
     }
 
     .message[data-role="user"] .avatar {
-      border-color: #a9c5dc;
+      border: 1px solid #d8e5f8;
       color: var(--blue-dark);
-      background: #eaf3fa;
+      background: #ffffff;
     }
 
     .message-content {
@@ -281,7 +278,7 @@
       align-items: center;
       gap: 8px;
       min-height: 18px;
-      margin: 0 5px 3px;
+      margin: 0 6px 5px;
       color: var(--muted);
       font-size: 0.72rem;
       font-weight: 700;
@@ -293,16 +290,16 @@
 
     .bubble {
       min-width: 74px;
-      padding: 12px 15px;
+      padding: 14px 17px;
       border: 1px solid var(--line);
-      border-radius: 6px 16px 16px 16px;
+      border-radius: 6px 18px 18px 18px;
       background: var(--surface);
-      box-shadow: 0 5px 18px rgba(23, 35, 31, 0.045);
+      box-shadow: 0 4px 14px rgba(37, 99, 201, 0.045);
     }
 
     .message[data-role="user"] .bubble {
       border-color: var(--blue);
-      border-radius: 16px 6px 16px 16px;
+      border-radius: 18px 6px 18px 18px;
       color: #ffffff;
       background: var(--blue);
       box-shadow: none;
@@ -316,13 +313,13 @@
 
     .formula {
       max-width: 100%;
-      margin: 12px -15px 11px;
-      padding: 12px 10px;
+      margin: 14px -17px 12px;
+      padding: 15px 12px;
       overflow-x: auto;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      color: #12372c;
-      background: #f7fbf9;
+      border: 0;
+      border-radius: 12px;
+      color: var(--blue-ink);
+      background: #f2f7ff;
       text-align: center;
     }
 
@@ -342,8 +339,8 @@
     }
 
     .verdict[data-state="correct"] {
-      color: var(--green-dark);
-      background: #e8f6ef;
+      color: var(--blue-dark);
+      background: #eaf2ff;
     }
 
     .verdict[data-state="incorrect"] {
@@ -373,7 +370,7 @@
     }
 
     .calculation-grid dt {
-      color: #7b8983;
+      color: #71809a;
       font-size: 0.73rem;
       font-weight: 700;
     }
@@ -398,7 +395,7 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: #7e9b8f;
+      background: #7fa4dc;
       animation: pulse 1.15s ease-in-out infinite;
     }
 
@@ -436,16 +433,22 @@
 
     .composer-area {
       flex: 0 0 auto;
-      padding: 0 18px 15px;
-      background: rgba(255, 255, 255, 0.96);
+      padding: 0 28px 18px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
     }
 
     .suggestions {
       display: flex;
       gap: 8px;
-      padding: 10px 2px 9px;
+      padding: 12px 2px 10px;
       overflow-x: auto;
-      scrollbar-width: thin;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .suggestions::-webkit-scrollbar {
+      display: none;
     }
 
     .suggestions:empty {
@@ -456,17 +459,17 @@
       flex: 0 0 auto;
       min-height: 32px;
       padding: 5px 11px;
-      border: 1px solid #b8cbdc;
+      border: 1px solid #d4e2f5;
       border-radius: 999px;
       color: var(--blue-dark);
-      background: #f7fbfe;
+      background: #f7faff;
       font-size: 0.77rem;
       font-weight: 750;
     }
 
     .suggestion:hover {
-      border-color: #89acc8;
-      background: #eef6fb;
+      border-color: #a9c5ec;
+      background: #edf4ff;
     }
 
     .composer {
@@ -474,16 +477,16 @@
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: end;
       gap: 9px;
-      padding: 9px;
-      border: 1px solid var(--line-strong);
-      border-radius: 16px;
+      padding: 8px;
+      border: 1px solid #d7e3f3;
+      border-radius: 18px;
       background: var(--surface);
-      box-shadow: 0 8px 25px rgba(23, 35, 31, 0.07);
+      box-shadow: 0 8px 24px rgba(37, 99, 201, 0.07);
     }
 
     .composer:focus-within {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(29, 107, 86, 0.1);
+      border-color: #8fb3e8;
+      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.09);
     }
 
     .chat-input {
@@ -501,33 +504,28 @@
     }
 
     .chat-input::placeholder {
-      color: #85928c;
+      color: #91a0b7;
     }
 
     .send-button {
       min-width: 72px;
       min-height: 42px;
       padding: 8px 17px;
-      border: 1px solid var(--green-dark);
+      border: 1px solid var(--blue);
       border-radius: 10px;
       color: #ffffff;
-      background: var(--green);
+      background: var(--blue);
       font-weight: 800;
     }
 
     .send-button:hover {
-      background: var(--green-dark);
+      border-color: var(--blue-dark);
+      background: var(--blue-dark);
     }
 
     .send-button:disabled {
       cursor: wait;
       opacity: 0.62;
-    }
-
-    .composer-note {
-      margin: 7px 3px 0;
-      color: #86928d;
-      font-size: 0.69rem;
     }
 
     @media (max-width: 640px) {
@@ -537,8 +535,8 @@
       }
 
       .chat-header {
-        min-height: 66px;
-        padding: 10px 13px;
+        min-height: 70px;
+        padding: 11px 14px;
       }
 
       .brand-mark {
@@ -562,12 +560,12 @@
       }
 
       .messages {
-        padding: 18px 12px;
+        padding: 22px 12px 16px;
       }
 
       .message {
         gap: 7px;
-        margin-bottom: 17px;
+        margin-bottom: 20px;
       }
 
       .avatar {
@@ -591,7 +589,7 @@
       }
 
       .composer-area {
-        padding: 0 10px 10px;
+        padding: 0 10px 12px;
       }
 
       .send-button {
@@ -651,7 +649,6 @@
           ></textarea>
           <button class="send-button" id="sendButton" type="submit">发送</button>
         </form>
-        <p class="composer-note">SymPy 确定性计算</p>
       </footer>
     </div>
   </div>
