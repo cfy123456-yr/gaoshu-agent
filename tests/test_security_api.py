@@ -39,12 +39,14 @@ class SecurityApiTest(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "uvicorn",
-                "app.main:app",
-                "--host",
-                "127.0.0.1",
+                "flask",
+                "--app",
+                "deploy.wsgi_app:application",
+                "run",
+                "--host=127.0.0.1",
                 "--port",
                 str(cls.port),
+                "--no-reload",
             ],
             cwd=APP_DIR,
             env=env,
@@ -62,7 +64,7 @@ class SecurityApiTest(unittest.TestCase):
                 with urlopen(f"{cls.base_url}/health", timeout=1) as response:
                     if response.status == 200:
                         return
-            except (HTTPError, URLError):
+            except (HTTPError, URLError, TimeoutError, OSError):
                 time.sleep(0.2)
 
         raise RuntimeError("临时测试服务未能在 15 秒内启动")

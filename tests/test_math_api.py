@@ -49,7 +49,7 @@ class MathApiSmokeTest(unittest.TestCase):
     def test_health_reports_current_version(self):
         payload = self.request("/health")
         self.assertEqual("ok", payload["status"])
-        self.assertEqual("0.4.2", payload["version"])
+        self.assertEqual("0.5.0", payload["version"])
         self.assertIn("api_key_enabled", payload)
 
     def test_derivative_result_and_candidate_check(self):
@@ -180,6 +180,19 @@ class MathApiSmokeTest(unittest.TestCase):
             },
         )
         self.assertEqual("收敛", query_payload["result"])
+
+    def test_function_plot_endpoint(self):
+        payload = self.request(
+            "/plot-query",
+            {
+                "expression": "sin(x)",
+                "variable": "x",
+                "x_min": "-3",
+                "x_max": "3",
+            },
+        )
+        self.assertEqual("sin(x)", payload["expression"])
+        self.assertIn("<svg", payload["svg"])
 
     def test_invalid_expression_is_rejected(self):
         payload = self.request(

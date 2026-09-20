@@ -142,6 +142,28 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("pi**2/6", payload["result"])
 
+    def test_demo_generates_function_plot(self):
+        response = self.client.post(
+            "/demo/api/plot",
+            json={"expression": "sin(x)", "x_min": -3, "x_max": 3},
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("sin(x)", payload["expression"])
+        self.assertIn("<svg", payload["svg"])
+        self.assertIn('stroke="#2868d8"', payload["svg"])
+
+    def test_demo_serves_function_plot_as_svg(self):
+        response = self.client.get(
+            "/demo/api/plot.svg",
+            query_string={"expression": "x^2", "x_min": -2, "x_max": 2},
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("image/svg+xml", response.mimetype)
+        self.assertIn("<svg", response.get_data(as_text=True))
+
     def test_demo_chat_solves_series_convergence(self):
         cases = (
             ("判断级数 1/n^2 收敛", "收敛"),

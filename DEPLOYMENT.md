@@ -34,6 +34,8 @@ https://cfyyy.pythonanywhere.com
 | 积分与积分判题 | `https://cfyyy.pythonanywhere.com/integrate-query` |
 | 极限与极限判题 | `https://cfyyy.pythonanywhere.com/limit-query` |
 | 章节统一求解 | `https://cfyyy.pythonanywhere.com/solve-query` |
+| 函数图像 JSON/SVG | `https://cfyyy.pythonanywhere.com/plot-query` |
+| 浏览器直接显示图像 | `https://cfyyy.pythonanywhere.com/plot.svg` |
 
 独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
 扣子 HTTP 节点必须增加 `X-API-Key` 请求头，并与环境变量保持一致。
@@ -49,7 +51,7 @@ https://cfyyy.pythonanywhere.com
 | `math_limit` | `https://cfyyy.pythonanywhere.com/limit-query` |
 | `math_solve` | `https://cfyyy.pythonanywhere.com/solve-query` |
 
-后端接口已经全部提供；扣子账号中是否已经绑定，以工作流列表实际状态为准。建议把所有章节题型都路由到 `math_solve`，避免为每个章节重复维护 HTTP 节点。
+后端接口已经全部提供；`math_verify`、`math_integrate`、`math_limit`、`math_solve` 和 `knowledge_lookup` 已加入智能体。所有扩展章节题型统一路由到 `math_solve`，避免为每个章节重复维护 HTTP 节点。提示词和调用路由规则留待项目升级时统一更新。
 
 `math_solve` 使用查询参数请求，`inputs` 传入 JSON 字符串：
 
@@ -117,6 +119,20 @@ curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/solve-query' \
   --data-urlencode 'inputs={"expression":"1/n^2","variable":"n"}'
 ```
 
+函数图像接口：
+
+```bash
+curl -sS -X POST --get 'https://cfyyy.pythonanywhere.com/plot-query' \
+  --data-urlencode 'expression=sin(x)' \
+  --data-urlencode 'x_min=-3' \
+  --data-urlencode 'x_max=3'
+
+curl -sS --get 'https://cfyyy.pythonanywhere.com/plot.svg' \
+  --data-urlencode 'expression=x^2' \
+  --data-urlencode 'x_min=-5' \
+  --data-urlencode 'x_max=5'
+```
+
 部署后执行多章节回归，覆盖级数、重积分、高阶导数、微分方程、梯度、方向导数、曲线积分和曲面积分：
 
 ```powershell
@@ -157,4 +173,4 @@ https://cfyyy.pythonanywhere.com/demo/api/health
 3. 修改工作流后，需要分别发布工作流，再重新发布扣子智能体。
 4. 定期访问 `/health`，确认服务仍返回 `"status": "ok"`。
 
-外部监控与告警、函数图像和语音仍属于后续功能。
+外部监控与告警和语音仍属于后续功能。

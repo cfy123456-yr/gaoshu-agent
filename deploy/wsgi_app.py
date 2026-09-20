@@ -9,7 +9,7 @@ import time
 from typing import Any
 
 from fastapi import HTTPException
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 
@@ -17,8 +17,10 @@ from app.main import (
     API_KEY,
     IntegrateRequest,
     LimitRequest,
+    PlotRequest,
     SolveRequest,
     VerifyRequest,
+    calculate_plot,
     calculate_integral,
     calculate_limit,
     health_check,
@@ -41,6 +43,10 @@ def is_public_demo_request() -> bool:
     return request.path == "/demo" or request.path.startswith("/demo/")
 
 
+def is_public_health_request() -> bool:
+    return request.path == "/health"
+
+
 def should_rate_limit_request() -> bool:
     if request.method == "OPTIONS":
         return False
@@ -54,6 +60,7 @@ def enforce_api_access():
     if (
         API_KEY
         and not is_public_demo_request()
+        and not is_public_health_request()
         and request.headers.get("X-API-Key") != API_KEY
     ):
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -112,6 +119,9 @@ def service_index():
                 "/limit",
                 "/limit-query",
                 "/solve",
+                "/plot",
+                "/plot-query",
+                "/plot.svg",
             ],
         }
     )
@@ -159,6 +169,20 @@ def demo_solve():
     payload = request.get_json(silent=False)
     model = SolveRequest.model_validate(payload)
     return _json_response(solve_math(model, _=None))
+
+
+@application.post("/demo/api/plot")
+def demo_plot():
+    payload = request.get_json(silent=False)
+    model = PlotRequest.model_validate(payload)
+    return _json_response(calculate_plot(model))
+
+
+@application.get("/demo/api/plot.svg")
+def demo_plot_svg():
+    model = _plot_request_from_query()
+    result = calculate_plot(model)
+    return _svg_response(result.svg)
 
 
 @application.post("/demo/api/chat")
@@ -322,6 +346,46 @@ def solve_with_query():
         candidate=request.args.get("candidate") or None,
     )
     return _json_response(solve_math(model, _=None))
+
+
+@application.post("/plot")
+def plot_with_json():
+    payload = request.get_json(silent=False)
+    model = PlotRequest.model_validate(payload)
+    return _json_response(calculate_plot(model))
+
+
+@application.route("/plot-query", methods=["GET", "POST"])
+def plot_with_query():
+    return _json_response(calculate_plot(_plot_request_from_query()))
+
+
+@application.route("/plot.svg", methods=["GET", "POST"])
+def plot_svg():
+    result = calculate_plot(_plot_request_from_query())
+    return _svg_response(result.svg)
+
+
+def _plot_request_from_query() -> PlotRequest:
+    return PlotRequest(
+        expression=request.args.get("expression"),
+        variable=request.args.get("variable", "x"),
+        x_min=request.args.get("x_min", -10),
+        x_max=request.args.get("x_max", 10),
+        y_min=request.args.get("y_min") or None,
+        y_max=request.args.get("y_max") or None,
+        samples=request.args.get("samples", 600),
+        width=request.args.get("width", 720),
+        height=request.args.get("height", 420),
+    )
+
+
+def _svg_response(svg: str):
+    return Response(
+        svg,
+        mimetype="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _json_response(value: Any):

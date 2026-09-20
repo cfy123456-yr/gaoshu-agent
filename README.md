@@ -13,6 +13,7 @@
 - 使用 `math_integrate` 工作流计算不定积分、定积分并判断学生答案。
 - 使用数学服务计算双侧极限、左极限和右极限并判断学生答案。
 - 使用统一求解接口 `/solve` 覆盖极限、导数应用、积分、微分方程、向量、多元函数微分、重积分、曲线曲面积分和无穷级数等章节题型。
+- 提供纯 SVG 函数图像接口，可生成 `sin(x)`、`x^2` 等显函数的坐标图和曲线。
 - 扣子侧可使用一个 `math_solve` 工作流按 `chapter` 和 `topic` 路由到对应确定性求解器。
 - 使用 `knowledge_lookup` 工作流检索导数、微分和积分知识。
 - FastAPI 数学服务同时提供 JSON 和查询参数两种调用方式。
@@ -24,6 +25,7 @@
 gaoshu-agent/
 ├─ app/
 │  ├─ main.py
+│  ├─ plotting.py
 │  └─ chapter_solvers.py
 ├─ knowledge/
 │  ├─ 01_导数与微分基础.md
@@ -57,6 +59,7 @@ gaoshu-agent/
 │  ├─ test_math_api.py
 │  ├─ test_security_api.py
 │  ├─ test_demo_page.py
+│  ├─ test_plotting.py
 │  ├─ test_service_components.py
 │  └─ test_chapter_solvers.py
 ├─ .dockerignore
@@ -116,11 +119,11 @@ python -m pip install -r requirements.txt
 1. 检查并启动本地数学服务。
 2. 核对本地 `/health` 版本，发现旧进程时先重启。
 3. 检查公网隧道健康状态，隧道失效时自动重建。
-4. 输出智能体页面以及求导、积分、极限、统一求解四个接口地址。
+4. 输出智能体页面以及求导、积分、极限、统一求解和函数图像接口地址。
 
 演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的部署与验收说明见 `DEPLOYMENT.md`。
 
-数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、统一章节求解、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置和独立对话演示页。
+数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、统一章节求解、函数图像、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置和独立对话演示页。
 
 也可以直接使用 Python 命令运行：
 
@@ -234,6 +237,22 @@ Content-Type: application/json
 
 该接口返回 `method`、`result`、`latex`、`notes` 等字段；提供 `candidate` 时，能确定性比较的题型会返回 `is_correct`。支持的章节包括 `limits`、`derivatives`、`integrals`、`differential_equations`、`vectors`、`multivariable_calculus`、`multiple_integrals`、`line_surface_integrals` 和 `series`。
 
+### 函数图像
+
+生成 SVG 图像：
+
+```http
+POST /plot-query?expression=sin(x)&x_min=-3&x_max=3
+```
+
+直接在浏览器显示 SVG：
+
+```http
+GET /plot.svg?expression=x^2&x_min=-5&x_max=5
+```
+
+接口支持 `x_min`、`x_max`、`y_min`、`y_max`、`samples`、`width` 和 `height` 参数。图像由服务端纯 SVG 绘制，不依赖 Matplotlib 或外部 CDN。
+
 ## 扣子工作流
 
 | 工作流 | 用途 | 后端接口 |
@@ -301,16 +320,17 @@ $env:CALCULATION_WORKERS = "4"
 
 - 智能体已发布：<https://www.coze.cn/store/agent/7687155979821481999?bot_id=true>
 - 知识库已绑定：12 个文档、464 个分段。
-- 已绑定并测试 `math_verify`、`math_integrate`、`knowledge_lookup`；后端已提供极限接口和统一章节求解接口，扣子侧可按需要绑定 `math_limit`、`math_solve`。
+- 已绑定并测试 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`knowledge_lookup`。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 已通过 33 项自动回归，左右极限为无穷大时的判题错误也已修复。
+- 本地 55 项单元测试通过，公网极限回归 6/6、多章节回归 9/9 通过。
 - 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
 - 同济版高等数学第 1—12 章知识文件已经整理完成。
 - 已提供无需登录的独立对话演示页 `/demo`，支持连续输入求导、积分、极限和候选答案判断。
 - 演示页公式资源已改为项目内自托管，聊天记录只保存在当前浏览器，不与其他用户共享。
 - 已部署到 PythonAnywhere，固定公网地址为 `https://cfyyy.pythonanywhere.com`，不再依赖本机 LocalTunnel。
 - 已通过扣子实测求导 `f(x)=x^2` 和不定积分 `∫x^2 dx` 两条完整链路。
-- 已加入章节统一求解器，覆盖约 40 个题型，并通过本地单元测试和 HTTP 冒烟测试。
+- 已加入章节统一求解器，覆盖约 40 个题型；级数收敛、重积分、微分方程、梯度等题型已通过扣子工作流实测。
+- 已加入纯 SVG 函数图像接口，本地绘图单元测试通过。
 
-图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音、函数图像和参赛材料仍在后续开发中。
+图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音和参赛材料仍在后续开发中。

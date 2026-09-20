@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-EXPECTED_VERSION = "0.4.2"
+EXPECTED_VERSION = "0.5.0"
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -90,7 +90,7 @@ def verify_deployment(
     skip_version_check: bool,
     timeout: float,
 ) -> None:
-    print(f"[1/8] 健康检查: {base_url}/health")
+    print(f"[1/9] 健康检查: {base_url}/health")
     health = request_json(base_url, "/health", timeout=timeout)
     expect(health.get("status") == "ok", f"健康检查失败：{health}")
     if not skip_version_check:
@@ -114,7 +114,7 @@ def verify_deployment(
             "云端已启用 MATH_API_KEY，请通过 --api-key 或环境变量 MATH_API_KEY 提供密钥"
         )
 
-    print("[2/8] 求导与候选答案判定")
+    print("[2/9] 求导与候选答案判定")
     derivative = request_json(
         base_url,
         "/verify-query",
@@ -126,7 +126,7 @@ def verify_deployment(
     expect(derivative.get("derivative") == "2*x", f"求导结果错误：{derivative}")
     expect(derivative.get("is_correct") is True, f"求导判题错误：{derivative}")
 
-    print("[3/8] 不定积分与候选答案判定")
+    print("[3/9] 不定积分与候选答案判定")
     indefinite = request_json(
         base_url,
         "/integrate-query",
@@ -142,7 +142,7 @@ def verify_deployment(
     expect(indefinite.get("integral") == "x**3/3", f"不定积分结果错误：{indefinite}")
     expect(indefinite.get("is_correct") is True, f"不定积分判题错误：{indefinite}")
 
-    print("[4/8] 定积分与候选答案判定")
+    print("[4/9] 定积分与候选答案判定")
     definite = request_json(
         base_url,
         "/integrate-query",
@@ -160,7 +160,7 @@ def verify_deployment(
     expect(definite.get("integral") == "1/3", f"定积分结果错误：{definite}")
     expect(definite.get("is_correct") is True, f"定积分判题错误：{definite}")
 
-    print("[5/8] 极限与候选答案判定")
+    print("[5/9] 极限与候选答案判定")
     limit = request_json(
         base_url,
         "/limit-query",
@@ -177,7 +177,7 @@ def verify_deployment(
     expect(limit.get("limit") == "1", f"极限结果错误：{limit}")
     expect(limit.get("is_correct") is True, f"极限判题错误：{limit}")
 
-    print("[6/8] 章节统一求解接口")
+    print("[6/9] 章节统一求解接口")
     solve = request_json(
         base_url,
         "/solve",
@@ -196,7 +196,19 @@ def verify_deployment(
     )
     expect(solve.get("result") == "6*x", f"统一求解结果错误：{solve}")
 
-    print("[7/8] 非法表达式拦截")
+    print("[7/9] 函数图像生成")
+    plot = request_json(
+        base_url,
+        "/plot-query",
+        params={"expression": "sin(x)", "x_min": "-3", "x_max": "3"},
+        method="POST",
+        api_key=api_key,
+        timeout=timeout,
+    )
+    expect(plot.get("expression") == "sin(x)", f"函数图像表达式错误：{plot}")
+    expect("<svg" in plot.get("svg", ""), f"函数图像内容错误：{plot}")
+
+    print("[8/9] 非法表达式拦截")
     invalid = request_json(
         base_url,
         "/verify-query",
@@ -208,7 +220,7 @@ def verify_deployment(
     )
     expect("unsupported identifier" in invalid.get("detail", ""), f"安全拦截异常：{invalid}")
 
-    print("[8/8] API Key 鉴权")
+    print("[9/9] API Key 鉴权")
     if api_key_enabled:
         unauthorized = request_json(
             base_url,

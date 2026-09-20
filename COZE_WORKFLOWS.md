@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.4.2`。
+先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.5.0`。
 
 ## math_limit
 
@@ -284,12 +284,8 @@ series
 | line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
 | series | sum, convergence, power_radius |
 
-## 发布顺序
+## 当前状态
 
-1. 测试 `math_limit` 和 `math_solve` 均成功。
-2. 分别发布两个工作流。
-3. 回到智能体页面刷新工作流列表。
-4. 将两个工作流加入智能体。
-5. 发布智能体。
-
-提示词暂时不改。两个工作流都能独立调用后，再统一重写提示词和路由规则。
+- `math_limit`：试运行通过，已加入智能体。
+- `math_solve`：试运行通过，已加入智能体。
+- 待办：项目升级时统一重写提示词和调用路由规则。

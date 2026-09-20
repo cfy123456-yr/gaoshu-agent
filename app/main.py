@@ -14,7 +14,7 @@ from typing import Any
 
 import sympy
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sympy import Limit, diff, integrate, latex, simplify
 from sympy.parsing.sympy_parser import (
@@ -24,6 +24,7 @@ from sympy.parsing.sympy_parser import (
 )
 
 from app.chapter_solvers import SUPPORTED_TOPICS, SolveError, solve_chapter
+from app.plotting import render_function_svg
 
 
 load_dotenv()
@@ -62,7 +63,7 @@ LOG_FILE = os.getenv(
 LOG_MAX_BYTES = read_int_env("LOG_MAX_BYTES", 5 * 1024 * 1024)
 LOG_BACKUP_COUNT = read_int_env("LOG_BACKUP_COUNT", 3, minimum=0)
 API_KEY = os.getenv("MATH_API_KEY", "").strip()
-SERVICE_VERSION = "0.4.2"
+SERVICE_VERSION = "0.5.0"
 SERVICE_STARTED_AT = datetime.now(timezone.utc)
 SERVICE_STARTED_MONOTONIC = time.monotonic()
 
@@ -196,6 +197,28 @@ class SolveResponse(BaseModel):
     notes: list[str]
 
 
+class PlotRequest(BaseModel):
+    expression: str = Field(min_length=1, max_length=MAX_EXPRESSION_LENGTH)
+    variable: str = Field(default="x", min_length=1, max_length=MAX_SYMBOL_LENGTH)
+    x_min: float = Field(default=-10, ge=-1_000_000, le=1_000_000)
+    x_max: float = Field(default=10, ge=-1_000_000, le=1_000_000)
+    y_min: float | None = Field(default=None, ge=-1_000_000_000, le=1_000_000_000)
+    y_max: float | None = Field(default=None, ge=-1_000_000_000, le=1_000_000_000)
+    samples: int = Field(default=600, ge=80, le=1200)
+    width: int = Field(default=720, ge=320, le=1200)
+    height: int = Field(default=420, ge=240, le=800)
+
+
+class PlotResponse(BaseModel):
+    expression: str
+    variable: str
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
+    svg: str
+
+
 SAFE_FUNCTIONS = {
     name: getattr(sympy, name)
     for name in (
@@ -300,6 +323,24 @@ def expressions_equal(left, right) -> bool:
     if left == right:
         return True
     return simplify(left - right) == 0
+
+
+def build_plot_response(request: PlotRequest) -> PlotResponse:
+    variable = parse_symbol(request.variable)
+    expression = parse_math_expression(request.expression)
+    return PlotResponse(
+        **render_function_svg(
+            expression,
+            variable,
+            x_min=request.x_min,
+            x_max=request.x_max,
+            y_min=request.y_min,
+            y_max=request.y_max,
+            samples=request.samples,
+            width=request.width,
+            height=request.height,
+        )
+    )
 
 
 calculation_executor = ThreadPoolExecutor(
@@ -696,4 +737,84 @@ def solve_math_query(
             candidate=candidate or None,
         ),
         _=None,
+    )
+
+
+def calculate_plot(request: PlotRequest) -> PlotResponse:
+    try:
+        return run_calculation(
+            lambda: build_plot_response(request),
+            "plot",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"函数图像无法生成：{exc}") from exc
+
+
+@app.post("/plot", response_model=PlotResponse)
+def plot_function(
+    request: PlotRequest,
+    _: None = Depends(enforce_api_access),
+):
+    return calculate_plot(request)
+
+
+@app.api_route("/plot-query", methods=["GET", "POST"], response_model=PlotResponse)
+def plot_function_query(
+    expression: str = Query(min_length=1, max_length=MAX_EXPRESSION_LENGTH),
+    variable: str = Query(default="x", min_length=1, max_length=MAX_SYMBOL_LENGTH),
+    x_min: float = Query(default=-10, ge=-1_000_000, le=1_000_000),
+    x_max: float = Query(default=10, ge=-1_000_000, le=1_000_000),
+    y_min: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
+    y_max: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
+    samples: int = Query(default=600, ge=80, le=1200),
+    width: int = Query(default=720, ge=320, le=1200),
+    height: int = Query(default=420, ge=240, le=800),
+    _: None = Depends(enforce_api_access),
+):
+    return calculate_plot(
+        PlotRequest(
+            expression=expression,
+            variable=variable,
+            x_min=x_min,
+            x_max=x_max,
+            y_min=y_min,
+            y_max=y_max,
+            samples=samples,
+            width=width,
+            height=height,
+        )
+    )
+
+
+@app.get("/plot.svg", response_class=Response)
+def plot_function_svg(
+    expression: str = Query(min_length=1, max_length=MAX_EXPRESSION_LENGTH),
+    variable: str = Query(default="x", min_length=1, max_length=MAX_SYMBOL_LENGTH),
+    x_min: float = Query(default=-10, ge=-1_000_000, le=1_000_000),
+    x_max: float = Query(default=10, ge=-1_000_000, le=1_000_000),
+    y_min: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
+    y_max: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
+    samples: int = Query(default=600, ge=80, le=1200),
+    width: int = Query(default=720, ge=320, le=1200),
+    height: int = Query(default=420, ge=240, le=800),
+    _: None = Depends(enforce_api_access),
+):
+    result = plot_function_query(
+        expression=expression,
+        variable=variable,
+        x_min=x_min,
+        x_max=x_max,
+        y_min=y_min,
+        y_max=y_max,
+        samples=samples,
+        width=width,
+        height=height,
+        _=None,
+    )
+    return Response(
+        content=result.svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
     )
