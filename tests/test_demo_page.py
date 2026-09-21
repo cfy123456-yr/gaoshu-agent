@@ -157,6 +157,45 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("重新练习", html)
         self.assertIn("查看参考答案", html)
 
+    def test_demo_page_exposes_learning_progress_import_export(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        for field in (
+            "learningProgressQuestions",
+            "learningProgressCalculations",
+            "learningProgressPractice",
+            "learningProgressWrongBook",
+            "learningProgressStreak",
+            "learningProgressDays",
+            "learningProgressDaysList",
+            "learningProgressExport",
+            "learningProgressMerge",
+            "learningProgressOverwrite",
+            "learningProgressImportInput",
+            "learningProgressStatus",
+        ):
+            self.assertIn(f'id="{field}"', html)
+        self.assertIn('data-toolbox-tab="progress"', html)
+        self.assertIn('data-toolbox-panel="progress"', html)
+        self.assertIn('"zhiwei-demo-learning-progress-v1"', html)
+        self.assertIn("function renderLearningProgress()", html)
+        self.assertIn("function exportLearningProgress()", html)
+        self.assertIn("function importLearningProgress(file", html)
+        self.assertIn("function clampProgressTimestamp(value)", html)
+        self.assertIn(
+            "progress.updatedAt = clampProgressTimestamp(source.updatedAt)",
+            html,
+        )
+        self.assertIn('recordLearningActivity("question")', html)
+        self.assertIn('recordLearningActivity("calculation")', html)
+        self.assertIn('recordLearningActivity("practice")', html)
+        self.assertIn(
+            'learningProgressImportInput.addEventListener("change"',
+            html,
+        )
+
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
 
