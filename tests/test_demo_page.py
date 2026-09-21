@@ -135,6 +135,28 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("图片识别（暂未接入）", html)
         self.assertNotIn("该工具尚未接线", html)
 
+    def test_demo_page_exposes_formula_and_wrong_book_tools(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn('data-toolbox-tab="wrongbook"', html)
+        self.assertIn('id="formulaCardGrid"', html)
+        self.assertIn('id="formulaSearchInput"', html)
+        self.assertIn('id="wrongBookList"', html)
+        self.assertIn("const FORMULA_COLLECTION = [", html)
+        self.assertIn('const WRONG_BOOK_KEY = "zhiwei-demo-wrong-book-v1"', html)
+        self.assertIn("function renderFormulaCards()", html)
+        self.assertIn("function toggleWrongBook(messageId)", html)
+        self.assertIn("function practiceWrongBookItem(itemId)", html)
+        self.assertIn("function syncWrongBookAnswer(messageId, questionText", html)
+        self.assertIn('"toggle-wrongbook"', html)
+        self.assertIn('id="wrongBookExport"', html)
+        self.assertIn("function exportWrongBook()", html)
+        self.assertIn("wrongBookExport.addEventListener", html)
+        self.assertIn("重新练习", html)
+        self.assertIn("查看参考答案", html)
+
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
 
