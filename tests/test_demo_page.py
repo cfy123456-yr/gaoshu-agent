@@ -100,6 +100,34 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('event.target.closest("[data-solver-topic]")', html)
         self.assertIn("function openSolverTopic(chapterKey, topicKey)", html)
 
+    def test_demo_page_exposes_toolbox_and_preview_panel(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        for field in (
+            "quickLimitForm",
+            "quickDerivativeForm",
+            "quickIndefiniteForm",
+            "quickDefiniteForm",
+            "quickDifferentialForm",
+            "quickPlotForm",
+            "conversationPanel",
+            "previewPanel",
+            "previewContent",
+            "previewToggle",
+            "previewClear",
+            "formulaImageButton",
+        ):
+            self.assertIn(f'id="{field}"', html)
+        self.assertIn("function runInlineSolve(", html)
+        self.assertIn("function runInlinePlot(", html)
+        self.assertIn("function insertIntoChatInput(", html)
+        self.assertIn("function setConversationPanelCollapsed(", html)
+        self.assertIn("function setPreviewCollapsed(", html)
+        self.assertIn('toolbox.addEventListener("click"', html)
+        self.assertNotIn("该工具尚未接线", html)
+
     def test_demo_health_is_available(self):
         response = self.client.get("/demo/api/health")
 
