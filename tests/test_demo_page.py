@@ -515,7 +515,10 @@ class DemoPageTest(unittest.TestCase):
                                     "role": "assistant",
                                     "type": "answer",
                                     "content_type": "text",
-                                    "content": "求极限 lim x->0 sin(x)/x",
+                                    "content": (
+                                        "求极限 lim x->0 sin(x)/x\n\n"
+                                        "请确认识别是否正确，再继续帮我解题。"
+                                    ),
                                 }
                             ],
                         }

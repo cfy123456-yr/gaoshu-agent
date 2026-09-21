@@ -43,6 +43,13 @@ COZE_OCR_PROMPT = """
 """.strip()
 
 _FAILED_CHAT_STATUSES = {"failed", "canceled", "requires_action"}
+_ASSISTANT_TRAILING_NOTES = {
+    "请确认识别是否正确。",
+    "请确认识别是否正确，再继续帮我解题。",
+    "请确认图片识别结果是否正确。",
+    "请核对识别结果是否正确。",
+    "请确认识别结果是否正确，再继续解题。",
+}
 
 
 def coze_ocr_configured() -> bool:
@@ -257,7 +264,12 @@ def _clean_transcription(text: str) -> str:
         lines = cleaned.splitlines()
         if len(lines) >= 2:
             cleaned = "\n".join(lines[1:-1]).strip()
-    return cleaned
+    lines = cleaned.splitlines()
+    while lines and (
+        not lines[-1].strip() or lines[-1].strip() in _ASSISTANT_TRAILING_NOTES
+    ):
+        lines.pop()
+    return "\n".join(lines).strip()
 
 
 def _response_data(payload: dict[str, Any], action: str) -> dict[str, Any]:
