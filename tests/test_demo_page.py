@@ -118,6 +118,7 @@ class DemoPageTest(unittest.TestCase):
             "previewToggle",
             "previewClear",
             "formulaImageButton",
+            "formulaImageStatus",
         ):
             self.assertIn(f'id="{field}"', html)
         self.assertIn("function runInlineSolve(", html)
@@ -126,6 +127,12 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("function setConversationPanelCollapsed(", html)
         self.assertIn("function setPreviewCollapsed(", html)
         self.assertIn('toolbox.addEventListener("click"', html)
+        self.assertIn('data-focus-target="quickLimitExpression"', html)
+        self.assertIn(
+            'const collapsedQuickTool = event.target.closest(',
+            html,
+        )
+        self.assertIn("图片识别（暂未接入）", html)
         self.assertNotIn("该工具尚未接线", html)
 
     def test_demo_health_is_available(self):

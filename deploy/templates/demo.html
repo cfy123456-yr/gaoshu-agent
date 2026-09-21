@@ -240,6 +240,13 @@
       padding: 0;
       place-items: center;
       border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .app-shell[data-sidebar-collapsed="true"] .quick-tool:hover,
+    .app-shell[data-sidebar-collapsed="true"] .quick-tool:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
     }
 
     .app-shell[data-sidebar-collapsed="true"] .quick-tool::before {
@@ -2322,7 +2329,12 @@
               <span>变量默认 x</span>
             </div>
             <div class="quick-stack">
-              <form class="quick-tool" id="quickLimitForm" data-icon="lim">
+              <form
+                class="quick-tool"
+                id="quickLimitForm"
+                data-icon="lim"
+                data-focus-target="quickLimitExpression"
+              >
                 <div class="quick-tool-head">
                   <span class="quick-tool-title">
                     <span class="quick-tool-mark">lim</span>
@@ -2356,7 +2368,12 @@
                 </div>
               </form>
 
-              <form class="quick-tool" id="quickDerivativeForm" data-icon="d/dx">
+              <form
+                class="quick-tool"
+                id="quickDerivativeForm"
+                data-icon="d/dx"
+                data-focus-target="quickDerivativeExpression"
+              >
                 <div class="quick-tool-head">
                   <span class="quick-tool-title">
                     <span class="quick-tool-mark">d/dx</span>
@@ -2375,7 +2392,12 @@
                 </div>
               </form>
 
-              <form class="quick-tool" id="quickIndefiniteForm" data-icon="∫">
+              <form
+                class="quick-tool"
+                id="quickIndefiniteForm"
+                data-icon="∫"
+                data-focus-target="quickIndefiniteExpression"
+              >
                 <div class="quick-tool-head">
                   <span class="quick-tool-title">
                     <span class="quick-tool-mark">∫</span>
@@ -2394,7 +2416,12 @@
                 </div>
               </form>
 
-              <form class="quick-tool" id="quickDefiniteForm" data-icon="∫a">
+              <form
+                class="quick-tool"
+                id="quickDefiniteForm"
+                data-icon="∫a"
+                data-focus-target="quickDefiniteExpression"
+              >
                 <div class="quick-tool-head">
                   <span class="quick-tool-title">
                     <span class="quick-tool-mark">∫</span>
@@ -2427,7 +2454,12 @@
                 <button class="quick-calculate" type="submit">计算</button>
               </form>
 
-              <form class="quick-tool" id="quickDifferentialForm" data-icon="y'">
+              <form
+                class="quick-tool"
+                id="quickDifferentialForm"
+                data-icon="y'"
+                data-focus-target="quickDifferentialExpression"
+              >
                 <div class="quick-tool-head">
                   <span class="quick-tool-title">
                     <span class="quick-tool-mark">y'</span>
@@ -2526,8 +2558,13 @@
                 type="button"
                 style="width: 100%; margin-top: 7px;"
               >
-                公式图片识别
+                图片识别（暂未接入）
               </button>
+              <p
+                class="quick-caption"
+                id="formulaImageStatus"
+                role="status"
+              >当前版本请直接输入题目文字</p>
             </div>
           </section>
         </div>
@@ -3679,6 +3716,7 @@
       const quickPlotForm = document.getElementById("quickPlotForm");
       const formulaImageInput = document.getElementById("formulaImageInput");
       const formulaImageButton = document.getElementById("formulaImageButton");
+      const formulaImageStatus = document.getElementById("formulaImageStatus");
       const toolbox = document.querySelector(".toolbox-scroll");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
 
@@ -5242,6 +5280,23 @@
 
       if (toolbox) {
         toolbox.addEventListener("click", (event) => {
+          const collapsedQuickTool = event.target.closest(
+            ".quick-tool[data-focus-target]",
+          );
+          if (
+            collapsedQuickTool &&
+            appShell.dataset.sidebarCollapsed === "true"
+          ) {
+            setSidebarCollapsed(false);
+            const focusTarget = document.getElementById(
+              collapsedQuickTool.dataset.focusTarget,
+            );
+            if (focusTarget) {
+              window.requestAnimationFrame(() => focusTarget.focus());
+            }
+            return;
+          }
+
           const symbolButton = event.target.closest("[data-symbol]");
           if (symbolButton) {
             insertIntoChatInput(symbolButton.dataset.symbol || "");
@@ -5263,7 +5318,14 @@
         );
         formulaImageInput.addEventListener("change", () => {
           if (formulaImageInput.files && formulaImageInput.files.length) {
-            setPreviewEmpty("网页暂不支持图片识别，请把题目文字发到对话框。");
+            const message =
+              "图片识别暂未接入视觉接口，请先输入题目文字。";
+            if (formulaImageStatus) {
+              formulaImageStatus.textContent = message;
+            }
+            setPreviewEmpty(message);
+            previewBadge.textContent = "提示";
+            setPreviewCollapsed(false);
           }
           formulaImageInput.value = "";
         });
