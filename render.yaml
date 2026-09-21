@@ -29,3 +29,17 @@ services:
         value: "5242880"
       - key: LOG_BACKUP_COUNT
         value: "3"
+      - key: COZE_API_TOKEN
+        sync: false
+      - key: COZE_BOT_ID
+        value: "7687155979821481999"
+      - key: COZE_API_BASE
+        value: "https://api.coze.cn"
+      - key: COZE_TIMEOUT_SECONDS
+        value: "60"
+      - key: COZE_POLL_INTERVAL_SECONDS
+        value: "0.8"
+      - key: WINDOWS_OCR_FALLBACK
+        value: "false"
+      - key: WINDOWS_OCR_TIMEOUT_SECONDS
+        value: "30"

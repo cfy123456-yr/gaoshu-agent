@@ -22,6 +22,34 @@ https://cfyyy.pythonanywhere.com
 
 不要将 `.env`、令牌、API 密钥或学生个人数据提交到 Git 仓库。
 
+## 图片识别（公网）
+
+公网识图使用扣子智能体中的 `OCR / Image2text` 插件。PythonAnywhere
+等 Linux 服务器不能使用 Windows 本机 OCR，因此生产环境必须在 Web
+应用的环境变量中配置：
+
+```text
+COZE_API_TOKEN=<扣子访问令牌>
+COZE_BOT_ID=<已发布并启用 OCR / Image2text 的机器人 ID>
+COZE_API_BASE=https://api.coze.cn
+COZE_TIMEOUT_SECONDS=60
+COZE_POLL_INTERVAL_SECONDS=0.8
+WINDOWS_OCR_FALLBACK=false
+```
+
+配置完成后重新加载 Web 应用，并上传一张正常清晰的题目图片验证
+`/demo/api/ocr`。接口成功时应返回 `provider: "coze"` 和识别出的文字；
+`GET /demo/api/health` 的 `ocr.configured` 应为 `true`。
+如果提示 `COZE_API_TOKEN` 或 `COZE_BOT_ID` 未配置，说明服务器环境变量
+尚未生效。不要把令牌写入仓库或页面代码。
+
+使用 `render.yaml` 创建 Render Blueprint 时，`COZE_API_TOKEN` 会在部署
+阶段要求填写；机器人 ID、接口地址和超时参数已经写入清单。也可以在
+Render 控制台的 Environment 页面手动覆盖这些值。
+
+Windows OCR 只用于本机 Windows 开发时的降级，识别上下标、分式、根号、
+积分和导数符号的能力有限，公网服务不能依赖它。
+
 ## 公网接口
 
 | 接口 | 地址 |

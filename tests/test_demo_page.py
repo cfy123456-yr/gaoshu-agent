@@ -1,15 +1,17 @@
+import io
 import itertools
 import json
 import unittest
 from unittest.mock import patch
 
-from deploy import demo_chat, wsgi_app
+from deploy import demo_chat, demo_coze_ocr, demo_windows_ocr, wsgi_app
 
 
 class DemoPageTest(unittest.TestCase):
     def setUp(self):
         self.client = wsgi_app.application.test_client()
         wsgi_app._chat_response_cache.clear()
+        wsgi_app.rate_limiter.requests.clear()
         self.session_counter = itertools.count(1)
 
     def chat(self, message, history=None, session=None):
@@ -41,7 +43,7 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
         self.assertIn('id="solverDialog"', html)
-        self.assertIn('id="openSolverButton"', html)
+        self.assertNotIn('id="openSolverButton"', html)
         self.assertIn("const SOLVER_CHAPTERS = {", html)
         self.assertIn('fetch("/demo/api/solve"', html)
         self.assertIn('data.intent === "solve"', html)
@@ -68,37 +70,49 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("flux_explicit", html)
         self.assertIn("第二类曲面积分（显式曲面）", html)
 
-    def test_demo_page_exposes_formula_guides(self):
+    def test_demo_page_auto_generates_question_knowledge(self):
         response = self.client.get("/demo")
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
-        self.assertIn('id="formulaDialog"', html)
-        self.assertIn('data-formula-type="derivative"', html)
-        self.assertIn('data-formula-type="integral"', html)
-        self.assertIn('data-formula-type="limit"', html)
-        self.assertIn("const FORMULA_GUIDES = {", html)
-        self.assertIn(
-            "openFormulaDialog(formulaButton.dataset.formulaType)",
-            html,
-        )
-        self.assertNotIn('data-prompt="求导 x^2"', html)
-        self.assertNotIn('data-prompt="积分 x^2"', html)
-        self.assertNotIn('data-prompt="lim x→0 sin(x)/x"', html)
+        self.assertNotIn('id="formulaDialog"', html)
+        self.assertNotIn("const FORMULA_GUIDES = {", html)
+        self.assertNotIn("function openFormulaDialog(type)", html)
+        self.assertIn('id="questionKnowledge"', html)
+        self.assertIn('id="questionKnowledgeList"', html)
+        self.assertIn('id="questionKnowledgeStatus"', html)
+        self.assertIn("const QUESTION_KNOWLEDGE_RULES = [", html)
+        self.assertIn("function renderQuestionKnowledge(", html)
+        self.assertIn("function queueQuestionKnowledgeUpdate(", html)
+        self.assertIn("queueQuestionKnowledgeUpdate(chatInput.value)", html)
+        self.assertIn("renderQuestionKnowledge(text, { source: \"submit\" })", html)
+        self.assertIn("renderQuestionKnowledge(\"\")", html)
+        self.assertIn('aria-live="polite"', html)
+        self.assertNotIn("FORMULA_COLLECTION", html)
+        self.assertNotIn("formulaCardGrid", html)
+        self.assertNotIn("formulaSearchInput", html)
+        self.assertNotIn("renderFormulaCards", html)
 
-    def test_demo_page_lists_every_solver_topic_in_sidebar(self):
+    def test_demo_page_keeps_only_two_sidebar_entries(self):
         response = self.client.get("/demo")
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
-        self.assertIn('id="toolsNavList"', html)
-        self.assertIn('id="toolsMenuCount"', html)
-        self.assertIn("function renderToolsNavigation()", html)
-        self.assertIn("renderToolsNavigation();", html)
-        self.assertIn('button.dataset.solverTopic = topicKey;', html)
-        self.assertIn('button.dataset.solverChapter = chapterKey;', html)
-        self.assertIn('event.target.closest("[data-solver-topic]")', html)
-        self.assertIn("function openSolverTopic(chapterKey, topicKey)", html)
+        self.assertEqual(2, html.count('data-toolbox-tab="'))
+        self.assertEqual(2, html.count('data-toolbox-panel="'))
+        for tab in ("wrongbook", "progress"):
+            self.assertIn(f'data-toolbox-tab="{tab}"', html)
+            self.assertIn(f'data-rail-tab="{tab}"', html)
+        self.assertNotIn('data-toolbox-tab="formulas"', html)
+        self.assertNotIn('data-toolbox-panel="formulas"', html)
+        self.assertNotIn('data-rail-tab="formulas"', html)
+        self.assertNotIn('data-toolbox-tab="calculator"', html)
+        self.assertNotIn('data-toolbox-panel="calculator"', html)
+        self.assertNotIn('id="relatedKnowledge"', html)
+        self.assertNotIn("function insertIntoChatInput(", html)
+        self.assertNotIn('id="toolsNavList"', html)
+        self.assertNotIn('id="toolsMenuCount"', html)
+        self.assertNotIn('class="tools-menu"', html)
 
     def test_demo_page_exposes_toolbox_and_preview_panel(self):
         response = self.client.get("/demo")
@@ -106,47 +120,125 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
         for field in (
+            "conversationPanel",
+            "previewPanel",
+            "previewContent",
+            "previewToggle",
+            "previewClear",
+        ):
+            self.assertIn(f'id="{field}"', html)
+        for removed_id in (
             "quickLimitForm",
             "quickDerivativeForm",
             "quickIndefiniteForm",
             "quickDefiniteForm",
             "quickDifferentialForm",
             "quickPlotForm",
-            "conversationPanel",
-            "previewPanel",
-            "previewContent",
-            "previewToggle",
-            "previewClear",
-            "formulaImageButton",
-            "formulaImageStatus",
+            "formulaSearchInput",
+            "formulaCardGrid",
         ):
-            self.assertIn(f'id="{field}"', html)
-        self.assertIn("function runInlineSolve(", html)
-        self.assertIn("function runInlinePlot(", html)
-        self.assertIn("function insertIntoChatInput(", html)
+            self.assertNotIn(f'id="{removed_id}"', html)
+        for image_field in (
+            "imageUploadButton",
+            "imageFileInput",
+            "composerImagePreview",
+            "composerImageList",
+            "composerImageStatus",
+            "composerImageClear",
+        ):
+            self.assertIn(f'id="{image_field}"', html)
+        self.assertNotIn('id="composerImageRemove"', html)
+        self.assertIn("async function sendMessage(rawMessage, options = {})", html)
+        self.assertIn("addQuestionImages(imageFileInput.files)", html)
+        self.assertIn("clearQuestionImages({ revokeUrls: false })", html)
+        self.assertIn('fetch("/demo/api/ocr"', html)
+        self.assertIn("function renderQuestionKnowledge(", html)
+        self.assertNotIn("function insertIntoChatInput(", html)
         self.assertIn("function setConversationPanelCollapsed(", html)
         self.assertIn("function setPreviewCollapsed(", html)
+        self.assertIn("计算过程总览", html)
+        self.assertNotIn("结果预览", html)
         self.assertIn('toolbox.addEventListener("click"', html)
-        self.assertIn('data-focus-target="quickLimitExpression"', html)
-        self.assertIn(
-            'const collapsedQuickTool = event.target.closest(',
-            html,
-        )
-        self.assertIn("图片识别（暂未接入）", html)
+        self.assertNotIn('data-focus-target="quickLimitExpression"', html)
+        self.assertNotIn("const collapsedQuickTool = event.target.closest(", html)
+        self.assertNotIn("图片识别（暂未接入）", html)
         self.assertNotIn("该工具尚未接线", html)
 
-    def test_demo_page_exposes_formula_and_wrong_book_tools(self):
+    def test_demo_page_supports_image_only_and_multiple_image_messages(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertRegex(
+            html,
+            r'id="imageFileInput"\s+type="file"\s+accept="[^"]+"\s+'
+            r'multiple',
+        )
+        self.assertIn("const MAX_QUESTION_IMAGE_COUNT = 4", html)
+        self.assertIn("function addQuestionImages(fileList)", html)
+        self.assertIn("function submitComposer()", html)
+        self.assertIn("function syncComposerState()", html)
+        self.assertIn("function flushPendingComposerSubmission()", html)
+        self.assertIn("pendingComposerSubmission = true", html)
+        self.assertIn("hasPendingImage", html)
+        self.assertIn("hasRecognizedImage", html)
+        self.assertIn("submitComposer();", html)
+        self.assertIn("const WELCOME_TEXTS = [", html)
+        self.assertIn(
+            'const WELCOME_INDEX_KEY = "zhiwei-demo-welcome-index-v1"',
+            html,
+        )
+        self.assertIn("function welcomeMessage()", html)
+        self.assertIn("sessionStorage.getItem(WELCOME_INDEX_KEY)", html)
+        self.assertIn("sessionStorage.setItem(", html)
+        self.assertIn(
+            ".filter((index) => index !== previousIndex)",
+            html,
+        )
+
+    def test_demo_page_keeps_the_sidebar_rail_minimal(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertRegex(
+            html,
+            r'id="previewPanel"\s+data-collapsed="true"',
+        )
+        self.assertRegex(
+            html,
+            r'data-toolbox-panel="wrongbook"\s+'
+            r'data-active="true"\s+'
+        )
+        self.assertNotIn('id="moreToolsToggle"', html)
+        self.assertNotIn('id="relatedKnowledgeList"', html)
+        self.assertNotIn('data-rail-tool="true"', html)
+        self.assertNotIn("data-more-expanded", html)
+        self.assertEqual(3, html.count('class="sidebar-rail-button"'))
+        self.assertRegex(
+            html,
+            r'<div class="conversation-panel-actions">\s*'
+            r'<button\s+class="icon-button new-chat-icon"\s+'
+            r'id="newChatButton"',
+        )
+        self.assertIn('.sidebar-rail-button', html)
+        self.assertIn(
+            '.app-shell[data-sidebar-collapsed="true"] .sidebar-rail',
+            html,
+        )
+        self.assertNotIn(".quick-tool > *", html)
+
+    def test_demo_page_exposes_question_knowledge_and_wrong_book_tools(self):
         response = self.client.get("/demo")
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
         self.assertIn('data-toolbox-tab="wrongbook"', html)
-        self.assertIn('id="formulaCardGrid"', html)
-        self.assertIn('id="formulaSearchInput"', html)
+        self.assertIn('id="questionKnowledgeList"', html)
         self.assertIn('id="wrongBookList"', html)
-        self.assertIn("const FORMULA_COLLECTION = [", html)
+        self.assertIn("const QUESTION_KNOWLEDGE_RULES = [", html)
         self.assertIn('const WRONG_BOOK_KEY = "zhiwei-demo-wrong-book-v1"', html)
-        self.assertIn("function renderFormulaCards()", html)
+        self.assertIn("function renderQuestionKnowledge(", html)
         self.assertIn("function toggleWrongBook(messageId)", html)
         self.assertIn("function practiceWrongBookItem(itemId)", html)
         self.assertIn("function syncWrongBookAnswer(messageId, questionText", html)
@@ -156,6 +248,54 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("wrongBookExport.addEventListener", html)
         self.assertIn("重新练习", html)
         self.assertIn("查看参考答案", html)
+
+    def test_demo_page_only_offers_wrong_book_for_resolved_math_answers(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn("const WRONG_BOOK_ELIGIBLE_INTENTS = new Set([", html)
+        for intent in ("verify", "integrate", "limit", "solve", "plot"):
+            self.assertIn(f'"{intent}"', html)
+        self.assertIn("function messageCanJoinWrongBook(message)", html)
+        self.assertIn(
+            '!WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))',
+            html,
+        )
+        self.assertIn("intent: String(item.intent || \"\")", html)
+        self.assertIn("intent: String(data.intent || \"\")", html)
+        self.assertIn(
+            'if (message.role === "assistant" && !message.loading) {',
+            html,
+        )
+        self.assertIn(
+            "sourceUserMessage",
+            html,
+        )
+        self.assertIn(
+            "bookmarkButton.dataset.messageId = sourceUserMessage.id",
+            html,
+        )
+        self.assertIn(
+            'bookmarkButton.dataset.messageAction = "toggle-wrongbook"',
+            html,
+        )
+        self.assertIn(
+            'bookmarked ? "已加入错题集" : "加入错题集"',
+            html,
+        )
+        self.assertIn(
+            "确认这是一道需要收录的错题吗？加入后可在错题集里重练。",
+            html,
+        )
+        self.assertIn(
+            'window.confirm("确认从错题集移除这道题吗？")',
+            html,
+        )
+        self.assertIn(
+            "setSuggestionsCollapsed(compactComposerMedia.matches)",
+            html,
+        )
 
     def test_demo_page_exposes_learning_progress_import_export(self):
         response = self.client.get("/demo")
@@ -171,6 +311,7 @@ class DemoPageTest(unittest.TestCase):
             "learningProgressDays",
             "learningProgressDaysList",
             "learningProgressExport",
+            "learningProgressBackup",
             "learningProgressMerge",
             "learningProgressOverwrite",
             "learningProgressImportInput",
@@ -182,7 +323,10 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('"zhiwei-demo-learning-progress-v1"', html)
         self.assertIn("function renderLearningProgress()", html)
         self.assertIn("function exportLearningProgress()", html)
+        self.assertIn("function exportLearningProgressBackup()", html)
         self.assertIn("function importLearningProgress(file", html)
+        self.assertIn("知微高数_学习报告_", html)
+        self.assertIn("知微高数_学习进度备份_", html)
         self.assertIn("function clampProgressTimestamp(value)", html)
         self.assertIn(
             "progress.updatedAt = clampProgressTimestamp(source.updatedAt)",
@@ -204,6 +348,21 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("ok", payload["status"])
         self.assertTrue(payload["demo"]["available"])
         self.assertEqual("/demo", payload["demo"]["page"])
+        self.assertEqual("coze", payload["ocr"]["provider"])
+        self.assertIsInstance(payload["ocr"]["configured"], bool)
+
+    def test_demo_health_reports_ocr_configuration_without_leaking_token(self):
+        with (
+            patch.object(demo_coze_ocr, "COZE_API_TOKEN", "secret-token"),
+            patch.object(demo_coze_ocr, "COZE_BOT_ID", "test-bot"),
+            patch.object(demo_windows_ocr, "WINDOWS_OCR_FALLBACK", False),
+        ):
+            response = self.client.get("/demo/api/health")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertTrue(payload["ocr"]["configured"])
+        self.assertNotIn("secret-token", response.get_data(as_text=True))
 
     def test_health_and_static_requests_do_not_consume_rate_limit(self):
         with patch.object(wsgi_app.rate_limiter, "check") as check:
@@ -221,6 +380,171 @@ class DemoPageTest(unittest.TestCase):
             )
 
         check.assert_called_once()
+
+    def test_demo_ocr_requires_an_image(self):
+        response = self.client.post("/demo/api/ocr")
+
+        self.assertEqual(400, response.status_code)
+        self.assertIn("选择", response.get_json()["detail"])
+
+    def test_demo_ocr_rejects_unsupported_image_types(self):
+        response = self.client.post(
+            "/demo/api/ocr",
+            data={"image": (io.BytesIO(b"not-an-image"), "question.pdf")},
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(400, response.status_code)
+        self.assertIn("仅支持", response.get_json()["detail"])
+
+    def test_demo_ocr_reports_missing_coze_configuration(self):
+        with (
+            patch.object(demo_coze_ocr, "COZE_API_TOKEN", ""),
+            patch.object(demo_coze_ocr, "COZE_BOT_ID", ""),
+            patch.object(demo_windows_ocr, "WINDOWS_OCR_FALLBACK", False),
+        ):
+            response = self.client.post(
+                "/demo/api/ocr",
+                data={
+                    "image": (
+                        io.BytesIO(b"\x89PNG\r\n\x1a\nquestion"),
+                        "question.png",
+                    )
+                },
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(503, response.status_code)
+        detail = response.get_json()["detail"]
+        self.assertIn("未配置", detail)
+        self.assertIn("COZE_API_TOKEN", detail)
+        self.assertIn("COZE_BOT_ID", detail)
+        self.assertNotIn("VISION_API", detail)
+
+    def test_demo_ocr_uses_windows_fallback_when_coze_is_missing(self):
+        with (
+            patch.object(demo_coze_ocr, "COZE_API_TOKEN", ""),
+            patch.object(demo_coze_ocr, "COZE_BOT_ID", ""),
+            patch.object(
+                wsgi_app,
+                "transcribe_windows_question_image",
+                return_value="求导 x^2",
+            ) as fallback,
+        ):
+            response = self.client.post(
+                "/demo/api/ocr",
+                data={
+                    "image": (
+                        io.BytesIO(b"\x89PNG\r\n\x1a\nquestion"),
+                        "question.png",
+                    )
+                },
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("求导 x^2", payload["text"])
+        self.assertEqual("windows", payload["provider"])
+        self.assertIn("离线 OCR", payload["warning"])
+        fallback.assert_called_once()
+
+    def test_demo_ocr_returns_question_text_when_coze_is_configured(self):
+        with patch.object(
+            wsgi_app,
+            "transcribe_question_image",
+            return_value="求极限 lim x->0 sin(x)/x",
+        ):
+            response = self.client.post(
+                "/demo/api/ocr",
+                data={
+                    "image": (
+                        io.BytesIO(b"\x89PNG\r\n\x1a\nquestion"),
+                        "question.png",
+                    )
+                },
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(
+            "求极限 lim x->0 sin(x)/x",
+            response.get_json()["text"],
+        )
+
+    def test_coze_ocr_adapter_runs_upload_chat_poll_and_message_steps(self):
+        class FakeResponse:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def read(self, size=-1):
+                return json.dumps(self.payload, ensure_ascii=False).encode("utf-8")
+
+        with (
+            patch.object(demo_coze_ocr, "COZE_API_BASE", "https://coze.test"),
+            patch.object(demo_coze_ocr, "COZE_API_TOKEN", "test-token"),
+            patch.object(demo_coze_ocr, "COZE_BOT_ID", "test-bot"),
+            patch.object(demo_coze_ocr, "COZE_POLL_INTERVAL_SECONDS", 0),
+            patch.object(
+                demo_coze_ocr,
+                "urlopen",
+                side_effect=[
+                    FakeResponse({"code": 0, "data": {"id": "file-1"}}),
+                    FakeResponse(
+                        {
+                            "code": 0,
+                            "data": {
+                                "id": "chat-1",
+                                "conversation_id": "conversation-1",
+                                "status": "in_progress",
+                            },
+                        }
+                    ),
+                    FakeResponse({"code": 0, "data": {"status": "completed"}}),
+                    FakeResponse(
+                        {
+                            "code": 0,
+                            "data": [
+                                {
+                                    "role": "assistant",
+                                    "type": "answer",
+                                    "content_type": "text",
+                                    "content": "求极限 lim x->0 sin(x)/x",
+                                }
+                            ],
+                        }
+                    ),
+                ],
+            ) as urlopen_mock,
+        ):
+            text = demo_coze_ocr.transcribe_question_image(
+                b"\x89PNG\r\n\x1a\nquestion",
+                "image/png",
+            )
+
+        self.assertEqual("求极限 lim x->0 sin(x)/x", text)
+        requests = [call.args[0] for call in urlopen_mock.call_args_list]
+        self.assertTrue(requests[0].full_url.endswith("/v1/files/upload"))
+        self.assertTrue(requests[1].full_url.endswith("/v3/chat"))
+        self.assertIn("/v3/chat/retrieve?", requests[2].full_url)
+        self.assertIn("/v3/chat/message/list?", requests[3].full_url)
+        chat_payload = json.loads(requests[1].data)
+        additional_messages = chat_payload["additional_messages"]
+        self.assertEqual(
+            "object_string",
+            additional_messages[0]["content_type"],
+        )
+        content = json.loads(additional_messages[0]["content"])
+        self.assertEqual("file-1", content[1]["file_id"])
+        self.assertIn("OCR / Image2text", content[0]["text"])
+        self.assertIn("轻微模糊", content[0]["text"])
+        self.assertIn("疑似", content[0]["text"])
 
     def test_missing_route_returns_json_404(self):
         response = self.client.get("/not-found")
@@ -541,7 +865,7 @@ class DemoPageTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual("verify", payload["intent"])
         self.assertIs(True, payload["calculation"]["is_correct"])
-        self.assertIn("答案正确", payload["reply"])
+        self.assertIn("这个答案是对的", payload["reply"])
 
     def test_demo_chat_calculates_indefinite_integral(self):
         response = self.client.post(
@@ -688,6 +1012,10 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("MAX_REQUEST_HISTORY = 20", html)
         self.assertIn("history }", html)
         self.assertIn("responseCache", html)
+        self.assertIn(
+            '["general", "help", "history", "unknown"].includes(data.intent)',
+            html,
+        )
         self.assertIn("REQUEST_TIMEOUT_MS = 20000", html)
         self.assertIn("X-Demo-Session", html)
 
@@ -707,6 +1035,20 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual("history", first.get_json()["intent"])
         self.assertIsNot(True, second.get_json().get("cached"))
+
+    def test_demo_chat_varies_greeting_answers_without_caching_them(self):
+        first = self.chat("你好", session="greeting")
+        second = self.chat("你好", session="greeting")
+
+        self.assertEqual("help", first.get_json()["intent"])
+        self.assertIsNot(True, second.get_json().get("cached"))
+        self.assertIn(second.get_json()["reply"], demo_chat._HELP_REPLIES)
+
+    def test_demo_page_welcome_copy_does_not_repeat_greeting_replies(self):
+        html = self.client.get("/demo").get_data(as_text=True)
+
+        for reply in demo_chat._HELP_REPLIES:
+            self.assertNotIn(reply, html)
 
     def test_demo_chat_does_not_repeat_a_history_followup(self):
         response = self.chat(

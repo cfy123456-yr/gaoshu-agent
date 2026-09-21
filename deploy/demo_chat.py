@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 from typing import Any, Literal
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -1134,9 +1135,8 @@ def _build_extended_chapter_response(
     notes = result.get("notes") or []
     note_text = f" {notes[0]}。" if notes else ""
     reply = (
-        f"确定性结果：{value}。"
-        f"使用的方法：{method}。{note_text}"
-        "你能说出这个方法最关键的使用条件吗？"
+        f"结果是 {value}。这里用的是 {method}。{note_text}"
+        "你可以先试着说说这个方法最关键的使用条件。"
     )
     hint = _EXTENDED_CHAPTER_HINTS.get((chapter, topic), {})
     return _result_response(
@@ -1268,6 +1268,24 @@ def _detect_intent(value: str) -> str:
 _PLOT_KEYWORDS = re.compile(
     r"(?:画|绘制|画出|作出|作图|函数图像|函数图象|函数图形|图像|图象|plot)",
     re.IGNORECASE,
+)
+
+_HELP_REPLIES = (
+    (
+        "我在。把题目发来就行，文字或图片都可以；"
+        "我先算结果，再和你一起看关键步骤。"
+    ),
+    (
+        "可以，直接发题。求导、积分、极限、函数图像，"
+        "以及后面的章节题都能一起处理。"
+    ),
+    (
+        "发完整题目或题目图片都可以，不用提前改写格式。"
+    ),
+    (
+        "把题意和已知条件带上就好；"
+        "如果题目不完整，我会先告诉你还缺什么。"
+    ),
 )
 
 _PLOT_RANGE_BRACKET = re.compile(
@@ -1418,18 +1436,18 @@ def _build_derivative_response(message: str) -> dict[str, Any]:
 
     if result["candidate"] is None:
         reply = (
-            f"我先给你确定性结果：导数是 {result['derivative']}。"
-            "你能说一下这里用到了哪条求导法则吗？"
+            f"答案是 {result['derivative']}。"
+            "这一步主要看求导法则，你能认出用的是哪一条吗？"
         )
     elif result["is_correct"]:
         reply = (
-            "核对完成：候选答案正确。"
-            f"导数是 {result['derivative']}。你能写出关键的一步吗？"
+            f"这个答案是对的，导数是 {result['derivative']}。"
+            "再试着说说最关键的一步。"
         )
     else:
         reply = (
-            "核对完成：候选答案不正确。"
-            f"正确导数是 {result['derivative']}，请重点检查系数、符号或链式法则。"
+            f"这里还差一点，正确导数是 {result['derivative']}。"
+            "先检查系数和符号，再回头看是否漏用了链式法则。"
         )
 
     return _result_response(
@@ -1493,18 +1511,18 @@ def _build_integral_response(message: str) -> dict[str, Any]:
     if result["candidate"] is None:
         suffix = "，不要忘记任意常数 C" if result_label == "不定积分" else ""
         reply = (
-            f"我先给出{result_label}结果：{result['integral']}{suffix}。"
-            "你能说出本题最适合使用的积分方法吗？"
+            f"{result_label}结果是 {result['integral']}{suffix}。"
+            "这题的关键在积分方法，你能看出该用哪一种吗？"
         )
     elif result["is_correct"]:
         reply = (
-            f"核对完成：候选答案正确。{result_label}结果是 {result['integral']}。"
-            "你能写出最关键的一步吗？"
+            f"这个答案是对的，{result_label}结果是 {result['integral']}。"
+            "试着说说最关键的一步。"
         )
     else:
         reply = (
-            f"核对完成：候选答案不正确。{result_label}结果是 {result['integral']}，"
-            "请检查常数、上下限代入或基本积分公式。"
+            f"这里还差一点，正确{result_label}结果是 {result['integral']}。"
+            "先检查常数或上下限，再回头看基本积分公式。"
         )
 
     return _result_response(
@@ -1561,18 +1579,18 @@ def _build_limit_response(message: str) -> dict[str, Any]:
 
     if result["candidate"] is None:
         reply = (
-            f"我先给出极限结果：{result['limit']}。"
-            "你能判断这里是否需要区分左极限和右极限吗？"
+            f"极限是 {result['limit']}。"
+            "这里最容易忽略趋近方向，你能判断是否需要区分左右极限吗？"
         )
     elif result["is_correct"]:
         reply = (
-            f"核对完成：候选答案正确。极限是 {result['limit']}。"
-            "你能说明为什么可以使用这个结论吗？"
+            f"这个答案是对的，极限是 {result['limit']}。"
+            "再说明一下这个结论成立的依据。"
         )
     else:
         reply = (
-            f"核对完成：候选答案不正确。正确极限是 {result['limit']}，"
-            "请检查趋近方向、等价无穷小或洛必达法则的使用条件。"
+            f"这里还差一点，正确极限是 {result['limit']}。"
+            "先检查趋近方向，再确认等价无穷小或洛必达法则是否满足条件。"
         )
 
     return _result_response(
@@ -1887,11 +1905,7 @@ def _help_response() -> dict[str, Any]:
     return {
         "status": "ok",
         "intent": "help",
-        "reply": (
-            "你好，我是知微老师。你可以像聊天一样直接输入题目，"
-            "我会用确定性数学工具处理求导、积分、极限、函数图像、微分方程、"
-            "向量、多元微分、重积分、曲线曲面积分和级数，再给你检查问题。"
-        ),
+        "reply": secrets.choice(_HELP_REPLIES),
         "formula_latex": "",
         "formula_text": "",
         "calculation": None,
@@ -1916,7 +1930,10 @@ def _calculation_error(exc: Exception) -> dict[str, Any]:
     return {
         "status": "error",
         "intent": "calculation",
-        "reply": f"这次计算没有完成：{detail}。请换一种写法后重试。",
+        "reply": (
+            f"这次没算出来：{detail}。"
+            "你可以把表达式写得更具体一些，我再试一次。"
+        ),
         "formula_latex": "",
         "formula_text": "",
         "calculation": None,

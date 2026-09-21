@@ -6,7 +6,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
-  <meta name="theme-color" content="#f4f8ff">
+  <meta name="theme-color" content="#eef1f5">
   <meta
     name="description"
     content="知微老师高等数学对话演示，支持求导、积分和极限计算。"
@@ -18,22 +18,22 @@
   >
   <style>
     :root {
-      --ink: #172033;
-      --muted: #6d7a91;
-      --line: #e4ecf7;
-      --line-strong: #cbdaf0;
-      --canvas: #f4f8ff;
+      --ink: #18202f;
+      --muted: #5f6b7f;
+      --line: #e2e6ed;
+      --line-strong: #cbd2dd;
+      --canvas: #eef1f5;
       --surface: #ffffff;
-      --soft-blue: #eaf2ff;
-      --blue: #2868d8;
-      --blue-dark: #174da3;
-      --blue-ink: #123f87;
+      --soft-blue: #e8f0fd;
+      --blue: #2563d9;
+      --blue-dark: #164daa;
+      --blue-ink: #123c7d;
       --amber: #b77916;
       --red: #c2413b;
-      --shadow: 0 12px 34px rgba(37, 99, 201, 0.09);
-      --sidebar-bg: #f7faff;
-      --sidebar-hover: #edf4ff;
-      --sidebar-active: #e4eeff;
+      --shadow: 0 12px 30px rgba(30, 41, 59, 0.08);
+      --sidebar-bg: #f3f5f8;
+      --sidebar-hover: #e9edf3;
+      --sidebar-active: #e3eaf5;
       --sidebar-width: 272px;
       --sidebar-rail-width: 68px;
       --sidebar-current-width: var(--sidebar-width);
@@ -42,22 +42,22 @@
 
     html[data-theme="dark"] {
       color-scheme: dark;
-      --ink: #e8f0ff;
-      --muted: #9aabc5;
-      --line: #293c5a;
-      --line-strong: #3e587c;
-      --canvas: #0d1626;
-      --surface: #142033;
-      --soft-blue: #1b3150;
-      --blue: #5d91ef;
-      --blue-dark: #a8c7ff;
-      --blue-ink: #c9dcff;
+      --ink: #e6ebf4;
+      --muted: #9aa6b7;
+      --line: #293342;
+      --line-strong: #3c485b;
+      --canvas: #0d121b;
+      --surface: #151b25;
+      --soft-blue: #1c2c46;
+      --blue: #6699f0;
+      --blue-dark: #b5ceff;
+      --blue-ink: #d3e1ff;
       --amber: #d9a54d;
       --red: #ef8178;
       --shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
-      --sidebar-bg: #101b2c;
-      --sidebar-hover: #192941;
-      --sidebar-active: #203655;
+      --sidebar-bg: #111722;
+      --sidebar-hover: #1b2431;
+      --sidebar-active: #223454;
       --scrim: rgba(3, 8, 16, 0.62);
     }
 
@@ -147,7 +147,7 @@
       margin: 0 auto;
       overflow: hidden;
       background: var(--surface);
-      box-shadow: 0 0 0 1px rgba(203, 218, 240, 0.72);
+      box-shadow: 0 0 0 1px rgba(203, 210, 221, 0.78);
     }
 
     .app-shell[data-sidebar-collapsed="true"] {
@@ -181,124 +181,16 @@
     .app-shell[data-sidebar-collapsed="true"] .sidebar-brand,
     .app-shell[data-sidebar-collapsed="true"] .sidebar-section,
     .app-shell[data-sidebar-collapsed="true"] .sidebar-footer,
-    .app-shell[data-sidebar-collapsed="true"] .sidebar-resizer,
-    .app-shell[data-sidebar-collapsed="true"] .tools-menu summary {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .new-chat-button {
-      width: 44px;
-      min-height: 44px;
-      margin: 14px auto 0;
-      padding: 0;
-      border-radius: 12px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .new-chat-label {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tools-menu {
-      margin-top: 14px;
-      padding-top: 14px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-list {
-      grid-template-columns: 1fr;
-      gap: 8px;
-      padding: 0;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-button {
-      display: grid;
-      width: 44px;
-      min-height: 44px;
-      height: 44px;
-      margin: 0 auto;
-      padding: 0;
-      place-items: center;
-      border-radius: 12px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-label {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-icon {
-      display: block;
-      font-size: 0.7rem;
-      letter-spacing: -0.02em;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-nav {
+    .app-shell[data-sidebar-collapsed="true"] .sidebar-resizer {
       display: none;
     }
 
     .app-shell[data-sidebar-collapsed="true"] .toolbox-scroll {
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .toolbox-tabs {
       display: none;
     }
 
-    .app-shell[data-sidebar-collapsed="true"] .toolbox-panel:not(
-        [data-toolbox-panel="calculator"]
-      ) {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"]
-      .toolbox-panel[data-toolbox-panel="calculator"] {
-      display: block;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .toolbox-section {
-      padding: 0;
-      border-top: 0;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .toolbox-section:not(.toolbox-quick) {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .toolbox-heading,
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool-head,
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool-row,
-    .app-shell[data-sidebar-collapsed="true"] .quick-caption {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .quick-stack {
-      gap: 8px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool {
-      position: relative;
+    .app-shell[data-sidebar-collapsed="true"] .sidebar-rail {
       display: grid;
-      width: 44px;
-      min-height: 44px;
-      height: 44px;
-      margin: 0 auto;
-      padding: 0;
-      place-items: center;
-      border-radius: 12px;
-      cursor: pointer;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool:hover,
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool:focus-visible {
-      border-color: #a9c5ec;
-      background: var(--sidebar-hover);
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .quick-tool::before {
-      color: var(--blue-dark);
-      content: attr(data-icon);
-      font-family: "Cambria Math", "Times New Roman", serif;
-      font-size: 0.78rem;
-      font-weight: 800;
     }
 
     .sidebar-inner {
@@ -316,6 +208,48 @@
       justify-content: space-between;
       gap: 10px;
       min-height: 40px;
+    }
+
+    .sidebar-rail {
+      display: none;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .sidebar-rail-button {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto;
+      padding: 0;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .sidebar-rail-button:hover,
+    .sidebar-rail-button:focus-visible {
+      border-color: #a9c5ec;
+      color: var(--blue-dark);
+      background: var(--sidebar-hover);
+    }
+
+    .sidebar-rail-button[aria-current="true"] {
+      border-color: var(--line-strong);
+      color: var(--blue-dark);
+      background: var(--sidebar-active);
+    }
+
+    .sidebar-rail-button svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
     }
 
     .sidebar-brand {
@@ -363,26 +297,28 @@
       background: var(--sidebar-hover);
     }
 
-    .new-chat-button {
+    .conversation-panel-actions {
       display: flex;
+      flex: 0 0 auto;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      min-height: 42px;
-      margin-top: 16px;
-      padding: 8px 12px;
-      border: 1px solid var(--blue);
-      border-radius: 10px;
-      color: #ffffff;
-      background: var(--blue);
-      font-size: 0.84rem;
-      font-weight: 800;
+      gap: 4px;
     }
 
-    .new-chat-button:hover {
-      border-color: var(--blue-dark);
-      background: var(--blue-dark);
+    .conversation-panel-head .new-chat-icon {
+      flex-basis: 30px;
+      width: 30px;
+      height: 30px;
+      border-color: transparent;
+      color: var(--blue-dark);
+      background: transparent;
+      font-size: 1.05rem;
+    }
+
+    .conversation-panel-head .new-chat-icon:hover,
+    .conversation-panel-head .new-chat-icon:focus-visible {
+      border-color: #a9c5ec;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
     }
 
     .sidebar-section {
@@ -527,226 +463,6 @@
       color: var(--muted);
       font-size: 0.76rem;
       line-height: 1.6;
-    }
-
-    .tools-menu {
-      min-height: 0;
-      max-height: 58%;
-      flex: 0 1 auto;
-      margin-top: 12px;
-      padding-top: 10px;
-      overflow-x: hidden;
-      overflow-y: auto;
-      border-top: 1px solid var(--line);
-      scrollbar-width: thin;
-    }
-
-    .tools-menu-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 32px;
-      padding: 3px 6px;
-      color: var(--muted);
-      font-size: 0.75rem;
-      font-weight: 800;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .tools-menu-summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .tools-menu-title {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .tools-menu-count {
-      padding: 1px 7px;
-      border-radius: 999px;
-      color: var(--blue-dark);
-      background: var(--soft-blue);
-      font-size: 0.63rem;
-      font-weight: 800;
-    }
-
-    .tools-menu-marker {
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1;
-    }
-
-    .tools-menu-marker::before {
-      content: "+";
-    }
-
-    .tools-menu[open] .tools-menu-marker::before {
-      content: "−";
-    }
-
-    .tool-list {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      padding: 2px 4px 0;
-    }
-
-    .tool-button {
-      display: grid;
-      place-items: center;
-      min-height: 33px;
-      padding: 5px 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--blue-dark);
-      background: var(--surface);
-      font-size: 0.73rem;
-      font-weight: 800;
-      transition:
-        border-color 0.15s ease,
-        background 0.15s ease;
-    }
-
-    .tool-icon {
-      display: none;
-    }
-
-    .tool-button:hover {
-      border-color: #a9c5ec;
-      background: var(--sidebar-hover);
-    }
-
-    .tool-button.is-wide {
-      grid-column: 1 / -1;
-    }
-
-    .tool-nav {
-      display: grid;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .tool-nav-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 0 6px;
-      color: var(--muted);
-      font-size: 0.66rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-    }
-
-    .tool-nav-heading::after {
-      flex: 1;
-      height: 1px;
-      background: var(--line);
-      content: "";
-    }
-
-    .tool-nav-list {
-      display: grid;
-      gap: 4px;
-    }
-
-    .tool-chapter {
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--surface);
-    }
-
-    .tool-chapter[open] {
-      border-color: #c8dbf7;
-      background: var(--sidebar-hover);
-    }
-
-    .tool-chapter > summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 34px;
-      padding: 6px 9px;
-      color: var(--ink);
-      font-size: 0.75rem;
-      font-weight: 800;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .tool-chapter > summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .tool-chapter-count {
-      flex: 0 0 auto;
-      color: var(--muted);
-      font-size: 0.65rem;
-      font-weight: 750;
-    }
-
-    .tool-chapter-arrow {
-      margin-left: auto;
-      color: var(--muted);
-      font-size: 0.66rem;
-      line-height: 1;
-      transition: transform 0.15s ease;
-    }
-
-    .tool-chapter[open] .tool-chapter-arrow {
-      transform: rotate(90deg);
-    }
-
-    .tool-chapter > summary:hover {
-      color: var(--blue-dark);
-      background: var(--soft-blue);
-    }
-
-    .tool-topic-list {
-      display: grid;
-      gap: 2px;
-      padding: 0 6px 7px;
-    }
-
-    .tool-topic {
-      display: block;
-      width: 100%;
-      padding: 6px 8px 6px 15px;
-      overflow: hidden;
-      border: 0;
-      border-radius: 7px;
-      color: var(--muted);
-      background: transparent;
-      font-size: 0.72rem;
-      line-height: 1.35;
-      text-align: left;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .tool-topic:hover,
-    .tool-topic:focus-visible {
-      color: var(--blue-dark);
-      background: var(--surface);
-    }
-
-    html[data-theme="dark"] .tool-chapter[open] {
-      border-color: rgba(112, 166, 240, 0.32);
-    }
-
-    html[data-theme="dark"] .tool-chapter[open] > summary {
-      background: rgba(56, 126, 232, 0.12);
-    }
-
-    html[data-theme="dark"] .tool-topic:hover,
-    html[data-theme="dark"] .tool-topic:focus-visible {
-      background: rgba(255, 255, 255, 0.06);
     }
 
     .solver-dialog {
@@ -914,55 +630,10 @@
       opacity: 0.62;
     }
 
-    .formula-body {
-      display: grid;
-      gap: 16px;
-    }
-
-    .formula-group {
-      padding: 14px 15px;
-      border: 1px solid var(--line);
-      border-radius: 11px;
-      background: #fbfdff;
-    }
-
-    .formula-group h3 {
-      margin: 0 0 10px;
-      color: var(--blue-dark);
-      font-size: 0.86rem;
-    }
-
-    .formula-list {
-      display: grid;
-      gap: 9px;
-      margin: 0;
-    }
-
-    .formula-item {
-      display: grid;
-      gap: 4px;
-    }
-
-    .formula-item code {
-      color: var(--ink);
-      font-family: "Cambria Math", "Times New Roman", serif;
-      font-size: 1rem;
-      line-height: 1.5;
-      white-space: normal;
-    }
-
-    .formula-note {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.75rem;
-      line-height: 1.5;
-    }
-
     html[data-theme="dark"] .solver-field input,
     html[data-theme="dark"] .solver-field select,
     html[data-theme="dark"] .solver-field textarea,
-    html[data-theme="dark"] .solver-footer,
-    html[data-theme="dark"] .formula-group {
+    html[data-theme="dark"] .solver-footer {
       border-color: var(--line);
       background: #101b2c;
     }
@@ -1055,12 +726,8 @@
       font-weight: 850;
     }
 
-    .conversation-panel .new-chat-button {
-      margin: 0 10px 10px;
-    }
-
     .conversation-panel .sidebar-section {
-      margin-top: 5px;
+      margin-top: 0;
       padding: 0 8px 10px;
     }
 
@@ -1081,7 +748,7 @@
     }
 
     .conversation-panel[data-collapsed="true"] .conversation-panel-title,
-    .conversation-panel[data-collapsed="true"] .new-chat-button,
+    .conversation-panel[data-collapsed="true"] .new-chat-icon,
     .conversation-panel[data-collapsed="true"] .sidebar-section {
       display: none;
     }
@@ -1153,70 +820,6 @@
 
     .toolbox-panel[data-active="false"] {
       display: none;
-    }
-
-    .formula-search {
-      display: block;
-      margin: 2px 2px 9px;
-    }
-
-    .formula-search input {
-      width: 100%;
-      height: 32px;
-      padding: 6px 8px;
-      border: 1px solid var(--line-strong);
-      border-radius: 7px;
-      color: var(--ink);
-      background: var(--surface);
-      font-size: 0.72rem;
-      outline: none;
-    }
-
-    .formula-search input:focus {
-      border-color: #87afea;
-      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.08);
-    }
-
-    .formula-card-grid {
-      display: grid;
-      gap: 7px;
-    }
-
-    .formula-card-group {
-      display: grid;
-      gap: 5px;
-    }
-
-    .formula-card-group > h3 {
-      margin: 3px 3px 0;
-      color: var(--muted);
-      font-size: 0.66rem;
-      font-weight: 850;
-    }
-
-    .formula-card {
-      width: 100%;
-      padding: 7px 8px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      color: var(--ink);
-      background: var(--surface);
-      font-size: 0.7rem;
-      line-height: 1.45;
-      text-align: left;
-    }
-
-    .formula-card:hover {
-      border-color: #a9c5ec;
-      background: var(--sidebar-hover);
-      transform: translateY(-1px);
-    }
-
-    .formula-card span {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 0.62rem;
     }
 
     .wrongbook-toolbar {
@@ -1430,7 +1033,7 @@
 
     .progress-actions {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 5px;
       margin: 12px 2px 0;
     }
@@ -1603,6 +1206,137 @@
       line-height: 1.4;
     }
 
+    .toolbox-more-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 34px;
+      padding: 6px 9px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      color: var(--blue-dark);
+      background: transparent;
+      font-size: 0.7rem;
+      font-weight: 850;
+    }
+
+    .toolbox-more-toggle:hover,
+    .toolbox-more-toggle:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
+    .toolbox-more-toggle::after {
+      content: "+";
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .toolbox-more-toggle[aria-expanded="true"]::after {
+      content: "−";
+    }
+
+    .related-knowledge {
+      display: grid;
+      max-height: min(32vh, 280px);
+      min-height: 0;
+      gap: 7px;
+      margin: 0 0 8px;
+      padding: 2px 2px 12px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: thin;
+    }
+
+    .related-knowledge-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 4px;
+      color: var(--muted);
+      font-size: 0.67rem;
+      font-weight: 850;
+    }
+
+    .related-knowledge-head span:last-child {
+      color: var(--blue-dark);
+      font-size: 0.6rem;
+      font-weight: 750;
+    }
+
+    .related-knowledge-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .related-knowledge-empty {
+      margin: 0 4px;
+      padding: 8px 9px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.66rem;
+      line-height: 1.5;
+    }
+
+    .knowledge-item {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      padding: 8px 9px;
+      border-left: 3px solid color-mix(in srgb, var(--blue) 72%, var(--line));
+      border-radius: 0 7px 7px 0;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--soft-blue) 58%, var(--surface));
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+
+    .knowledge-item strong {
+      overflow-wrap: anywhere;
+      color: var(--blue-dark);
+      font-size: 0.68rem;
+      font-weight: 850;
+    }
+
+    .knowledge-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.64rem;
+      line-height: 1.55;
+    }
+
+    .solver-entry {
+      display: flex;
+      width: 100%;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--blue-dark);
+      background: var(--surface);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .solver-entry::after {
+      color: var(--muted);
+      content: "›";
+      font-size: 0.9rem;
+    }
+
+    .solver-entry:hover,
+    .solver-entry:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
     .topic-presets {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1675,17 +1409,23 @@
 
     .workspace-body {
       display: flex;
+      width: 100%;
       min-height: 0;
+      min-width: 0;
       flex: 1 1 auto;
       flex-direction: column;
-      background: #f8fbff;
+      overflow: hidden;
+      background: #f6f8fa;
     }
 
     .preview-panel {
       display: flex;
-      flex: 0 0 260px;
+      width: 100%;
+      min-width: 0;
+      flex: 0 0 230px;
       min-height: 0;
       flex-direction: column;
+      overflow: hidden;
       border-top: 1px solid var(--line);
       background: var(--surface);
     }
@@ -1778,7 +1518,8 @@
     .preview-formula {
       padding: 13px 12px;
       overflow-x: auto;
-      border-left: 3px solid var(--blue);
+      border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line));
+      border-radius: 10px;
       color: var(--blue-ink);
       background: color-mix(in srgb, var(--soft-blue) 58%, transparent);
       font-family: "Cambria Math", "Times New Roman", serif;
@@ -1891,28 +1632,6 @@
       white-space: nowrap;
     }
 
-    .app-shell[data-sidebar-collapsed="true"] .tool-list {
-      display: none;
-    }
-
-    .sidebar .tools-menu {
-      margin: 0;
-      padding: 8px 2px 0;
-      border-top: 1px solid var(--line);
-    }
-
-    .sidebar .tools-menu > .tools-menu-summary {
-      padding: 4px 5px 8px;
-    }
-
-    .sidebar .tool-nav {
-      padding: 0;
-    }
-
-    .sidebar .tool-nav-heading {
-      display: none;
-    }
-
     .quick-plot-form {
       display: grid;
       gap: 6px;
@@ -1941,7 +1660,8 @@
     .preview-notes {
       margin: 0;
       padding: 8px 10px;
-      border-left: 2px solid var(--line-strong);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
       color: var(--muted);
       background: color-mix(in srgb, var(--soft-blue) 34%, transparent);
       font-size: 0.72rem;
@@ -1949,7 +1669,8 @@
 
     .preview-error {
       padding: 10px;
-      border-left: 3px solid var(--red);
+      border: 1px solid color-mix(in srgb, var(--red) 46%, var(--line));
+      border-radius: 8px;
       color: var(--ink);
       background: color-mix(in srgb, var(--red) 9%, transparent);
       font-size: 0.76rem;
@@ -1961,24 +1682,160 @@
       display: none;
     }
 
-    .formula-recognition {
-      position: relative;
+    .composer-image-preview {
+      display: grid;
+      min-width: 0;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #f7faff;
     }
 
-    .formula-recognition input[type="file"] {
-      position: absolute;
-      width: 1px;
-      height: 1px;
+    .composer-image-preview[hidden] {
+      display: none;
+    }
+
+    .composer-image-list {
+      display: flex;
+      min-width: 0;
+      max-height: 196px;
+      flex-wrap: wrap;
+      gap: 8px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .composer-image-item {
+      display: grid;
+      min-width: 0;
+      flex: 1 1 238px;
+      grid-template-columns: 44px minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 9px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .composer-image-item[data-state="success"] {
+      border-color: #b8d7c1;
+      background: #f5fbf6;
+    }
+
+    .composer-image-item[data-state="error"] {
+      border-color: color-mix(in srgb, var(--red) 48%, var(--line));
+      background: color-mix(in srgb, var(--red) 7%, var(--surface));
+    }
+
+    .composer-image-thumb {
+      display: block;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--surface);
+    }
+
+    .composer-image-copy {
+      min-width: 0;
+    }
+
+    .composer-image-copy strong,
+    .composer-image-copy span {
+      display: block;
       overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-image-copy strong {
+      color: var(--ink);
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+
+    .composer-image-copy span {
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.4;
+    }
+
+    .composer-image-item[data-state="success"] .composer-image-copy span {
+      color: #2f6b41;
+    }
+
+    .composer-image-item[data-state="error"] .composer-image-copy span {
+      color: var(--red);
+    }
+
+    .composer-image-remove {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .composer-image-remove:hover {
+      border-color: var(--line);
+      color: var(--ink);
+      background: var(--surface);
+    }
+
+    .composer-image-footer {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 2px;
+    }
+
+    .composer-image-status {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.4;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-image-clear {
+      flex: 0 0 auto;
+      min-height: 26px;
+      padding: 2px 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 0.68rem;
+      font-weight: 750;
+    }
+
+    .composer-image-clear:hover {
+      border-color: var(--line);
+      color: var(--ink);
+      background: var(--surface);
     }
 
     .chat-layout {
       display: flex;
+      width: 100%;
       min-width: 0;
       flex: 1;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .chat-header {
@@ -2104,18 +1961,22 @@
     }
 
     .messages {
+      width: 100%;
       flex: 1 1 auto;
       min-height: 0;
+      min-width: 0;
       padding: 30px 30px 22px;
       overflow-x: hidden;
       overflow-y: auto;
       overscroll-behavior: contain;
       scroll-behavior: smooth;
-      background: #f8fbff;
+      background: #f8f9fb;
     }
 
     .message {
       display: flex;
+      width: 100%;
+      min-width: 0;
       align-items: flex-start;
       gap: 10px;
       margin-bottom: 24px;
@@ -2150,6 +2011,7 @@
       width: fit-content;
       max-width: min(76%, 680px);
       min-width: 0;
+      flex: 0 1 auto;
     }
 
     .message[data-role="user"] .message-content {
@@ -2170,10 +2032,9 @@
     }
 
     .message-meta time {
-      color: #93a0b4;
+      color: var(--muted);
       font-size: 0.64rem;
       font-weight: 500;
-      opacity: 0.8;
     }
 
     .message[data-role="user"] .message-meta {
@@ -2185,6 +2046,10 @@
       justify-content: flex-end;
       gap: 5px;
       margin: 5px 6px 0;
+    }
+
+    .message[data-role="assistant"] .message-actions {
+      justify-content: flex-start;
     }
 
     .message-action {
@@ -2234,6 +2099,66 @@
       margin: 0;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+
+    .message-attachments {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .message-attachments:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-attachment {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .message[data-role="user"] .message-attachment {
+      border-color: rgba(255, 255, 255, 0.36);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .message-attachment img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: #eef3f9;
+    }
+
+    .message-attachment-file {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: 7px;
+      padding: 8px;
+      font-size: 0.68rem;
+      line-height: 1.35;
+    }
+
+    .message-attachment-file svg {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .message-attachment-file span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .formula {
@@ -2318,7 +2243,7 @@
     }
 
     .calculation-grid dt {
-      color: #71809a;
+      color: #667085;
       font-size: 0.73rem;
       font-weight: 700;
     }
@@ -2380,8 +2305,11 @@
     }
 
     .composer-area {
+      width: 100%;
       flex: 0 0 auto;
-      padding: 0 28px 18px;
+      min-width: 0;
+      padding: 0 28px max(18px, env(safe-area-inset-bottom));
+      overflow: hidden;
       border-top: 1px solid var(--line);
       background: #ffffff;
     }
@@ -2426,6 +2354,9 @@
 
     .suggestions {
       display: flex;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
       flex-wrap: wrap;
       gap: 8px;
       padding: 12px 2px 10px;
@@ -2442,14 +2373,18 @@
 
     .suggestion {
       flex: 0 0 auto;
+      max-width: 100%;
       min-height: 32px;
       padding: 5px 11px;
+      overflow: hidden;
       border: 1px solid #d4e2f5;
       border-radius: 999px;
       color: var(--blue-dark);
       background: #f7faff;
       font-size: 0.77rem;
       font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       transition: transform 0.15s ease, border-color 0.15s ease,
         background-color 0.15s ease;
     }
@@ -2465,15 +2400,35 @@
     }
 
     .composer {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end;
-      gap: 9px;
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      flex-direction: column;
+      gap: 8px;
       padding: 8px;
       border: 1px solid #d7e3f3;
       border-radius: 18px;
       background: var(--surface);
       box-shadow: 0 8px 24px rgba(37, 99, 201, 0.07);
+    }
+
+    .composer-row {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+      gap: 8px;
+    }
+
+    .image-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .composer:focus-within {
@@ -2483,6 +2438,7 @@
 
     .chat-input {
       width: 100%;
+      min-width: 0;
       min-height: 42px;
       max-height: 132px;
       padding: 9px 8px 8px;
@@ -2496,10 +2452,59 @@
     }
 
     .chat-input::placeholder {
-      color: #91a0b7;
+      color: var(--muted);
+      opacity: 1;
+    }
+
+    .image-upload-button {
+      display: grid;
+      flex: 0 0 auto;
+      width: 42px;
+      min-height: 42px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--blue-dark);
+      background: var(--sidebar-bg);
+    }
+
+    .image-upload-button:hover {
+      border-color: #a9c5ec;
+      background: var(--soft-blue);
+    }
+
+    .image-upload-button:active {
+      transform: translateY(1px);
+    }
+
+    .image-upload-button:disabled {
+      cursor: wait;
+      opacity: 0.66;
+    }
+
+    .image-upload-button svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .image-upload-button[data-loading="true"] svg {
+      animation: image-spin 0.9s linear infinite;
+    }
+
+    @keyframes image-spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .send-button {
+      flex: 0 0 auto;
       min-width: 72px;
       min-height: 42px;
       padding: 8px 17px;
@@ -2515,8 +2520,15 @@
       background: var(--blue-dark);
     }
 
+    .send-button:active {
+      transform: translateY(1px);
+    }
+
     .send-button:disabled {
-      cursor: wait;
+      cursor: not-allowed;
+      border-color: #b8c2d0;
+      color: #f7f8fa;
+      background: #9aa6b7;
       opacity: 0.62;
     }
 
@@ -2525,30 +2537,52 @@
       background: rgba(20, 32, 51, 0.97);
     }
 
+    html[data-theme="dark"] .image-upload-button,
+    html[data-theme="dark"] .composer-image-preview {
+      border-color: var(--line);
+      background: #182334;
+    }
+
+    html[data-theme="dark"] .image-upload-button:hover {
+      background: var(--soft-blue);
+    }
+
+    html[data-theme="dark"] .composer-image-preview[data-state="success"] {
+      border-color: #355e42;
+      background: #14261a;
+    }
+
+    html[data-theme="dark"]
+      .composer-image-preview[data-state="success"]
+      .composer-image-copy
+      span {
+      color: #95d3a6;
+    }
+
     html[data-theme="dark"] .messages {
-      background: #101b2c;
+      background: #10151e;
     }
 
-    html[data-theme="dark"] .status-chip,
-    html[data-theme="dark"] .suggestion {
-      background: #182840;
-    }
+      html[data-theme="dark"] .status-chip,
+      html[data-theme="dark"] .suggestion {
+        background: #1a2433;
+      }
 
-    html[data-theme="dark"] .bubble {
-      background: #182840;
-    }
+      html[data-theme="dark"] .bubble {
+        background: #1a2433;
+      }
 
     html[data-theme="dark"] .message[data-role="user"] .bubble {
       background: var(--blue);
     }
 
-    html[data-theme="dark"] .formula {
-      background: #1a2e4d;
-    }
+      html[data-theme="dark"] .formula {
+        background: #1a2b45;
+      }
 
-    html[data-theme="dark"] .message[data-role="user"] .avatar {
-      background: #182840;
-    }
+      html[data-theme="dark"] .message[data-role="user"] .avatar {
+        background: #1a2433;
+      }
 
     @media (hover: none) {
       .history-actions {
@@ -2641,6 +2675,8 @@
       }
 
       .chat-header {
+        width: 100%;
+        min-width: 0;
         min-height: 70px;
         padding: 11px 14px;
       }
@@ -2661,7 +2697,24 @@
       }
 
       .brand {
+        flex: 1 1 auto;
+        min-width: 0;
         gap: 8px;
+      }
+
+      .brand-copy {
+        overflow: hidden;
+      }
+
+      .brand-copy h1 {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-actions {
+        flex: 0 0 auto;
+        gap: 6px;
       }
 
       .status-chip {
@@ -2670,6 +2723,7 @@
       }
 
       .messages {
+        max-width: 100%;
         padding: 22px 12px 16px;
       }
 
@@ -2686,7 +2740,8 @@
       }
 
       .message-content {
-        max-width: 87%;
+        width: auto;
+        max-width: calc(100% - 37px);
       }
 
       .bubble {
@@ -2699,7 +2754,24 @@
       }
 
       .composer-area {
-        padding: 0 10px 12px;
+        max-width: 100%;
+        padding: 0 10px max(12px, env(safe-area-inset-bottom));
+      }
+
+      .suggestions {
+        padding-top: 10px;
+        padding-bottom: 8px;
+      }
+
+      .composer-row {
+        grid-template-columns: minmax(0, 1fr) 42px 54px;
+        gap: 6px;
+      }
+
+      .send-button {
+        min-width: 54px;
+        padding-right: 8px;
+        padding-left: 8px;
       }
 
       .solver-dialog {
@@ -2737,7 +2809,7 @@
       }
 
       .preview-panel {
-        flex-basis: 188px;
+        flex-basis: 184px;
       }
 
       .preview-head {
@@ -2765,6 +2837,49 @@
   <div class="app-shell" id="appShell" data-sidebar-collapsed="false">
     <aside class="sidebar" id="sidebar" aria-label="会话与工具">
       <div class="sidebar-inner">
+        <nav class="sidebar-rail" aria-label="侧边栏快捷入口">
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-sidebar-toggle
+            aria-label="展开侧边栏"
+            title="展开侧边栏"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6"></path>
+            </svg>
+          </button>
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-rail-tab="wrongbook"
+            aria-current="true"
+            aria-label="错题集"
+            title="错题集"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3h12v18H6z"></path>
+              <path d="M9 8h6"></path>
+              <path d="M9 12h6"></path>
+              <path d="m9 16 1.5 1.5L14 14"></path>
+            </svg>
+          </button>
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-rail-tab="progress"
+            aria-current="false"
+            aria-label="学习进度"
+            title="学习进度"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5"></path>
+              <path d="M4 19h16"></path>
+              <path d="m7 15 3-3 3 2 5-6"></path>
+            </svg>
+          </button>
+        </nav>
+
         <div class="sidebar-top">
           <div class="sidebar-brand">
             <span class="sidebar-logo" aria-hidden="true">知</span>
@@ -2780,26 +2895,28 @@
         </div>
 
         <div class="toolbox-scroll">
-          <div class="toolbox-tabs" role="tablist" aria-label="高数工具分类">
+          <section
+            class="related-knowledge"
+            id="questionKnowledge"
+            aria-label="本题知识点"
+          >
+            <div class="related-knowledge-head">
+              <span>本题知识点</span>
+              <span id="questionKnowledgeStatus">等待题目</span>
+            </div>
+            <div
+              class="related-knowledge-list"
+              id="questionKnowledgeList"
+              aria-live="polite"
+            ></div>
+          </section>
+
+          <div class="toolbox-tabs" role="tablist" aria-label="学习工具">
             <button
               class="toolbox-tab"
               type="button"
               role="tab"
               aria-selected="true"
-              data-toolbox-tab="calculator"
-            >计算工具</button>
-            <button
-              class="toolbox-tab"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              data-toolbox-tab="formulas"
-            >公式合集</button>
-            <button
-              class="toolbox-tab"
-              type="button"
-              role="tab"
-              aria-selected="false"
               data-toolbox-tab="wrongbook"
             >错题集 <span
                 class="toolbox-tab-count"
@@ -2816,282 +2933,8 @@
 
           <div
             class="toolbox-panel"
-            data-toolbox-panel="calculator"
-            data-active="true"
-          >
-          <section class="toolbox-section toolbox-quick">
-            <div class="toolbox-heading">
-              <span>快速计算</span>
-              <span>变量默认 x</span>
-            </div>
-            <div class="quick-stack">
-              <form
-                class="quick-tool"
-                id="quickLimitForm"
-                data-icon="lim"
-                data-focus-target="quickLimitExpression"
-              >
-                <div class="quick-tool-head">
-                  <span class="quick-tool-title">
-                    <span class="quick-tool-mark">lim</span>
-                    极限
-                  </span>
-                </div>
-                <div class="quick-tool-row is-limit">
-                  <input
-                    class="quick-input"
-                    id="quickLimitExpression"
-                    placeholder="sin(x)/x"
-                    autocomplete="off"
-                    required
-                  >
-                  <span class="quick-caption">→</span>
-                  <input
-                    class="quick-input"
-                    id="quickLimitPoint"
-                    value="0"
-                    autocomplete="off"
-                    required
-                  >
-                </div>
-                <div class="quick-tool-row">
-                  <select class="quick-select" id="quickLimitDirection">
-                    <option value="">双侧</option>
-                    <option value="+">右极限</option>
-                    <option value="-">左极限</option>
-                  </select>
-                  <button class="quick-calculate" type="submit">计算</button>
-                </div>
-              </form>
-
-              <form
-                class="quick-tool"
-                id="quickDerivativeForm"
-                data-icon="d/dx"
-                data-focus-target="quickDerivativeExpression"
-              >
-                <div class="quick-tool-head">
-                  <span class="quick-tool-title">
-                    <span class="quick-tool-mark">d/dx</span>
-                    求导
-                  </span>
-                </div>
-                <div class="quick-tool-row">
-                  <input
-                    class="quick-input"
-                    id="quickDerivativeExpression"
-                    placeholder="x^2"
-                    autocomplete="off"
-                    required
-                  >
-                  <button class="quick-calculate" type="submit">计算</button>
-                </div>
-              </form>
-
-              <form
-                class="quick-tool"
-                id="quickIndefiniteForm"
-                data-icon="∫"
-                data-focus-target="quickIndefiniteExpression"
-              >
-                <div class="quick-tool-head">
-                  <span class="quick-tool-title">
-                    <span class="quick-tool-mark">∫</span>
-                    不定积分
-                  </span>
-                </div>
-                <div class="quick-tool-row">
-                  <input
-                    class="quick-input"
-                    id="quickIndefiniteExpression"
-                    placeholder="x^2"
-                    autocomplete="off"
-                    required
-                  >
-                  <button class="quick-calculate" type="submit">计算</button>
-                </div>
-              </form>
-
-              <form
-                class="quick-tool"
-                id="quickDefiniteForm"
-                data-icon="∫a"
-                data-focus-target="quickDefiniteExpression"
-              >
-                <div class="quick-tool-head">
-                  <span class="quick-tool-title">
-                    <span class="quick-tool-mark">∫</span>
-                    定积分
-                  </span>
-                </div>
-                <div class="quick-tool-row is-integral">
-                  <input
-                    class="quick-input"
-                    id="quickDefiniteExpression"
-                    placeholder="x^2"
-                    autocomplete="off"
-                    required
-                  >
-                  <input
-                    class="quick-input"
-                    id="quickDefiniteLower"
-                    value="0"
-                    aria-label="积分下限"
-                    required
-                  >
-                  <input
-                    class="quick-input"
-                    id="quickDefiniteUpper"
-                    value="1"
-                    aria-label="积分上限"
-                    required
-                  >
-                </div>
-                <button class="quick-calculate" type="submit">计算</button>
-              </form>
-
-              <form
-                class="quick-tool"
-                id="quickDifferentialForm"
-                data-icon="y'"
-                data-focus-target="quickDifferentialExpression"
-              >
-                <div class="quick-tool-head">
-                  <span class="quick-tool-title">
-                    <span class="quick-tool-mark">y'</span>
-                    微分方程
-                  </span>
-                </div>
-                <div class="quick-tool-row">
-                  <input
-                    class="quick-input"
-                    id="quickDifferentialExpression"
-                    value="y' - y"
-                    placeholder="y' - y"
-                    autocomplete="off"
-                    required
-                  >
-                  <button class="quick-calculate" type="submit">计算</button>
-                </div>
-              </form>
-            </div>
-          </section>
-
-          <section class="toolbox-section">
-            <div class="toolbox-heading">
-              <span>函数绘图</span>
-              <span>每行一条曲线</span>
-            </div>
-            <form class="quick-tool quick-plot-form" id="quickPlotForm" data-icon="plot">
-              <textarea
-                class="quick-input quick-plot-input"
-                id="quickPlotExpression"
-                rows="2"
-                placeholder="sin(x)&#10;x^2/4"
-                required
-              ></textarea>
-              <div class="quick-plot-range">
-                <input
-                  class="quick-input"
-                  id="quickPlotXMin"
-                  type="number"
-                  value="-6"
-                  step="0.5"
-                  aria-label="X 最小值"
-                >
-                <input
-                  class="quick-input"
-                  id="quickPlotXMax"
-                  type="number"
-                  value="6"
-                  step="0.5"
-                  aria-label="X 最大值"
-                >
-              </div>
-              <button class="quick-calculate" type="submit">绘制</button>
-            </form>
-          </section>
-
-          <section class="toolbox-section">
-            <div class="toolbox-heading">
-              <span>智能题型库</span>
-              <span>高频考点</span>
-            </div>
-            <div class="topic-presets">
-              <button class="topic-preset" type="button" data-toolbox-prompt="判断级数 1/n^2 收敛">级数敛散</button>
-              <button class="topic-preset" type="button" data-toolbox-prompt="求隐函数 x^2+y^2=1 的 dy/dx">隐函数求导</button>
-              <button class="topic-preset" type="button" data-toolbox-prompt="求二重积分 x*y 区域 0 到 1">二重积分</button>
-              <button class="topic-preset" type="button" data-toolbox-prompt="求偏导 x^2*y 对 x">偏导数</button>
-            </div>
-            <div class="quick-favorites">
-              <button class="favorite-item" type="button" data-toolbox-tab="wrongbook">错题工作台：收藏与重练</button>
-            </div>
-          </section>
-
-          <section class="toolbox-section">
-            <div class="toolbox-heading">
-              <span>快捷工具</span>
-              <span>插入到输入框</span>
-            </div>
-            <div class="symbol-board">
-              <button class="symbol-button" type="button" data-symbol="∫">∫</button>
-              <button class="symbol-button" type="button" data-symbol="lim ">lim</button>
-              <button class="symbol-button" type="button" data-symbol="pi">π</button>
-              <button class="symbol-button" type="button" data-symbol="sqrt(">√</button>
-              <button class="symbol-button" type="button" data-symbol="^2">x²</button>
-              <button class="symbol-button" type="button" data-symbol="oo">∞</button>
-            </div>
-            <div class="formula-recognition">
-              <input
-                id="formulaImageInput"
-                type="file"
-                accept="image/*"
-                tabindex="-1"
-              >
-              <button
-                class="topic-preset"
-                id="formulaImageButton"
-                type="button"
-                style="width: 100%; margin-top: 7px;"
-              >
-                图片识别（暂未接入）
-              </button>
-              <p
-                class="quick-caption"
-                id="formulaImageStatus"
-                role="status"
-              >当前版本请直接输入题目文字</p>
-            </div>
-          </section>
-          </div>
-
-          <div
-            class="toolbox-panel"
-            data-toolbox-panel="formulas"
-            data-active="false"
-          >
-            <section class="toolbox-section">
-              <div class="toolbox-heading">
-                <span>公式合集</span>
-                <span>点击插入输入框</span>
-              </div>
-              <label class="formula-search">
-                <span class="sr-only">搜索公式</span>
-                <input
-                  id="formulaSearchInput"
-                  type="search"
-                  placeholder="搜索：导数、积分、级数…"
-                  autocomplete="off"
-                >
-              </label>
-              <div class="formula-card-grid" id="formulaCardGrid"></div>
-            </section>
-          </div>
-
-          <div
-            class="toolbox-panel"
             data-toolbox-panel="wrongbook"
-            data-active="false"
+            data-active="true"
           >
             <section class="toolbox-section">
               <div class="toolbox-heading">
@@ -3113,7 +2956,7 @@
               </div>
               <div class="wrongbook-list" id="wrongBookList"></div>
               <div class="wrongbook-empty" id="wrongBookEmpty">
-                在聊天中点击题目下方的“收藏错题”，题目会保存在这里。
+                解答完成后，如果你确认这是需要复习的错题，可在答案下方加入。
               </div>
             </section>
           </div>
@@ -3146,7 +2989,7 @@
                 </div>
                 <div class="progress-metric">
                   <strong id="learningProgressWrongBook">0</strong>
-                  <span>收藏错题</span>
+                  <span>加入错题集</span>
                 </div>
               </div>
               <div class="progress-streak">
@@ -3163,7 +3006,12 @@
                   class="progress-action primary"
                   id="learningProgressExport"
                   type="button"
-                >导出</button>
+                >导出报告</button>
+                <button
+                  class="progress-action"
+                  id="learningProgressBackup"
+                  type="button"
+                >备份数据</button>
                 <button
                   class="progress-action"
                   id="learningProgressMerge"
@@ -3186,58 +3034,10 @@
                 class="progress-status"
                 id="learningProgressStatus"
                 role="status"
-              >进度自动保存在当前浏览器，可导出备份。</p>
+              >报告用于查看，数据备份用于以后恢复。</p>
             </section>
           </div>
         </div>
-
-        <details class="tools-menu" open>
-          <summary class="tools-menu-summary">
-            <span class="tools-menu-title">
-              <span>高数工具</span>
-              <span class="tools-menu-count" id="toolsMenuCount"></span>
-            </span>
-            <span class="tools-menu-marker" aria-hidden="true"></span>
-          </summary>
-          <div class="tool-list">
-            <button
-              class="tool-button"
-              type="button"
-              data-formula-type="derivative"
-            >
-              <span class="tool-icon" aria-hidden="true">d/dx</span>
-              <span class="tool-label">求导</span>
-            </button>
-            <button
-              class="tool-button"
-              type="button"
-              data-formula-type="integral"
-            >
-              <span class="tool-icon" aria-hidden="true">∫</span>
-              <span class="tool-label">积分</span>
-            </button>
-            <button
-              class="tool-button"
-              type="button"
-              data-formula-type="limit"
-            >
-              <span class="tool-icon" aria-hidden="true">lim</span>
-              <span class="tool-label">极限</span>
-            </button>
-            <button
-              class="tool-button is-wide"
-              id="openSolverButton"
-              type="button"
-            >
-              <span class="tool-icon" aria-hidden="true">∑</span>
-              <span class="tool-label">全章节解题</span>
-            </button>
-          </div>
-          <div class="tool-nav">
-            <div class="tool-nav-heading">全部题型</div>
-            <div class="tool-nav-list" id="toolsNavList"></div>
-          </div>
-        </details>
 
         <div class="sidebar-footer">
           <button class="theme-button" id="themeToggle" type="button">
@@ -3266,19 +3066,23 @@
     <aside class="conversation-panel" id="conversationPanel" aria-label="会话列表">
       <div class="conversation-panel-head">
         <span class="conversation-panel-title">会话</span>
-        <button
-          class="icon-button"
-          id="conversationPanelToggle"
-          type="button"
-          aria-label="收起会话列表"
-          title="收起会话列表"
-        >‹</button>
+        <div class="conversation-panel-actions">
+          <button
+            class="icon-button new-chat-icon"
+            id="newChatButton"
+            type="button"
+            aria-label="新建会话"
+            title="新建会话"
+          >+</button>
+          <button
+            class="icon-button"
+            id="conversationPanelToggle"
+            type="button"
+            aria-label="收起会话列表"
+            title="收起会话列表"
+          >‹</button>
+        </div>
       </div>
-
-      <button class="new-chat-button" id="newChatButton" type="button">
-        <span aria-hidden="true">+</span>
-        <span class="new-chat-label">新建会话</span>
-      </button>
 
       <section class="sidebar-section" aria-labelledby="historyHeading">
         <div class="section-heading" id="historyHeading">
@@ -3331,12 +3135,12 @@
         <section
           class="preview-panel"
           id="previewPanel"
-          data-collapsed="false"
-          aria-label="结果预览"
+          data-collapsed="true"
+          aria-label="计算过程总览"
         >
           <div class="preview-head">
             <div class="preview-title-wrap">
-              <h2 class="preview-title">结果预览</h2>
+              <h2 class="preview-title">计算过程总览</h2>
               <span class="preview-badge" id="previewBadge">待计算</span>
             </div>
             <div class="preview-actions">
@@ -3344,20 +3148,20 @@
                 class="workspace-tab"
                 id="previewToggle"
                 type="button"
-                aria-expanded="true"
-                title="折叠结果预览"
-              >收起</button>
+                aria-expanded="false"
+                title="展开计算过程总览"
+              >展开</button>
               <button
                 class="preview-action"
                 id="previewClear"
                 type="button"
-                title="清空预览"
+                title="清空计算过程"
               >清空</button>
             </div>
           </div>
           <div class="preview-content" id="previewContent">
             <div class="preview-empty" id="previewEmpty">
-              用左侧工具箱计算后，结果会显示在这里
+              解题过程与结果会显示在这里
             </div>
           </div>
         </section>
@@ -3379,19 +3183,66 @@
         </div>
         <div class="suggestions" id="suggestions" aria-label="示例题目"></div>
         <form class="composer" id="chatForm">
-          <label class="sr-only" for="chatInput">输入高等数学题目</label>
-          <textarea
-            class="chat-input"
-            id="chatInput"
-            name="message"
-            rows="1"
-            maxlength="600"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="输入题目，例如：求导 x^2"
-            required
-          ></textarea>
-          <button class="send-button" id="sendButton" type="submit">发送</button>
+          <div
+            class="composer-image-preview"
+            id="composerImagePreview"
+            hidden
+          >
+            <div
+              class="composer-image-list"
+              id="composerImageList"
+              aria-label="待发送题目图片"
+            ></div>
+            <div class="composer-image-footer">
+              <span
+                class="composer-image-status"
+                id="composerImageStatus"
+                role="status"
+                aria-live="polite"
+              ></span>
+              <button
+                class="composer-image-clear"
+                id="composerImageClear"
+                type="button"
+                title="移除全部待发送图片"
+              >移除全部</button>
+            </div>
+          </div>
+          <div class="composer-row">
+            <label class="sr-only" for="chatInput">输入高等数学题目</label>
+            <textarea
+              class="chat-input"
+              id="chatInput"
+              name="message"
+              rows="1"
+              maxlength="600"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="发图或输入题目"
+            ></textarea>
+            <input
+              class="image-file-input"
+              id="imageFileInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              tabindex="-1"
+            >
+            <button
+              class="image-upload-button"
+              id="imageUploadButton"
+              type="button"
+              aria-label="添加题目图片，可一次选择多张"
+              title="添加题目图片，支持 JPG、PNG、WebP、GIF，可一次选择多张"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect>
+                <circle cx="9" cy="9.5" r="1.5"></circle>
+                <path d="m5.5 17 4.4-4.4 3.1 3.1 2-2 3.5 3.3"></path>
+              </svg>
+            </button>
+            <button class="send-button" id="sendButton" type="submit">发送</button>
+          </div>
         </form>
       </footer>
     </div>
@@ -3440,37 +3291,6 @@
     </form>
   </dialog>
 
-  <dialog
-    class="solver-dialog formula-dialog"
-    id="formulaDialog"
-    aria-labelledby="formulaTitle"
-  >
-    <div class="solver-shell">
-      <header class="solver-header">
-        <div>
-          <h2 id="formulaTitle">公式速查</h2>
-          <p id="formulaSubtitle">常用公式和简短知识点。</p>
-        </div>
-        <button
-          class="icon-button"
-          id="closeFormulaButton"
-          type="button"
-          aria-label="关闭公式速查"
-          title="关闭"
-        >×</button>
-      </header>
-      <div class="solver-body formula-body" id="formulaContent"></div>
-      <footer class="solver-footer">
-        <div class="solver-status"></div>
-        <div class="solver-actions">
-          <button class="solver-button primary" id="closeFormulaAction" type="button">
-            知道了
-          </button>
-        </div>
-      </footer>
-    </div>
-  </dialog>
-
   <script
     defer
     src="{{ url_for('static', filename='katex/katex.min.js') }}"
@@ -3483,6 +3303,7 @@
       const SESSION_KEY = "zhiwei-demo-session-v1";
       const CONVERSATIONS_KEY = "zhiwei-demo-conversations-v1";
       const ACTIVE_CONVERSATION_KEY = "zhiwei-demo-active-conversation-v1";
+      const WELCOME_INDEX_KEY = "zhiwei-demo-welcome-index-v1";
       const THEME_KEY = "zhiwei-demo-theme-v1";
       const SIDEBAR_WIDTH_KEY = "zhiwei-demo-sidebar-width-v1";
       const SIDEBAR_COLLAPSED_KEY = "zhiwei-demo-sidebar-collapsed-v1";
@@ -3500,6 +3321,21 @@
       const MAX_WRONG_BOOK_ITEMS = 100;
       const RESPONSE_CACHE_LIMIT = 20;
       const REQUEST_TIMEOUT_MS = 20000;
+      const MAX_QUESTION_IMAGE_COUNT = 4;
+      const MAX_QUESTION_IMAGE_BYTES = 6 * 1024 * 1024;
+      const WRONG_BOOK_ELIGIBLE_INTENTS = new Set([
+        "verify",
+        "integrate",
+        "limit",
+        "solve",
+        "plot",
+      ]);
+      const QUESTION_IMAGE_TYPES = new Set([
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ]);
       const MIN_SIDEBAR_WIDTH = 220;
       const MAX_SIDEBAR_WIDTH = 420;
       const DEFAULT_SIDEBAR_WIDTH = 272;
@@ -3511,128 +3347,142 @@
         "lim x→0 sin(x)/x",
         "我以前做过哪些题",
       ];
-      const FORMULA_GUIDES = {
-        derivative: {
-          title: "求导常用公式",
-          subtitle: "先看基本公式，再注意复合函数和商的求导。",
-          groups: [
-            {
-              heading: "基本公式",
-              items: [
-                ["(x^n)' = n x^(n-1)", "幂函数求导。"],
-                ["(sin x)' = cos x", "正弦函数求导。"],
-                ["(cos x)' = -sin x", "余弦函数求导注意负号。"],
-                ["(e^x)' = e^x", "指数函数保持不变。"],
-                ["(ln x)' = 1/x", "定义域 x > 0。"],
-              ],
-            },
-            {
-              heading: "运算规则",
-              items: [
-                ["(uv)' = u'v + uv'", "乘积求导。"],
-                ["(u/v)' = (u'v - uv')/v^2", "商求导，分母不能为 0。"],
-                ["[f(g(x))]' = f'(g(x))g'(x)", "复合函数链式法则。"],
-              ],
-            },
-          ],
-        },
-        integral: {
-          title: "积分常用公式",
-          subtitle: "不定积分不要漏掉任意常数 C。",
-          groups: [
-            {
-              heading: "基本公式",
-              items: [
-                ["∫ x^n dx = x^(n+1)/(n+1) + C", "当 n ≠ -1。"],
-                ["∫ 1/x dx = ln|x| + C", "x 不能为 0。"],
-                ["∫ e^x dx = e^x + C", "指数函数积分。"],
-                ["∫ sin x dx = -cos x + C", "正弦函数积分注意负号。"],
-                ["∫ cos x dx = sin x + C", "余弦函数积分。"],
-              ],
-            },
-            {
-              heading: "常用方法",
-              items: [
-                ["∫ u dv = uv - ∫ v du", "分部积分法。"],
-                ["换元后要同步换 dx 和积分上下限", "定积分换元时尤其重要。"],
-              ],
-            },
-          ],
-        },
-        limit: {
-          title: "极限常用公式",
-          subtitle: "先判断类型，再选择等价无穷小或洛必达法则。",
-          groups: [
-            {
-              heading: "常用极限",
-              items: [
-                ["lim(x→0) sin x / x = 1", "常见等价无穷小。"],
-                ["lim(x→0) (e^x - 1) / x = 1", "指数型常用极限。"],
-                ["lim(x→0) ln(1+x) / x = 1", "对数型常用极限。"],
-                ["lim(x→∞) (1 + 1/x)^x = e", "重要极限。"],
-              ],
-            },
-            {
-              heading: "使用提醒",
-              items: [
-                ["洛必达法则只用于 0/0 或 ∞/∞ 型", "使用前先检查条件。"],
-                ["先尝试代入、约分、等价无穷小", "不要一开始就套洛必达。"],
-              ],
-            },
-          ],
-        },
-      };
-      const FORMULA_COLLECTION = [
+      const QUESTION_KNOWLEDGE_RULES = [
         {
-          heading: "极限",
-          items: [
-            ["lim(x→0) sin(x)/x = 1", "常用等价无穷小"],
-            ["lim(x→∞) (1 + 1/x)^x = e", "重要极限"],
+          id: "limits",
+          title: "极限与连续性",
+          keywords: ["极限", "lim", "趋于", "趋近", "无穷小", "连续"],
+          points: [
+            "先判断趋近方向、未定式和函数在邻域内的定义。",
+            "常用路径是等价无穷小、洛必达法则、夹逼准则或有理化。",
           ],
         },
         {
-          heading: "导数",
-          items: [
-            ["(x^n)' = n x^(n-1)", "幂函数求导"],
-            ["(uv)' = u'v + uv'", "乘积求导"],
-            ["[f(g(x))]' = f'(g(x))g'(x)", "复合函数链式法则"],
+          id: "derivatives",
+          title: "导数与微分",
+          keywords: [
+            "导数",
+            "求导",
+            "微分",
+            "切线",
+            "法线",
+            "高阶导",
+            "罗尔",
+            "拉格朗日",
+          ],
+          patterns: [/[dD][a-zA-Z]?\/d[a-zA-Z]/],
+          points: [
+            "先看函数结构，再选择四则、链式、隐函数或参数方程求导。",
+            "注意可导性、定义域和所求阶数，最后检查符号与因式。",
           ],
         },
         {
-          heading: "积分",
-          items: [
-            ["∫ x^n dx = x^(n+1)/(n+1) + C", "n ≠ -1"],
-            ["∫ 1/x dx = ln|x| + C", "x ≠ 0"],
-            ["∫ u dv = uv - ∫ v du", "分部积分"],
+          id: "indefinite-integrals",
+          title: "不定积分与换元",
+          keywords: ["不定积分", "原函数", "换元", "分部积分", "积分", "∫"],
+          points: [
+            "先识别基本积分形式，再判断换元、分部或部分分式。",
+            "不定积分结果需要保留任意常数 C，并回代换元变量。",
           ],
         },
         {
-          heading: "三角与反三角",
-          items: [
-            ["(sin x)' = cos x", "基本求导"],
-            ["(cos x)' = -sin x", "注意负号"],
-            ["(arctan x)' = 1/(1+x^2)", "反三角函数求导"],
+          id: "definite-integrals",
+          title: "定积分与几何应用",
+          keywords: ["定积分", "上限", "下限", "面积", "体积", "弧长"],
+          patterns: [/\d+(?:\.\d+)?\s*到\s*\d+(?:\.\d+)?/],
+          points: [
+            "先确认积分变量、上下限和被积函数，区分数值与含 C 的结果。",
+            "可考虑换元、分部、对称性或奇偶性，并用几何量检查结果。",
           ],
         },
         {
-          heading: "微分方程",
-          items: [
-            ["y' + P(x)y = Q(x)", "一阶线性微分方程"],
-            ["y'' + py' + qy = 0", "二阶常系数齐次方程"],
+          id: "multivariable",
+          title: "多元函数与偏导",
+          keywords: ["偏导", "多元", "全微分", "梯度", "方向导数", "∂"],
+          points: [
+            "对某个变量求偏导时，其余变量暂按常数处理。",
+            "复合结构要使用链式法则，并留意二阶混合偏导的条件。",
           ],
         },
         {
-          heading: "中值定理",
-          items: [
-            ["f'(ξ) = (f(b)-f(a))/(b-a)", "拉格朗日中值定理"],
-            ["f'(ξ) = 0", "罗尔定理"],
+          id: "multiple-integrals",
+          title: "重积分与积分次序",
+          keywords: ["二重积分", "三重积分", "重积分", "积分区域", "积分次序"],
+          points: [
+            "先根据积分区域判断是否适合直角坐标或坐标变换。",
+            "确定内外层变量的上下限，避免边界表达式中出现同层变量。",
           ],
         },
         {
-          heading: "级数",
-          items: [
-            ["∑ 1/n^p", "p > 1 收敛"],
-            ["lim |a_(n+1)/a_n| < 1", "比值判别法"],
+          id: "coordinate-systems",
+          title: "极坐标与坐标变换",
+          keywords: ["极坐标", "柱面坐标", "球面坐标", "theta", "rho", "phi"],
+          points: [
+            "先画区域并确定半径、角度或坐标变量的取值范围。",
+            "坐标变换时不要遗漏雅可比因子 r、rho 或 rho^2 sin(phi)。",
+          ],
+        },
+        {
+          id: "line-surface",
+          title: "曲线积分与曲面积分",
+          keywords: ["曲线积分", "曲面积分", "通量", "向量场", "格林", "高斯"],
+          points: [
+            "先区分第一类和第二类积分，再确认参数化或曲面方向。",
+            "使用格林、高斯或斯托克斯公式前，要检查区域、边界和方向条件。",
+          ],
+        },
+        {
+          id: "series",
+          title: "无穷级数",
+          keywords: ["级数", "收敛", "发散", "幂级数", "收敛半径", "泰勒", "麦克劳林"],
+          points: [
+            "先判断正项、交错、幂级数或函数项级数，再选择判别法。",
+            "收敛半径的端点要单独判断，函数展开要写清收敛域。",
+          ],
+        },
+        {
+          id: "differential-equations",
+          title: "微分方程",
+          keywords: ["微分方程", "通解", "特解", "齐次", "线性方程", "y'"],
+          points: [
+            "先识别阶数、线性性和方程类型，再匹配变量分离或特征方程。",
+            "通解中的常数个数应与阶数一致，代入初值后再确定特解。",
+          ],
+        },
+        {
+          id: "vectors",
+          title: "向量与空间解析几何",
+          keywords: ["向量", "点乘", "叉乘", "数量积", "向量积", "法向量"],
+          points: [
+            "先明确向量维数、方向以及所求是长度、夹角还是投影。",
+            "点乘处理夹角与投影，叉乘处理面积、法向量和空间方向。",
+          ],
+        },
+        {
+          id: "conditional-extrema",
+          title: "条件极值",
+          keywords: ["条件极值", "拉格朗日乘数", "约束", "极值"],
+          points: [
+            "先写出目标函数和全部约束条件，再构造拉格朗日函数。",
+            "求出候选点后要比较函数值，并检查边界和约束异常情况。",
+          ],
+        },
+        {
+          id: "implicit-parametric",
+          title: "参数方程与隐函数",
+          keywords: ["参数方程", "隐函数", "方程组", "因变量", "自变量"],
+          points: [
+            "参数方程先分别求导，再按 dy/dx = (dy/dt)/(dx/dt) 计算。",
+            "隐函数或方程组求导时，要明确因变量、自变量和链式关系。",
+          ],
+        },
+        {
+          id: "plots",
+          title: "函数图像",
+          keywords: ["画函数", "图像", "曲线图", "plot", "sin(x)", "cos(x)"],
+          points: [
+            "先确定定义域、关键点和渐近线，再判断单调性与极值。",
+            "图像题要同时检查横纵坐标范围以及函数值的变化趋势。",
           ],
         },
       ];
@@ -4335,14 +4185,28 @@
           },
         },
       };
-      const WELCOME_TEXT =
-        "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。想回顾之前的题目，直接问我“我以前做过哪些题”，也可以说“再算一遍上一题”。";
+      const WELCOME_TEXTS = [
+        "我是知微老师。把高数题发来就行，文字或图片都可以，我会先算，再把关键步骤讲清楚。",
+        "有问题就直接发，求导、积分、极限和函数图像都能一起看。",
+        "把题目原样发来即可，不用先整理格式，图片也能识别。",
+        "这里是知微。高数题文字或图片都行，我会先给你结果，再陪你核对思路。",
+      ];
 
       const messageList = document.getElementById("messageList");
       const suggestions = document.getElementById("suggestions");
       const chatForm = document.getElementById("chatForm");
       const chatInput = document.getElementById("chatInput");
       const sendButton = document.getElementById("sendButton");
+      const imageFileInput = document.getElementById("imageFileInput");
+      const imageUploadButton = document.getElementById("imageUploadButton");
+      const composerImagePreview = document.getElementById(
+        "composerImagePreview",
+      );
+      const composerImageList = document.getElementById("composerImageList");
+      const composerImageStatus = document.getElementById(
+        "composerImageStatus",
+      );
+      const composerImageClear = document.getElementById("composerImageClear");
       const clearButton = document.getElementById("clearButton");
       const serviceStatus = document.getElementById("serviceStatus");
       const serviceStatusText = document.getElementById("serviceStatusText");
@@ -4357,7 +4221,6 @@
       const newChatButton = document.getElementById("newChatButton");
       const themeToggle = document.getElementById("themeToggle");
       const themeLabel = document.getElementById("themeLabel");
-      const toolsMenu = document.querySelector(".tools-menu");
       const sidebarResizer = document.getElementById("sidebarResizer");
       const sidebarScrim = document.getElementById("sidebarScrim");
       const solverDialog = document.getElementById("solverDialog");
@@ -4371,12 +4234,6 @@
       const closeSolverButton = document.getElementById("closeSolverButton");
       const cancelSolverButton = document.getElementById("cancelSolverButton");
       const submitSolverButton = document.getElementById("submitSolverButton");
-      const formulaDialog = document.getElementById("formulaDialog");
-      const formulaTitle = document.getElementById("formulaTitle");
-      const formulaSubtitle = document.getElementById("formulaSubtitle");
-      const formulaContent = document.getElementById("formulaContent");
-      const closeFormulaButton = document.getElementById("closeFormulaButton");
-      const closeFormulaAction = document.getElementById("closeFormulaAction");
       const conversationPanel = document.getElementById("conversationPanel");
       const conversationPanelToggle = document.getElementById(
         "conversationPanelToggle",
@@ -4387,23 +4244,13 @@
       const previewBadge = document.getElementById("previewBadge");
       const previewToggle = document.getElementById("previewToggle");
       const previewClear = document.getElementById("previewClear");
-      const quickLimitForm = document.getElementById("quickLimitForm");
-      const quickDerivativeForm = document.getElementById(
-        "quickDerivativeForm",
+      const questionKnowledge = document.getElementById("questionKnowledge");
+      const questionKnowledgeList = document.getElementById(
+        "questionKnowledgeList",
       );
-      const quickIndefiniteForm = document.getElementById(
-        "quickIndefiniteForm",
+      const questionKnowledgeStatus = document.getElementById(
+        "questionKnowledgeStatus",
       );
-      const quickDefiniteForm = document.getElementById("quickDefiniteForm");
-      const quickDifferentialForm = document.getElementById(
-        "quickDifferentialForm",
-      );
-      const quickPlotForm = document.getElementById("quickPlotForm");
-      const formulaImageInput = document.getElementById("formulaImageInput");
-      const formulaImageButton = document.getElementById("formulaImageButton");
-      const formulaImageStatus = document.getElementById("formulaImageStatus");
-      const formulaSearchInput = document.getElementById("formulaSearchInput");
-      const formulaCardGrid = document.getElementById("formulaCardGrid");
       const wrongBookList = document.getElementById("wrongBookList");
       const wrongBookEmpty = document.getElementById("wrongBookEmpty");
       const wrongBookCount = document.getElementById("wrongBookCount");
@@ -4437,6 +4284,9 @@
       const learningProgressExport = document.getElementById(
         "learningProgressExport",
       );
+      const learningProgressBackup = document.getElementById(
+        "learningProgressBackup",
+      );
       const learningProgressMerge = document.getElementById(
         "learningProgressMerge",
       );
@@ -4451,17 +4301,23 @@
       );
       const toolbox = document.querySelector(".toolbox-scroll");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
+      const compactComposerMedia = window.matchMedia("(max-width: 640px)");
 
       let messages = [];
       let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
+      let pendingQuestionImages = [];
+      let composerImageNotice = "";
+      let pendingComposerSubmission = false;
+      let lastWelcomeIndex = -1;
       const responseCache = new Map();
       let conversations = [];
       let activeConversationId = "";
-      let toolsMenuRestoreOpen = null;
       let wrongBook = [];
       let learningProgress = createDefaultLearningProgress();
       let learningProgressImportMode = "merge";
+      let knowledgeDebounceId = 0;
+      let lastSubmittedKnowledgeText = "";
 
       function normalizeMessages(value) {
         if (!Array.isArray(value)) {
@@ -4474,14 +4330,42 @@
             id: String(item.id || makeId()),
             role: item.role,
             text: String(item.text || ""),
+            intent: String(item.intent || ""),
             formulaLatex: String(item.formulaLatex || ""),
             formulaText: String(item.formulaText || ""),
             resultLabel: String(item.resultLabel || ""),
             resultValue: String(item.resultValue || ""),
             verdict: typeof item.verdict === "boolean" ? item.verdict : null,
             plotUrl: String(item.plotUrl || ""),
+            attachments: Array.isArray(item.attachments)
+              ? item.attachments
+                .slice(0, MAX_QUESTION_IMAGE_COUNT)
+                .map((attachment) => ({
+                  name: String(
+                    (attachment && attachment.name) || "题目图片",
+                  ),
+                  previewUrl: String(
+                    (attachment && attachment.previewUrl) || "",
+                  ).startsWith("blob:")
+                    ? ""
+                    : String((attachment && attachment.previewUrl) || ""),
+                }))
+              : [],
             createdAt: String(item.createdAt || currentTime()),
           }));
+      }
+
+      function messagesForStorage(value) {
+        return value.map((message) => ({
+          ...message,
+          attachments: Array.isArray(message.attachments)
+            ? message.attachments.map((attachment) => ({
+                name: String(
+                  (attachment && attachment.name) || "题目图片",
+                ),
+              }))
+            : [],
+        }));
       }
 
       function loadConversations() {
@@ -4549,10 +4433,45 @@
       }
 
       function welcomeMessage() {
+        let previousIndex = lastWelcomeIndex;
+        if (previousIndex < 0) {
+          try {
+            const storedIndex = Number(
+              window.sessionStorage.getItem(WELCOME_INDEX_KEY),
+            );
+            if (
+              Number.isInteger(storedIndex)
+              && storedIndex >= 0
+              && storedIndex < WELCOME_TEXTS.length
+            ) {
+              previousIndex = storedIndex;
+            }
+          } catch (error) {
+            previousIndex = -1;
+          }
+        }
+
+        const availableIndexes = WELCOME_TEXTS
+          .map((_, index) => index)
+          .filter((index) => index !== previousIndex);
+        const pool = availableIndexes.length
+          ? availableIndexes
+          : WELCOME_TEXTS.map((_, index) => index);
+        const welcomeIndex = pool[Math.floor(Math.random() * pool.length)];
+        lastWelcomeIndex = welcomeIndex;
+        try {
+          window.sessionStorage.setItem(
+            WELCOME_INDEX_KEY,
+            String(welcomeIndex),
+          );
+        } catch (error) {
+          // The welcome message still varies in memory when storage is unavailable.
+        }
         return {
           id: makeId(),
           role: "assistant",
-          text: WELCOME_TEXT,
+          text: WELCOME_TEXTS[welcomeIndex],
+          intent: "welcome",
           formulaLatex: "",
           formulaText: "",
           resultLabel: "",
@@ -4579,7 +4498,9 @@
         try {
           window.localStorage.setItem(
             STORAGE_KEY,
-            JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)),
+            JSON.stringify(
+              messagesForStorage(messages).slice(-MAX_STORED_MESSAGES),
+            ),
           );
         } catch (error) {
           // The conversation still works when browser storage is unavailable.
@@ -4630,7 +4551,7 @@
                 : currentConversationTitle(),
             renamed: Boolean(existingConversation?.renamed),
             updatedAt: Date.now(),
-            messages: messages.slice(-MAX_STORED_MESSAGES),
+            messages: messagesForStorage(messages).slice(-MAX_STORED_MESSAGES),
           });
           conversations = conversations.slice(0, MAX_CONVERSATIONS);
         }
@@ -4722,7 +4643,11 @@
       }
 
       function cacheResponse(question, data) {
-        if (!data || data.history_used || data.intent === "history") {
+        if (
+          !data
+          || data.history_used
+          || ["general", "help", "history", "unknown"].includes(data.intent)
+        ) {
           return;
         }
         const key = question.trim();
@@ -4800,21 +4725,87 @@
         );
       }
 
-      function wrongBookAnswerFor(messageId) {
+      function resolvedAnswerForUserMessage(messageId) {
         const index = messages.findIndex((message) => message.id === messageId);
         if (index === -1) {
-          return "";
+          return null;
         }
         for (let cursor = index + 1; cursor < messages.length; cursor += 1) {
           const candidate = messages[cursor];
+          if (candidate.role === "user") {
+            return null;
+          }
           if (candidate.role !== "assistant" || candidate.loading) {
             continue;
           }
-          const answer = String(candidate.text || "").trim();
-          const formula = String(candidate.formulaText || "").trim();
-          return [answer, formula].filter(Boolean).join("\n");
+          return candidate;
         }
-        return "";
+        return null;
+      }
+
+      function sourceUserMessageForAnswer(message) {
+        if (!message || message.role !== "assistant" || message.loading) {
+          return null;
+        }
+        if (message.sourceUserMessageId) {
+          const linkedMessage = messages.find(
+            (item) =>
+              item.id === message.sourceUserMessageId
+              && item.role === "user",
+          );
+          if (linkedMessage) {
+            return linkedMessage;
+          }
+        }
+        const index = messages.findIndex((item) => item.id === message.id);
+        for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+          const candidate = messages[cursor];
+          if (candidate.role === "user" && !candidate.loading) {
+            return candidate;
+          }
+        }
+        return null;
+      }
+
+      function messageCanJoinWrongBook(message) {
+        if (!message || message.loading) {
+          return false;
+        }
+        const userMessage = message.role === "assistant"
+          ? sourceUserMessageForAnswer(message)
+          : message;
+        if (
+          !userMessage
+          || userMessage.role !== "user"
+          || userMessage.loading
+        ) {
+          return false;
+        }
+        const answer = message.role === "assistant"
+          ? message
+          : resolvedAnswerForUserMessage(userMessage.id);
+        if (
+          !answer
+          || !WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))
+        ) {
+          return false;
+        }
+        return Boolean(
+          String(answer.resultValue || "").trim()
+          || String(answer.formulaLatex || "").trim()
+          || String(answer.formulaText || "").trim()
+          || String(answer.plotUrl || "").trim()
+        );
+      }
+
+      function wrongBookAnswerFor(messageId) {
+        const answerMessage = resolvedAnswerForUserMessage(messageId);
+        if (!answerMessage) {
+          return "";
+        }
+        const answer = String(answerMessage.text || "").trim();
+        const formula = String(answerMessage.formulaText || "").trim();
+        return [answer, formula].filter(Boolean).join("\n");
       }
 
       function syncWrongBookAnswer(messageId, questionText = "") {
@@ -4920,80 +4911,127 @@
       }
 
       function setToolboxTab(tab) {
-        const allowed = [
-          "calculator",
-          "formulas",
-          "wrongbook",
-          "progress",
-        ];
-        const nextTab = allowed.includes(tab) ? tab : "calculator";
+        const allowed = ["wrongbook", "progress"];
+        const nextTab = allowed.includes(tab) ? tab : "wrongbook";
         document.querySelectorAll("[data-toolbox-tab]").forEach((button) => {
           const active = button.dataset.toolboxTab === nextTab;
           button.setAttribute("aria-selected", String(active));
+        });
+        document.querySelectorAll("[data-rail-tab]").forEach((button) => {
+          button.setAttribute(
+            "aria-current",
+            String(button.dataset.railTab === nextTab),
+          );
         });
         document.querySelectorAll("[data-toolbox-panel]").forEach((panel) => {
           panel.dataset.active = String(
             panel.dataset.toolboxPanel === nextTab,
           );
         });
-        if (nextTab === "formulas") {
-          renderFormulaCards();
-        } else if (nextTab === "wrongbook") {
+        if (nextTab === "wrongbook") {
           renderWrongBook();
         } else if (nextTab === "progress") {
           renderLearningProgress();
         }
       }
 
-      function renderFormulaCards() {
-        if (!formulaCardGrid) {
+      function knowledgeMatchScore(text, rule) {
+        let score = 0;
+        rule.keywords.forEach((keyword) => {
+          const normalizedKeyword = String(keyword).toLowerCase();
+          if (normalizedKeyword && text.includes(normalizedKeyword)) {
+            score += Math.max(2, Math.min(6, normalizedKeyword.length));
+          }
+        });
+        (rule.patterns || []).forEach((pattern) => {
+          if (pattern.test(text)) {
+            score += 7;
+          }
+        });
+        return score;
+      }
+
+      function matchedQuestionKnowledge(rawText) {
+        const text = String(rawText || "").trim().toLowerCase();
+        if (!text) {
+          return [];
+        }
+        return QUESTION_KNOWLEDGE_RULES
+          .map((rule) => ({
+            rule,
+            score: knowledgeMatchScore(text, rule),
+          }))
+          .filter((item) => item.score > 0)
+          .sort((left, right) => right.score - left.score)
+          .slice(0, 3)
+          .map((item) => item.rule);
+      }
+
+      function renderQuestionKnowledge(rawText, options = {}) {
+        if (!questionKnowledgeList || !questionKnowledgeStatus) {
           return;
         }
-        const keyword = String(formulaSearchInput?.value || "")
-          .trim()
-          .toLowerCase();
+        const text = String(rawText || "").trim();
         const fragment = document.createDocumentFragment();
-        let matched = 0;
-
-        FORMULA_COLLECTION.forEach((group) => {
-          const items = group.items.filter(([formula, note]) =>
-            `${group.heading} ${formula} ${note}`
-              .toLowerCase()
-              .includes(keyword),
-          );
-          if (!items.length) {
-            return;
-          }
-          matched += items.length;
-          const section = element("section", "formula-card-group");
-          section.append(element("h3", "", group.heading));
-          items.forEach(([formula, note]) => {
-            const card = element("button", "formula-card");
-            card.type = "button";
-            card.dataset.formulaCard = formula;
-            card.dataset.formula = formula;
-            card.append(
-              element("strong", "", formula),
-              element("span", "", note),
-            );
-            section.append(card);
-          });
-          fragment.append(section);
-        });
-
-        if (!matched) {
+        const matches = matchedQuestionKnowledge(text);
+        if (!text) {
+          questionKnowledgeStatus.textContent = "等待题目";
+          questionKnowledge.dataset.state = "empty";
           fragment.append(
-            element("div", "wrongbook-empty", "没有匹配的公式。"),
+            element(
+              "div",
+              "related-knowledge-empty",
+              "输入题目后，这里会显示与当前问题相关的知识点。",
+            ),
           );
+        } else if (!matches.length) {
+          questionKnowledgeStatus.textContent = "识别题型";
+          questionKnowledge.dataset.state = "generic";
+          const item = element("article", "knowledge-item");
+          item.append(
+            element("strong", "", "审题与验证"),
+            element(
+              "p",
+              "",
+              "先明确已知条件、目标量和所求形式；计算后再用代入或量纲检查结果。",
+            ),
+          );
+          fragment.append(item);
+        } else {
+          questionKnowledgeStatus.textContent =
+            options.source === "input"
+              ? `正在匹配 ${matches.length} 个知识点`
+              : `已匹配 ${matches.length} 个知识点`;
+          questionKnowledge.dataset.state = "ready";
+          matches.forEach((rule) => {
+            const item = element("article", "knowledge-item");
+            item.dataset.knowledgeId = rule.id;
+            item.append(element("strong", "", rule.title));
+            rule.points.forEach((point) => {
+              item.append(element("p", "", point));
+            });
+            fragment.append(item);
+          });
         }
-        formulaCardGrid.replaceChildren(fragment);
+        questionKnowledgeList.replaceChildren(fragment);
+      }
+
+      function queueQuestionKnowledgeUpdate(rawText) {
+        window.clearTimeout(knowledgeDebounceId);
+        knowledgeDebounceId = window.setTimeout(() => {
+          const text = String(rawText || "").trim();
+          renderQuestionKnowledge(
+            text || lastSubmittedKnowledgeText,
+            { source: text ? "input" : "saved" },
+          );
+        }, 180);
       }
 
       function toggleWrongBook(messageId) {
         const message = messages.find(
           (item) => item.id === messageId && item.role === "user",
         );
-        if (!message) {
+        if (!message || !messageCanJoinWrongBook(message)) {
           return;
         }
         const existingIndex = wrongBook.findIndex(
@@ -5002,8 +5040,18 @@
             || item.text === message.text.trim(),
         );
         if (existingIndex !== -1) {
+          if (!window.confirm("确认从错题集移除这道题吗？")) {
+            return;
+          }
           wrongBook.splice(existingIndex, 1);
         } else {
+          if (
+            !window.confirm(
+              "确认这是一道需要收录的错题吗？加入后可在错题集里重练。",
+            )
+          ) {
+            return;
+          }
           wrongBook.unshift({
             id: makeId(),
             text: message.text.trim(),
@@ -5035,7 +5083,6 @@
         saveWrongBook();
         renderWrongBook();
         recordLearningActivity("practice");
-        setToolboxTab("calculator");
         if (sidebarMedia.matches) {
           setSidebarCollapsed(true);
         }
@@ -5451,7 +5498,122 @@
         return normalizeLearningProgress(current);
       }
 
+      function triggerProgressDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function formatProgressReportDateTime(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return "暂无记录";
+        }
+        return date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
+
       function exportLearningProgress() {
+        learningProgress.wrongBookSavedCount = wrongBook.length;
+        const normalized = normalizeLearningProgress(learningProgress);
+        const reportDate = formatProgressReportDateTime(Date.now());
+        const lastUpdated = normalized.updatedAt
+          ? formatProgressReportDateTime(normalized.updatedAt)
+          : "暂无记录";
+        const studyRows = normalized.studyDays
+          .slice()
+          .reverse()
+          .map((day) => {
+            const count = clampProgressCount(normalized.dailyCounts[day]);
+            return `<tr><td>${day}</td><td>${count} 道</td></tr>`;
+          })
+          .join("");
+        const report = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>知微高数学习报告</title>
+  <style>
+    :root { color-scheme: light; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 20px; color: #173252; background: #f4f7fb; }
+    main { width: min(760px, 100%); margin: 0 auto; padding: 36px; border: 1px solid #dbe6f4; border-radius: 12px; background: #fff; box-shadow: 0 18px 48px rgba(31, 72, 128, 0.08); }
+    header { padding-bottom: 22px; border-bottom: 1px solid #e2eaf4; }
+    .eyebrow { margin: 0 0 8px; color: #2d6fc2; font-size: 13px; font-weight: 700; letter-spacing: 0; }
+    h1 { margin: 0; font-size: 30px; line-height: 1.25; }
+    .meta { margin: 12px 0 0; color: #66788f; font-size: 13px; line-height: 1.7; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 24px 0; }
+    .metric { min-height: 92px; padding: 16px; border: 1px solid #dbe6f4; border-radius: 9px; background: #f8fbff; }
+    .metric strong { display: block; color: #225fae; font-size: 26px; line-height: 1.1; }
+    .metric span { display: block; margin-top: 8px; color: #66788f; font-size: 12px; font-weight: 700; }
+    .rhythm { display: flex; gap: 28px; margin: 0 0 26px; padding: 16px 18px; border: 1px solid #dbe6f4; border-radius: 9px; }
+    .rhythm div { color: #66788f; font-size: 13px; }
+    .rhythm strong { margin-left: 6px; color: #225fae; font-size: 20px; }
+    h2 { margin: 26px 0 12px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #e6edf5; text-align: left; }
+    th { color: #66788f; background: #f8fbff; font-size: 12px; }
+    td:last-child, th:last-child { text-align: right; }
+    .empty { padding: 22px; border: 1px dashed #cbd9ea; border-radius: 8px; color: #66788f; font-size: 13px; text-align: center; }
+    footer { margin-top: 30px; color: #8a99ab; font-size: 11px; line-height: 1.7; }
+    @media (max-width: 640px) {
+      body { padding: 16px 10px; }
+      main { padding: 22px 16px; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rhythm { gap: 16px; justify-content: space-between; }
+    }
+    @media print {
+      body { padding: 0; background: #fff; }
+      main { width: 100%; border: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">知微高数</p>
+      <h1>学习进度报告</h1>
+      <p class="meta">导出时间：${reportDate}<br>最近更新：${lastUpdated}</p>
+    </header>
+    <section class="summary">
+      <article class="metric"><strong>${normalized.questionCount}</strong><span>完成题目</span></article>
+      <article class="metric"><strong>${normalized.calculationCount}</strong><span>工具计算</span></article>
+      <article class="metric"><strong>${normalized.practiceCount}</strong><span>错题重练</span></article>
+      <article class="metric"><strong>${wrongBook.length}</strong><span>当前错题</span></article>
+    </section>
+    <section class="rhythm">
+      <div>连续学习<strong>${learningProgressStreakValue()} 天</strong></div>
+      <div>累计学习<strong>${normalized.studyDays.length} 天</strong></div>
+    </section>
+    <h2>学习记录</h2>
+    ${studyRows
+      ? `<table><thead><tr><th>日期</th><th>完成题目</th></tr></thead><tbody>${studyRows}</tbody></table>`
+      : '<p class="empty">暂无学习记录。</p>'}
+    <footer>本报告由知微高数在当前浏览器中生成，仅用于查看和打印。需要恢复或合并记录时，请使用“数据备份”导出的 JSON 文件。</footer>
+  </main>
+</body>
+</html>
+`;
+        triggerProgressDownload(
+          new Blob([report], { type: "text/html;charset=utf-8" }),
+          `知微高数_学习报告_${localDateKey() || "export"}.html`,
+        );
+        setLearningProgressStatus("学习报告已导出，可直接打开查看或打印。", "success");
+      }
+
+      function exportLearningProgressBackup() {
         learningProgress.wrongBookSavedCount = wrongBook.length;
         const normalized = normalizeLearningProgress(learningProgress);
         const payload = {
@@ -5464,16 +5626,11 @@
           [`${JSON.stringify(payload, null, 2)}\n`],
           { type: "application/json;charset=utf-8" },
         );
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download =
-          `知微高数_学习进度_${localDateKey() || "export"}.json`;
-        document.body.append(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setLearningProgressStatus("进度文件已导出。", "success");
+        triggerProgressDownload(
+          blob,
+          `知微高数_学习进度备份_${localDateKey() || "export"}.json`,
+        );
+        setLearningProgressStatus("学习进度备份已导出，可用于恢复或合并。", "success");
       }
 
       function readLearningProgressFile(file) {
@@ -5554,6 +5711,28 @@
         container.textContent = message.formulaText || message.formulaLatex;
       }
 
+      function renderMessageAttachments(attachments) {
+        const gallery = element("div", "message-attachments");
+        attachments.forEach((attachment, index) => {
+          const card = element("div", "message-attachment");
+          if (attachment.previewUrl) {
+            const image = element("img");
+            image.src = attachment.previewUrl;
+            image.alt = attachment.name || `题目图片 ${index + 1}`;
+            image.loading = "lazy";
+            card.append(image);
+          } else {
+            const fallback = element("div", "message-attachment-file");
+            fallback.append(
+              element("span", "", attachment.name || "题目图片"),
+            );
+            card.append(fallback);
+          }
+          gallery.append(card);
+        });
+        return gallery;
+      }
+
       function createMessageNode(message) {
         const article = element("article", "message");
         article.dataset.role = message.role;
@@ -5580,7 +5759,12 @@
           typing.append(element("span"), element("span"), element("span"));
           bubble.append(typing);
         } else {
-          bubble.append(element("p", "message-text", message.text));
+          if (Array.isArray(message.attachments) && message.attachments.length) {
+            bubble.append(renderMessageAttachments(message.attachments));
+          }
+          if (message.text) {
+            bubble.append(element("p", "message-text", message.text));
+          }
 
           if (message.formulaLatex) {
             const formula = element("div", "formula");
@@ -5626,24 +5810,32 @@
         }
 
         content.append(meta, bubble);
-        if (message.role === "user" && !message.loading) {
-          const actions = element("div", "message-actions");
-          const bookmarked = wrongBookHasMessage(message);
-          const bookmarkButton = element(
-            "button",
-            "message-action",
-            bookmarked ? "已收藏错题" : "收藏错题",
-          );
-          bookmarkButton.type = "button";
-          bookmarkButton.dataset.messageAction = "toggle-wrongbook";
-          bookmarkButton.dataset.messageId = message.id;
-          bookmarkButton.dataset.bookmarked = String(bookmarked);
-          bookmarkButton.setAttribute(
-            "aria-pressed",
-            String(bookmarked),
-          );
-          actions.append(bookmarkButton);
-          content.append(actions);
+        if (message.role === "assistant" && !message.loading) {
+          const sourceUserMessage = sourceUserMessageForAnswer(message);
+          const bookmarked = sourceUserMessage
+            ? wrongBookHasMessage(sourceUserMessage)
+            : false;
+          if (
+            sourceUserMessage
+            && (bookmarked || messageCanJoinWrongBook(message))
+          ) {
+            const actions = element("div", "message-actions");
+            const bookmarkButton = element(
+              "button",
+              "message-action",
+              bookmarked ? "已加入错题集" : "加入错题集",
+            );
+            bookmarkButton.type = "button";
+            bookmarkButton.dataset.messageAction = "toggle-wrongbook";
+            bookmarkButton.dataset.messageId = sourceUserMessage.id;
+            bookmarkButton.dataset.bookmarked = String(bookmarked);
+            bookmarkButton.setAttribute(
+              "aria-pressed",
+              String(bookmarked),
+            );
+            actions.append(bookmarkButton);
+            content.append(actions);
+          }
         }
         article.append(avatar, content);
         return article;
@@ -5653,6 +5845,16 @@
         window.requestAnimationFrame(() => {
           messageList.scrollTop = messageList.scrollHeight;
         });
+      }
+
+      function latestUserQuestion() {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const message = messages[index];
+          if (message.role === "user" && !message.loading && message.text) {
+            return message.text;
+          }
+        }
+        return "";
       }
 
       function renderMessages() {
@@ -5697,13 +5899,408 @@
         chatInput.style.height = `${Math.min(chatInput.scrollHeight, 132)}px`;
       }
 
-      function setRequestState(active) {
-        requestInFlight = active;
-        sendButton.disabled = active;
-        sendButton.textContent = active ? "计算中" : "发送";
+      function imageSizeLabel(bytes) {
+        if (bytes < 1024 * 1024) {
+          return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+        }
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       }
 
-      function responseToMessage(data) {
+      function pendingImageSummary() {
+        if (composerImageNotice) {
+          return composerImageNotice;
+        }
+        const total = pendingQuestionImages.length;
+        if (!total) {
+          return "";
+        }
+        const completed = pendingQuestionImages.filter(
+          (item) => item.state === "success",
+        ).length;
+        const failed = pendingQuestionImages.filter(
+          (item) => item.state === "error",
+        ).length;
+        const loading = pendingQuestionImages.filter(
+          (item) => item.state === "loading",
+        ).length;
+        if (loading) {
+          return `正在识别题目（${completed}/${total}），点击发送后会等识别结束再发送。`;
+        }
+        if (failed === total) {
+          return "图片识别失败，仍可直接发送图片，或补充文字后发送。";
+        }
+        if (failed) {
+          return `${completed} 张已识别，${failed} 张失败；仍可直接发送并补充说明。`;
+        }
+        return `已识别 ${completed} 张图片，可直接发送。`;
+      }
+
+      function renderComposerImages() {
+        composerImageList.replaceChildren();
+        composerImagePreview.hidden = !pendingQuestionImages.length;
+        if (!pendingQuestionImages.length) {
+          composerImageStatus.textContent = "";
+          syncComposerState();
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        pendingQuestionImages.forEach((item, index) => {
+          const card = element("div", "composer-image-item");
+          card.dataset.state = item.state;
+
+          const thumb = element("img", "composer-image-thumb");
+          thumb.alt = `待发送题目图片 ${index + 1}`;
+          thumb.src = item.previewUrl;
+          thumb.loading = "lazy";
+
+          const copy = element("div", "composer-image-copy");
+          copy.append(
+            element("strong", "", item.name),
+            element("span", "", item.statusText),
+          );
+
+          const removeButton = element("button", "composer-image-remove", "×");
+          removeButton.type = "button";
+          removeButton.dataset.imageId = item.id;
+          removeButton.setAttribute("aria-label", `移除图片 ${item.name}`);
+          removeButton.title = "移除图片";
+
+          card.append(thumb, copy, removeButton);
+          fragment.append(card);
+        });
+        composerImageList.append(fragment);
+        composerImageStatus.textContent = pendingImageSummary();
+        syncComposerState();
+      }
+
+      function appendRecognizedText(text) {
+        const existing = chatInput.value.trimEnd();
+        const separator = existing ? "\n\n" : "";
+        const maximum = Number(chatInput.maxLength) || 600;
+        const remaining = Math.max(
+          0,
+          maximum - existing.length - separator.length,
+        );
+        const accepted = text.slice(0, remaining).trim();
+        if (!accepted) {
+          return "";
+        }
+        chatInput.value = `${existing}${separator}${accepted}`;
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+        return accepted;
+      }
+
+      function removeInsertedText(item) {
+        if (!item.insertedText) {
+          return;
+        }
+        const index = chatInput.value.indexOf(item.insertedText);
+        if (index === -1) {
+          return;
+        }
+        const before = chatInput.value
+          .slice(0, index)
+          .replace(/\s+$/, "");
+        const after = chatInput.value
+          .slice(index + item.insertedText.length)
+          .replace(/^\s+/, "");
+        chatInput.value = [before, after].filter(Boolean).join("\n\n");
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+      }
+
+      async function recognizeQuestionImage(item) {
+        if (!item.file || item.state === "error") {
+          return;
+        }
+        item.controller = new AbortController();
+        const controller = item.controller;
+        item.state = "loading";
+        item.statusText = `正在识别（${imageSizeLabel(item.size)}）...`;
+        renderComposerImages();
+
+        try {
+          const formData = new FormData();
+          formData.append(
+            "image",
+            item.file,
+            item.name || "question.png",
+          );
+          const response = await fetch("/demo/api/ocr", {
+            method: "POST",
+            headers: {"X-Demo-Session": demoSessionId},
+            body: formData,
+            signal: controller.signal,
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (error) {
+            if (!response.ok) {
+              throw new Error(`图片识别服务返回错误（${response.status}）。`);
+            }
+            throw new Error("图片识别服务返回了无法识别的内容。");
+          }
+          if (!response.ok) {
+            throw new Error(
+              data.detail || `图片识别服务返回错误（${response.status}）。`,
+            );
+          }
+
+          const text = String(data.text || "").trim();
+          if (!text) {
+            throw new Error("图片中没有识别到可用题目，请重新拍摄。");
+          }
+
+          const recognitionSource = String(data.provider || "").trim();
+          const recognitionWarning = String(data.warning || "").trim();
+          item.text = text;
+          item.state = "success";
+          item.insertedText = appendRecognizedText(text);
+          item.statusText = recognitionSource === "windows"
+            ? "已离线识别，请核对公式后发送"
+            : item.insertedText
+              ? "已识别，可直接发送"
+              : "已识别，但输入内容已达上限";
+          if (!item.insertedText) {
+            composerImageNotice = "输入内容已达 600 字，发送时将使用图片识别内容。";
+          } else if (item.insertedText.length < text.length) {
+            composerImageNotice = "部分识别内容超出 600 字，发送时将自动截取。";
+          }
+          if (recognitionWarning) {
+            composerImageNotice = recognitionWarning;
+          }
+        } catch (error) {
+          if (error.name === "AbortError") {
+            return;
+          }
+          item.state = "error";
+          item.statusText =
+            error.message || "图片识别失败，请稍后重试。";
+        } finally {
+          if (item.controller === controller) {
+            item.controller = null;
+          }
+          renderComposerImages();
+          flushPendingComposerSubmission();
+        }
+      }
+
+      function addQuestionImages(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) {
+          return;
+        }
+        composerImageNotice = "";
+        const available = Math.max(
+          0,
+          MAX_QUESTION_IMAGE_COUNT - pendingQuestionImages.length,
+        );
+        if (!available) {
+          composerImageNotice = `最多同时发送 ${MAX_QUESTION_IMAGE_COUNT} 张图片。`;
+          renderComposerImages();
+          return;
+        }
+        if (files.length > available) {
+          composerImageNotice = `最多同时发送 ${MAX_QUESTION_IMAGE_COUNT} 张图片，已保留前 ${available} 张。`;
+        }
+
+        files.slice(0, available).forEach((file) => {
+          const mimeType = String(file.type || "").toLowerCase();
+          const item = {
+            id: makeId(),
+            file,
+            name: file.name || "题目图片",
+            size: file.size,
+            previewUrl: "",
+            state: "loading",
+            statusText: `正在识别（${imageSizeLabel(file.size)}）...`,
+            text: "",
+            insertedText: "",
+            controller: null,
+          };
+          if (!QUESTION_IMAGE_TYPES.has(mimeType)) {
+            item.state = "error";
+            item.statusText = "仅支持 JPG、PNG、WebP 或 GIF 图片。";
+          } else if (file.size > MAX_QUESTION_IMAGE_BYTES) {
+            item.state = "error";
+            item.statusText = "图片不能超过 6 MB，请压缩后重试。";
+          } else {
+            item.previewUrl = URL.createObjectURL(file);
+          }
+          pendingQuestionImages.push(item);
+        });
+
+        renderComposerImages();
+        pendingQuestionImages
+          .filter((item) => item.state === "loading" && item.file)
+          .forEach((item) => {
+            recognizeQuestionImage(item);
+          });
+      }
+
+      function removeQuestionImage(imageId, { focus = false } = {}) {
+        const index = pendingQuestionImages.findIndex(
+          (item) => item.id === imageId,
+        );
+        if (index === -1) {
+          return;
+        }
+        const item = pendingQuestionImages[index];
+        if (item.controller) {
+          item.controller.abort();
+        }
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+        removeInsertedText(item);
+        pendingQuestionImages.splice(index, 1);
+        if (!pendingQuestionImages.length) {
+          pendingComposerSubmission = false;
+        }
+        composerImageNotice = "";
+        renderComposerImages();
+        if (focus) {
+          imageUploadButton.focus();
+        }
+      }
+
+      function clearQuestionImages({
+        focus = false,
+        revokeUrls = true,
+      } = {}) {
+        pendingQuestionImages.forEach((item) => {
+          if (item.controller) {
+            item.controller.abort();
+          }
+          if (revokeUrls && item.previewUrl) {
+            URL.revokeObjectURL(item.previewUrl);
+          }
+        });
+        pendingQuestionImages = [];
+        composerImageNotice = "";
+        pendingComposerSubmission = false;
+        imageFileInput.value = "";
+        composerImageList.replaceChildren();
+        composerImagePreview.hidden = true;
+        composerImageStatus.textContent = "";
+        syncComposerState();
+        if (focus) {
+          imageUploadButton.focus();
+        }
+      }
+
+      function hasImageRecognitionInFlight() {
+        return pendingQuestionImages.some(
+          (item) => item.state === "loading",
+        );
+      }
+
+      function composeQuestionText() {
+        const manualText = chatInput.value.trim();
+        const recognizedTexts = pendingQuestionImages
+          .filter((item) => item.state === "success" && item.text)
+          .map((item) => item.text.trim())
+          .filter(Boolean);
+        const parts = manualText ? [manualText] : [];
+        recognizedTexts.forEach((text) => {
+          if (!parts.some((part) => part.includes(text))) {
+            parts.push(text);
+          }
+        });
+        const combined = parts.join("\n\n").trim();
+        if (combined.length <= 600) {
+          return combined;
+        }
+        composerImageNotice = "题目内容超过 600 字，发送时已截取前 600 字。";
+        renderComposerImages();
+        return combined.slice(0, 600).trim();
+      }
+
+      function pendingImageAttachments() {
+        return pendingQuestionImages
+          .filter((item) => item.previewUrl)
+          .map((item) => ({
+            name: item.name,
+            previewUrl: item.previewUrl,
+          }));
+      }
+
+      function syncComposerState() {
+        const hasText = Boolean(chatInput.value.trim());
+        const hasRecognizedImage = pendingQuestionImages.some(
+          (item) => item.state === "success" && item.text,
+        );
+        const recognizing = hasImageRecognitionInFlight();
+        const hasPendingImage = pendingQuestionImages.some(
+          (item) => item.previewUrl,
+        );
+        sendButton.disabled =
+          requestInFlight
+          || (!hasText && !hasRecognizedImage && !hasPendingImage);
+        sendButton.textContent = requestInFlight
+          ? "计算中"
+          : "发送";
+        sendButton.setAttribute("aria-busy", String(requestInFlight));
+        imageUploadButton.disabled =
+          requestInFlight
+          || pendingQuestionImages.length >= MAX_QUESTION_IMAGE_COUNT;
+        if (recognizing) {
+          imageUploadButton.dataset.loading = "true";
+        } else {
+          imageUploadButton.removeAttribute("data-loading");
+        }
+      }
+
+      function flushPendingComposerSubmission() {
+        if (
+          !pendingComposerSubmission
+          || requestInFlight
+          || hasImageRecognitionInFlight()
+        ) {
+          return;
+        }
+        pendingComposerSubmission = false;
+        window.setTimeout(() => {
+          if (!requestInFlight) {
+            submitComposer();
+          }
+        }, 0);
+      }
+
+      function submitComposer() {
+        if (requestInFlight) {
+          return;
+        }
+        if (hasImageRecognitionInFlight()) {
+          pendingComposerSubmission = true;
+          composerImageNotice = "正在识别图片，完成后会自动发送。";
+          renderComposerImages();
+          return;
+        }
+        pendingComposerSubmission = false;
+        const text = composeQuestionText();
+        const attachments = pendingImageAttachments();
+        if (!text && !attachments.length) {
+          chatInput.focus();
+          return;
+        }
+        clearQuestionImages({ revokeUrls: false });
+        sendMessage(
+          text || "请先查看附带的题目图片，再给出思路和解答。",
+          { attachments },
+        );
+      }
+
+      function setRequestState(active) {
+        requestInFlight = active;
+        syncComposerState();
+      }
+
+      function responseToMessage(data, sourceUserMessageId = "") {
         const calculation = data.calculation || {};
         let resultLabel = "";
         let resultValue = "";
@@ -5726,6 +6323,7 @@
           id: makeId(),
           role: "assistant",
           text: String(data.reply || "这次没有得到可用的计算结果。"),
+          intent: String(data.intent || ""),
           formulaLatex: String(data.formula_latex || ""),
           formulaText: String(data.formula_text || ""),
           resultLabel,
@@ -5735,6 +6333,7 @@
               ? calculation.is_correct
               : null,
           plotUrl: String(calculation.plot_url || ""),
+          sourceUserMessageId: String(sourceUserMessageId || ""),
           createdAt: currentTime(),
         };
       }
@@ -5826,61 +6425,6 @@
         });
         solverChapter.replaceChildren(fragment);
         populateSolverTopics();
-      }
-
-      function renderToolsNavigation() {
-        const toolsNavList = document.getElementById("toolsNavList");
-        const toolsMenuCount = document.getElementById("toolsMenuCount");
-        if (!toolsNavList || !toolsMenuCount) {
-          return;
-        }
-
-        const chapterEntries = Object.entries(SOLVER_CHAPTERS);
-        const topicTotal = chapterEntries.reduce(
-          (total, [, chapter]) => total + Object.keys(chapter.topics).length,
-          0,
-        );
-        toolsMenuCount.textContent = String(topicTotal);
-
-        const fragment = document.createDocumentFragment();
-        chapterEntries.forEach(([chapterKey, chapter]) => {
-          const topicEntries = Object.entries(chapter.topics);
-          const details = document.createElement("details");
-          details.className = "tool-chapter";
-          details.dataset.chapter = chapterKey;
-
-          const summary = document.createElement("summary");
-          const name = element("span", "tool-chapter-name", chapter.label);
-          const count = element(
-            "span",
-            "tool-chapter-count",
-            `${topicEntries.length} 项`,
-          );
-          const arrow = element("span", "tool-chapter-arrow", "›");
-          arrow.setAttribute("aria-hidden", "true");
-          summary.append(name, count, arrow);
-
-          const list = element("div", "tool-topic-list");
-          topicEntries.forEach(([topicKey, topic]) => {
-            const button = element("button", "tool-topic", topic.label);
-            button.type = "button";
-            button.dataset.solverTopic = topicKey;
-            button.dataset.solverChapter = chapterKey;
-            button.title = `${chapter.label} · ${topic.label}`;
-            list.append(button);
-          });
-
-          details.append(summary, list);
-          fragment.append(details);
-        });
-        toolsNavList.replaceChildren(fragment);
-      }
-
-      function openSolverTopic(chapterKey, topicKey) {
-        if (!SOLVER_CHAPTERS[chapterKey]) {
-          return;
-        }
-        openSolverDialog(chapterKey, topicKey);
       }
 
       function readSolverField(field) {
@@ -5990,50 +6534,6 @@
         }
       }
 
-      function openFormulaDialog(type) {
-        const guide = FORMULA_GUIDES[type];
-        if (!guide) {
-          return;
-        }
-
-        formulaTitle.textContent = guide.title;
-        formulaSubtitle.textContent = guide.subtitle;
-        const fragment = document.createDocumentFragment();
-        guide.groups.forEach((group) => {
-          const section = element("section", "formula-group");
-          section.append(element("h3", "", group.heading));
-          const list = element("div", "formula-list");
-          group.items.forEach(([formula, note]) => {
-            const item = element("div", "formula-item");
-            item.append(
-              element("code", "", formula),
-              element("p", "formula-note", note),
-            );
-            list.append(item);
-          });
-          section.append(list);
-          fragment.append(section);
-        });
-        formulaContent.replaceChildren(fragment);
-
-        if (typeof formulaDialog.showModal === "function") {
-          formulaDialog.showModal();
-        } else {
-          formulaDialog.setAttribute("open", "");
-        }
-      }
-
-      function closeFormulaDialog() {
-        if (
-          formulaDialog.open
-          && typeof formulaDialog.close === "function"
-        ) {
-          formulaDialog.close();
-        } else {
-          formulaDialog.removeAttribute("open");
-        }
-      }
-
       async function submitSolverRequest(event) {
         event.preventDefault();
         if (requestInFlight) {
@@ -6086,9 +6586,10 @@
           const notes = Array.isArray(data.notes) && data.notes.length
             ? `\n\n提示：${data.notes.join("；")}`
             : "";
+          const solverUserMessageId = makeId();
           messages.push(
             {
-              id: makeId(),
+              id: solverUserMessageId,
               role: "user",
               text: `【全章节解题】${solverSummary(selected, payload.inputs)}`,
               formulaLatex: "",
@@ -6102,6 +6603,7 @@
               id: makeId(),
               role: "assistant",
               text: `已用“${data.method}”完成计算。${notes}`,
+              intent: "solve",
               formulaLatex: String(data.latex || ""),
               formulaText: String(data.result || ""),
               resultLabel: String(data.method || ""),
@@ -6110,6 +6612,7 @@
                 typeof data.is_correct === "boolean"
                   ? data.is_correct
                   : null,
+              sourceUserMessageId: solverUserMessageId,
               createdAt: currentTime(),
             },
           );
@@ -6129,11 +6632,26 @@
         }
       }
 
-      async function sendMessage(rawMessage) {
+      async function sendMessage(rawMessage, options = {}) {
         const text = String(rawMessage || "").trim();
-        if (!text || requestInFlight) {
+        const attachments = Array.isArray(options.attachments)
+          ? options.attachments
+            .slice(0, MAX_QUESTION_IMAGE_COUNT)
+            .map((attachment) => ({
+              name: String(
+                (attachment && attachment.name) || "题目图片",
+              ),
+              previewUrl: String(
+                (attachment && attachment.previewUrl) || "",
+              ),
+            }))
+          : [];
+        if ((!text && !attachments.length) || requestInFlight) {
           return;
         }
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = text;
+        renderQuestionKnowledge(text, { source: "submit" });
         const history = requestHistory();
 
         const userMessageId = makeId();
@@ -6146,6 +6664,7 @@
           resultLabel: "",
           resultValue: "",
           verdict: null,
+          attachments,
           createdAt: currentTime(),
         });
 
@@ -6184,7 +6703,10 @@
               (message) => message.id === loadingId,
             );
             if (cachedIndex !== -1) {
-              messages[cachedIndex] = responseToMessage(cachedResponse);
+              messages[cachedIndex] = responseToMessage(
+                cachedResponse,
+                userMessageId,
+              );
             }
             syncWrongBookAnswer(userMessageId, text);
             recordLearningActivity("question");
@@ -6215,7 +6737,7 @@
 
           const index = messages.findIndex((message) => message.id === loadingId);
           if (index !== -1) {
-            messages[index] = responseToMessage(data);
+            messages[index] = responseToMessage(data, userMessageId);
           }
           syncWrongBookAnswer(userMessageId, text);
           recordLearningActivity("question");
@@ -6231,6 +6753,7 @@
                 error.name === "AbortError"
                   ? "这次等待时间有点长，已停止等待。可以再发一次同一题，系统会复用已有结果。"
                   : error.message || "计算服务暂时不可用，请稍后重试。",
+              intent: "error",
               formulaLatex: "",
               formulaText: "",
               resultLabel: "",
@@ -6278,18 +6801,6 @@
             );
           } catch (error) {
             // Layout state remains active for the current page.
-          }
-        }
-
-        if (!sidebarMedia.matches) {
-          if (nextCollapsed) {
-            if (toolsMenuRestoreOpen === null) {
-              toolsMenuRestoreOpen = toolsMenu.open;
-            }
-            toolsMenu.open = true;
-          } else if (toolsMenuRestoreOpen !== null) {
-            toolsMenu.open = toolsMenuRestoreOpen;
-            toolsMenuRestoreOpen = null;
           }
         }
 
@@ -6346,7 +6857,11 @@
           // The new conversation is still available in memory.
         }
         messages = [welcomeMessage()];
+        pendingComposerSubmission = false;
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = "";
+        renderQuestionKnowledge("");
         renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
@@ -6361,7 +6876,11 @@
           return;
         }
         messages = [welcomeMessage()];
+        pendingComposerSubmission = false;
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = "";
+        renderQuestionKnowledge("");
         renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
@@ -6397,7 +6916,7 @@
         previewToggle.setAttribute("aria-expanded", String(!nextCollapsed));
         previewToggle.setAttribute(
           "title",
-          nextCollapsed ? "展开结果预览" : "折叠结果预览",
+          nextCollapsed ? "展开计算过程总览" : "收起计算过程总览",
         );
       }
 
@@ -6543,14 +7062,6 @@
         setPreviewCollapsed(false);
       }
 
-      function insertIntoChatInput(text) {
-        const start = chatInput.selectionStart ?? chatInput.value.length;
-        const end = chatInput.selectionEnd ?? start;
-        chatInput.setRangeText(text, start, end, "end");
-        chatInput.focus();
-        resizeInput();
-      }
-
       function setConversationPanelCollapsed(collapsed) {
         const nextCollapsed = Boolean(collapsed);
         conversationPanel.dataset.collapsed = String(nextCollapsed);
@@ -6580,6 +7091,9 @@
           ? normalizeMessages(conversation.messages)
           : [welcomeMessage()];
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = latestUserQuestion();
+        renderQuestionKnowledge(lastSubmittedKnowledgeText);
         try {
           window.localStorage.setItem(
             ACTIVE_CONVERSATION_KEY,
@@ -6699,121 +7213,6 @@
         return input ? input.value.trim() : "";
       }
 
-      if (quickLimitForm) {
-        quickLimitForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const expression = readQuickInput("quickLimitExpression");
-          const point = readQuickInput("quickLimitPoint") || "0";
-          const direction = readQuickInput("quickLimitDirection");
-          if (!expression) {
-            setPreviewError("请先填写极限表达式。");
-            return;
-          }
-          const directionText =
-            direction === "+" ? "，右极限" : direction === "-" ? "，左极限" : "";
-          runInlineSolve({
-            chapter: "limits",
-            topic: "limit",
-            inputs: {
-              expression,
-              variable: "x",
-              point,
-              direction,
-            },
-            label: "极限",
-            question: `求极限 lim x→${point}${directionText} ${expression}`,
-          });
-        });
-      }
-
-      if (quickDerivativeForm) {
-        quickDerivativeForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const expression = readQuickInput("quickDerivativeExpression");
-          if (!expression) {
-            setPreviewError("请先填写求导表达式。");
-            return;
-          }
-          runInlineSolve({
-            chapter: "derivatives",
-            topic: "derivative",
-            inputs: { expression, variable: "x", order: "1" },
-            label: "求导",
-            question: `求导 ${expression}`,
-          });
-        });
-      }
-
-      if (quickIndefiniteForm) {
-        quickIndefiniteForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const expression = readQuickInput("quickIndefiniteExpression");
-          if (!expression) {
-            setPreviewError("请先填写被积函数。");
-            return;
-          }
-          runInlineSolve({
-            chapter: "integrals",
-            topic: "indefinite",
-            inputs: { expression, variable: "x" },
-            label: "不定积分",
-            question: `求不定积分 ${expression}`,
-          });
-        });
-      }
-
-      if (quickDefiniteForm) {
-        quickDefiniteForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const expression = readQuickInput("quickDefiniteExpression");
-          const lower = readQuickInput("quickDefiniteLower");
-          const upper = readQuickInput("quickDefiniteUpper");
-          if (!expression || !lower || !upper) {
-            setPreviewError("请填写被积函数、积分下限和上限。");
-            return;
-          }
-          runInlineSolve({
-            chapter: "integrals",
-            topic: "definite",
-            inputs: { expression, variable: "x", lower, upper },
-            label: "定积分",
-            question: `求定积分 ${lower} 到 ${upper} ${expression}`,
-          });
-        });
-      }
-
-      if (quickDifferentialForm) {
-        quickDifferentialForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const equation = readQuickInput("quickDifferentialExpression");
-          if (!equation) {
-            setPreviewError("请先填写微分方程。");
-            return;
-          }
-          runInlineSolve({
-            chapter: "differential_equations",
-            topic: "dsolve",
-            inputs: { equation, variable: "x", function: "y" },
-            label: "微分方程",
-            question: `解微分方程 ${equation}`,
-          });
-        });
-      }
-
-      if (quickPlotForm) {
-        quickPlotForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const expressions = readQuickInput("quickPlotExpression").split("\n");
-          const xMin = readQuickInput("quickPlotXMin") || "-6";
-          const xMax = readQuickInput("quickPlotXMax") || "6";
-          if (!expressions.some((value) => value.trim())) {
-            setPreviewError("请至少填写一条函数表达式，每行一条。");
-            return;
-          }
-          runInlinePlot(expressions, xMin, xMax);
-        });
-      }
-
       if (conversationPanelToggle) {
         conversationPanelToggle.addEventListener("click", () => {
           setConversationPanelCollapsed(
@@ -6831,37 +7230,22 @@
       if (previewClear) {
         previewClear.addEventListener("click", () => {
           setPreviewEmpty();
+          setPreviewCollapsed(true);
         });
       }
+
+      document.querySelectorAll("[data-rail-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setToolboxTab(button.dataset.railTab);
+          setSidebarCollapsed(false);
+        });
+      });
 
       if (toolbox) {
         toolbox.addEventListener("click", (event) => {
           const tabButton = event.target.closest("[data-toolbox-tab]");
           if (tabButton) {
             setToolboxTab(tabButton.dataset.toolboxTab);
-            return;
-          }
-
-          const collapsedQuickTool = event.target.closest(
-            ".quick-tool[data-focus-target]",
-          );
-          if (
-            collapsedQuickTool &&
-            appShell.dataset.sidebarCollapsed === "true"
-          ) {
-            setSidebarCollapsed(false);
-            const focusTarget = document.getElementById(
-              collapsedQuickTool.dataset.focusTarget,
-            );
-            if (focusTarget) {
-              window.requestAnimationFrame(() => focusTarget.focus());
-            }
-            return;
-          }
-
-          const formulaCard = event.target.closest("[data-formula-card]");
-          if (formulaCard) {
-            insertIntoChatInput(formulaCard.dataset.formula || "");
             return;
           }
 
@@ -6879,43 +7263,7 @@
             }
             return;
           }
-
-          const symbolButton = event.target.closest("[data-symbol]");
-          if (symbolButton) {
-            insertIntoChatInput(symbolButton.dataset.symbol || "");
-            return;
-          }
-          const promptButton = event.target.closest("[data-toolbox-prompt]");
-          if (promptButton) {
-            if (sidebarMedia.matches) {
-              setSidebarCollapsed(true);
-            }
-            sendMessage(promptButton.dataset.toolboxPrompt);
-          }
         });
-      }
-
-      if (formulaImageButton && formulaImageInput) {
-        formulaImageButton.addEventListener("click", () =>
-          formulaImageInput.click(),
-        );
-        formulaImageInput.addEventListener("change", () => {
-          if (formulaImageInput.files && formulaImageInput.files.length) {
-            const message =
-              "图片识别暂未接入视觉接口，请先输入题目文字。";
-            if (formulaImageStatus) {
-              formulaImageStatus.textContent = message;
-            }
-            setPreviewEmpty(message);
-            previewBadge.textContent = "提示";
-            setPreviewCollapsed(false);
-          }
-          formulaImageInput.value = "";
-        });
-      }
-
-      if (formulaSearchInput) {
-        formulaSearchInput.addEventListener("input", renderFormulaCards);
       }
 
       if (wrongBookClear) {
@@ -6930,6 +7278,13 @@
         learningProgressExport.addEventListener(
           "click",
           exportLearningProgress,
+        );
+      }
+
+      if (learningProgressBackup) {
+        learningProgressBackup.addEventListener(
+          "click",
+          exportLearningProgressBackup,
         );
       }
 
@@ -6956,46 +7311,11 @@
         });
       }
 
-      document.querySelector(".tools-menu").addEventListener("click", (event) => {
-        const formulaButton = event.target.closest("[data-formula-type]");
-        if (formulaButton) {
-          if (sidebarMedia.matches) {
-            setSidebarCollapsed(true);
-          }
-          openFormulaDialog(formulaButton.dataset.formulaType);
-          return;
-        }
-        const solverTopicButton = event.target.closest("[data-solver-topic]");
-        if (solverTopicButton) {
-          if (sidebarMedia.matches) {
-            setSidebarCollapsed(true);
-          }
-          openSolverTopic(
-            solverTopicButton.dataset.solverChapter,
-            solverTopicButton.dataset.solverTopic,
-          );
-          return;
-        }
-        const button = event.target.closest("[data-prompt]");
-        if (!button) {
-          return;
-        }
-        if (sidebarMedia.matches) {
-          setSidebarCollapsed(true);
-        }
-        sendMessage(button.dataset.prompt);
-      });
-
-      openSolverButton.addEventListener("click", openSolverDialog);
+      if (openSolverButton) {
+        openSolverButton.addEventListener("click", openSolverDialog);
+      }
       closeSolverButton.addEventListener("click", closeSolverDialog);
       cancelSolverButton.addEventListener("click", closeSolverDialog);
-      closeFormulaButton.addEventListener("click", closeFormulaDialog);
-      closeFormulaAction.addEventListener("click", closeFormulaDialog);
-      formulaDialog.addEventListener("click", (event) => {
-        if (event.target === formulaDialog) {
-          closeFormulaDialog();
-        }
-      });
       solverChapter.addEventListener("change", populateSolverTopics);
       solverTopic.addEventListener("change", renderSolverFields);
       solverForm.addEventListener("submit", submitSolverRequest);
@@ -7098,10 +7418,14 @@
 
       chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        sendMessage(chatInput.value);
+        submitComposer();
       });
 
-      chatInput.addEventListener("input", resizeInput);
+      chatInput.addEventListener("input", () => {
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+        syncComposerState();
+      });
       chatInput.addEventListener("keydown", (event) => {
         if (
           event.key === "Enter"
@@ -7114,10 +7438,49 @@
         }
       });
 
+      imageUploadButton.addEventListener("click", () => {
+        imageFileInput.click();
+      });
+
+      imageFileInput.addEventListener("change", () => {
+        addQuestionImages(imageFileInput.files);
+        imageFileInput.value = "";
+      });
+
+      composerImageList.addEventListener("click", (event) => {
+        const removeButton = event.target.closest(".composer-image-remove");
+        if (removeButton) {
+          removeQuestionImage(removeButton.dataset.imageId, { focus: true });
+        }
+      });
+
+      composerImageClear.addEventListener("click", () => {
+        clearQuestionImages({ focus: true });
+      });
+
+      chatInput.addEventListener("paste", (event) => {
+        const items = Array.from(
+          (event.clipboardData && event.clipboardData.items) || [],
+        );
+        const imageFiles = items
+          .filter((item) => String(item.type || "").startsWith("image/"))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+        if (!imageFiles.length) {
+          return;
+        }
+        event.preventDefault();
+        addQuestionImages(imageFiles);
+      });
+
       suggestions.addEventListener("click", (event) => {
         const button = event.target.closest(".suggestion");
         if (button) {
-          sendMessage(button.dataset.message);
+          chatInput.value = button.dataset.message || "";
+          resizeInput();
+          queueQuestionKnowledgeUpdate(chatInput.value);
+          syncComposerState();
+          chatForm.requestSubmit();
         }
       });
 
@@ -7186,21 +7549,24 @@
       }
       setTheme(savedTheme);
       setSidebarWidth(savedSidebarWidth, false);
-      setSuggestionsCollapsed(false);
+      setSuggestionsCollapsed(compactComposerMedia.matches);
       setSidebarCollapsed(
         sidebarMedia.matches ? true : savedSidebarCollapsed,
         false,
       );
+      setPreviewCollapsed(true);
 
       populateSolverChapters();
-      renderToolsNavigation();
-      renderFormulaCards();
+      setToolboxTab("wrongbook");
+      lastSubmittedKnowledgeText = latestUserQuestion();
+      renderQuestionKnowledge(lastSubmittedKnowledgeText);
       renderWrongBook();
       renderLearningProgress();
       saveMessages();
       renderSuggestions(DEFAULT_SUGGESTIONS);
       renderMessages();
       resizeInput();
+      syncComposerState();
       checkService();
     })();
   </script>

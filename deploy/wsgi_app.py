@@ -29,9 +29,27 @@ from app.main import (
     verify_derivative,
 )
 from deploy.demo_chat import DemoChatRequest, _normalize_text, build_chat_response
+from deploy.demo_coze_ocr import (
+    CozeConfigurationError,
+    CozeUpstreamError,
+    coze_ocr_configured,
+    transcribe_question_image,
+)
+from deploy.demo_vision import (
+    MAX_IMAGE_BYTES,
+    SUPPORTED_IMAGE_TYPES,
+    image_matches_type,
+)
+from deploy.demo_windows_ocr import (
+    WindowsOcrError,
+    WindowsOcrUnavailable,
+    windows_ocr_available,
+    transcribe_question_image as transcribe_windows_question_image,
+)
 
 
 application = Flask(__name__)
+application.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_BYTES + 1024 * 1024
 
 _CHAT_CACHE_TTL_SECONDS = 300
 _CHAT_CACHE_MAX_PER_SESSION = 40
@@ -117,6 +135,7 @@ def service_index():
                 "/demo/api/limit",
                 "/demo/api/solve",
                 "/demo/api/chat",
+                "/demo/api/ocr",
                 "/verify",
                 "/verify-query",
                 "/integrate",
@@ -144,6 +163,11 @@ def demo_health():
         "available": True,
         "page": "/demo",
         "service": "math-tool",
+    }
+    payload["ocr"] = {
+        "provider": "coze",
+        "configured": coze_ocr_configured(),
+        "fallback": "windows" if windows_ocr_available() else "",
     }
     return jsonify(payload)
 
@@ -206,6 +230,68 @@ def demo_chat():
     return jsonify(response)
 
 
+@application.post("/demo/api/ocr")
+def demo_ocr():
+    uploaded = request.files.get("image")
+    if uploaded is None:
+        raise HTTPException(status_code=400, detail="请选择要识别的题目图片。")
+
+    mime_type = (uploaded.mimetype or "").lower().split(";", 1)[0].strip()
+    if mime_type not in SUPPORTED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="仅支持 JPG、PNG、WebP 或 GIF 图片。",
+        )
+
+    image_data = uploaded.read(MAX_IMAGE_BYTES + 1)
+    if len(image_data) > MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="图片不能超过 6 MB，请压缩后重试。",
+        )
+    if not image_matches_type(image_data, mime_type):
+        raise HTTPException(status_code=400, detail="图片内容无法识别，请重新选择。")
+
+    provider = "coze"
+    warning = ""
+    try:
+        text = transcribe_question_image(image_data, mime_type)
+    except (CozeConfigurationError, CozeUpstreamError) as coze_error:
+        try:
+            text = transcribe_windows_question_image(image_data, mime_type)
+        except WindowsOcrUnavailable as fallback_error:
+            status_code = (
+                503
+                if isinstance(coze_error, CozeConfigurationError)
+                else 502
+            )
+            raise HTTPException(
+                status_code=status_code,
+                detail=str(coze_error),
+            ) from fallback_error
+        except WindowsOcrError as fallback_error:
+            status_code = (
+                503
+                if isinstance(coze_error, CozeConfigurationError)
+                else 502
+            )
+            raise HTTPException(
+                status_code=status_code,
+                detail=f"{coze_error}；本机离线识别也未成功：{fallback_error}",
+            ) from fallback_error
+
+        provider = "windows"
+        warning = "已使用本机离线 OCR，公式可能不完整，请核对后再发送。"
+
+    return jsonify(
+        {
+            "text": text,
+            "provider": provider,
+            "warning": warning,
+        }
+    )
+
+
 def _demo_session_id() -> str:
     value = (request.headers.get("X-Demo-Session") or "").strip()
     if re.fullmatch(r"[A-Za-z0-9_-]{8,80}", value):
@@ -234,7 +320,7 @@ def _store_chat_response(
     response: dict[str, Any],
 ) -> None:
     if (
-        response.get("intent") in {"general", "history", "unknown"}
+        response.get("intent") in {"general", "help", "history", "unknown"}
         or response.get("history_used")
     ):
         return
