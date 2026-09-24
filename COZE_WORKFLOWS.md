@@ -6,6 +6,14 @@
 
 先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.5.0`。
 
+公网已启用 API Key。所有计算工作流 HTTP 节点都要增加请求头：
+
+```text
+X-API-Key: 与 PythonAnywhere 的 MATH_API_KEY 相同
+```
+
+另外保留 `Accept: application/json`。`/plot.svg` 只用于图片显示，不需要 API Key。
+
 ## math_limit
 
 用途：双侧极限、左极限、右极限、极限答案判断。
@@ -44,7 +52,7 @@ https://cfyyy.pythonanywhere.com/limit-query
 | direction | {{direction}} |
 | candidate | {{candidate}} |
 
-请求体留空。请求头保持 `Accept: application/json`。
+请求体留空。请求头设置为 `Accept: application/json` 和上述 `X-API-Key`。
 
 ### 结束节点
 
@@ -125,7 +133,7 @@ https://cfyyy.pythonanywhere.com/solve-query
 | inputs | {{inputs}} |
 | candidate | {{candidate}} |
 
-请求体留空。
+请求体留空。请求头设置为 `Accept: application/json` 和上述 `X-API-Key`。
 
 `inputs` 必须是 JSON 字符串，例如：
 
@@ -254,6 +262,28 @@ C1*exp(x)
 x**2
 ```
 
+### 测试六：多约束条件极值
+
+```json
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x^2+y^2+z^2",
+    "variables": ["x", "y", "z"],
+    "constraints": ["x=0", "y=0"]
+  },
+  "candidate": null
+}
+```
+
+预期结果包含：
+
+```text
+point: x=0, y=0, z=0
+kind: 极小值
+```
+
 ## 章节与题型
 
 支持的 `chapter`：
@@ -275,12 +305,12 @@ series
 | chapter | topic |
 | --- | --- |
 | limits | limit, sequence_limit |
-| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature |
+| derivatives | derivative, higher_derivative, differential, tangent, normal, mean_value, critical_points, monotonicity, extrema, taylor, curvature, parametric_derivative |
 | integrals | indefinite, definite, improper |
 | differential_equations | dsolve |
 | vectors | dot, cross, norm, angle, distance, projection |
-| multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, multivariable_extrema |
-| multiple_integrals | double, triple |
+| multivariable_calculus | partial, mixed_partial, gradient, hessian, directional_derivative, implicit_derivative, system_implicit_derivative, multivariable_extrema, conditional_extrema |
+| multiple_integrals | double, double_polar, triple, triple_cylindrical, triple_spherical |
 | line_surface_integrals | line_scalar, line_vector, surface_scalar, flux |
 | series | sum, convergence, power_radius |
 
@@ -323,7 +353,7 @@ https://cfyyy.pythonanywhere.com/plot-query
 | width | 640 |
 | height | 360 |
 
-请求体留空。`samples=80` 可以显著减小返回的 SVG 内容，加快智能体响应。
+请求体留空。请求头设置为 `Accept: application/json` 和上述 `X-API-Key`。`samples=80` 可以显著减小返回的 SVG 内容，加快智能体响应。
 
 ### 图像显示格式
 

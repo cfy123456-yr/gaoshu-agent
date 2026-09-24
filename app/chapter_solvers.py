@@ -49,6 +49,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "extrema",
             "taylor",
             "curvature",
+            "parametric_derivative",
         }
     ),
     "integrals": frozenset({"indefinite", "definite", "improper"}),
@@ -64,10 +65,20 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "hessian",
             "directional_derivative",
             "implicit_derivative",
+            "system_implicit_derivative",
             "multivariable_extrema",
+            "conditional_extrema",
         }
     ),
-    "multiple_integrals": frozenset({"double", "triple"}),
+    "multiple_integrals": frozenset(
+        {
+            "double",
+            "double_polar",
+            "triple",
+            "triple_cylindrical",
+            "triple_spherical",
+        }
+    ),
     "line_surface_integrals": frozenset(
         {"line_scalar", "line_vector", "surface_scalar", "flux"}
     ),
@@ -285,6 +296,43 @@ def _parse_symbol_list(
     if len(set(symbols)) != len(symbols):
         raise SolveError(f"{field_name} 不能重复")
     return symbols
+
+
+def _constraint_texts(view: _InputView) -> list[str]:
+    raw_constraints = view.values.get("constraints")
+    if raw_constraints is None:
+        single = view.text("constraint", required=False)
+        if single is None:
+            raise SolveError("缺少输入项：constraints 或 constraint")
+        return [single]
+
+    values = view.items("constraints")
+    constraints: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            raise SolveError("constraints 必须是文本数组")
+        parts = re.split(r"[;；\n]+", value)
+        constraints.extend(part.strip() for part in parts if part.strip())
+    if not constraints:
+        raise SolveError("constraints 不能为空")
+    if len(constraints) > MAX_VECTOR_LENGTH:
+        raise SolveError(f"constraints 长度不能超过 {MAX_VECTOR_LENGTH}")
+    return constraints
+
+
+def _parse_constraint(value: str, field_name: str) -> sympy.Expr:
+    if value.count("=") != 1:
+        raise SolveError(f"{field_name} 必须是包含一个等号的等式")
+    left_text, right_text = value.split("=", 1)
+    if not left_text.strip() or not right_text.strip():
+        raise SolveError(f"{field_name} 等号两边不能为空")
+    constraint = simplify(
+        _parse_expression(left_text, f"{field_name}.left")
+        - _parse_expression(right_text, f"{field_name}.right")
+    )
+    if constraint == 0:
+        raise SolveError(f"{field_name} 不能是恒等式")
+    return constraint
 
 
 def _point_values(
@@ -658,6 +706,26 @@ def _curvature(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result, "latex": latex(result)}
 
 
+@_solver(method="参数方程求导")
+def _parametric_derivative(view: _InputView) -> dict[str, Any]:
+    x_expression = _parse_expression(view.text("x_expression"), "x_expression")
+    y_expression = _parse_expression(view.text("y_expression"), "y_expression")
+    parameter = _parse_symbol(
+        view.text("parameter", required=False, default="t"),
+        "parameter",
+    )
+    dx_dt = simplify(diff(x_expression, parameter))
+    dy_dt = simplify(diff(y_expression, parameter))
+    if dx_dt == 0:
+        raise SolveError("dx/dt = 0，不能直接使用 dy/dx = (dy/dt)/(dx/dt)")
+    result = simplify(dy_dt / dx_dt)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [f"dy/dx = (dy/dt)/(dx/dt)，其中 dx/dt = {dx_dt}，dy/dt = {dy_dt}"],
+    }
+
+
 # Integrals
 
 
@@ -881,6 +949,67 @@ def _implicit_derivative(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result}
 
 
+@_solver(method="方程组确定函数求偏导")
+def _system_implicit_derivative(view: _InputView) -> dict[str, Any]:
+    equation_values = view.items("equations")
+    dependent_values = view.items("dependents")
+    if len(equation_values) != len(dependent_values):
+        raise SolveError("方程个数必须与因变量个数一致")
+
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    dependents = _parse_symbol_list(dependent_values, "dependents")
+    if variable in dependents:
+        raise SolveError("自变量不能同时作为因变量")
+
+    target = _parse_symbol(
+        view.text("dependent", required=False, default=str(dependents[0])),
+        "dependent",
+    )
+    if target not in dependents:
+        raise SolveError("dependent 必须是 dependents 中的一个")
+
+    functions: list[sympy.Expr] = []
+    for index, raw_equation in enumerate(equation_values):
+        if not isinstance(raw_equation, str) or not raw_equation.strip():
+            raise SolveError(f"equations[{index}] 必须是方程文本")
+        equation_text = raw_equation.strip()
+        if "=" in equation_text:
+            left_text, right_text = equation_text.split("=", 1)
+            if not left_text.strip() or not right_text.strip():
+                raise SolveError(f"equations[{index}] 两边都不能为空")
+            left = _parse_expression(left_text, f"equations[{index}].left")
+            right = _parse_expression(right_text, f"equations[{index}].right")
+        else:
+            left = _parse_expression(equation_text, f"equations[{index}]")
+            right = sympy.Integer(0)
+        functions.append(left - right)
+
+    jacobian = Matrix(
+        [[diff(function, dependent) for dependent in dependents] for function in functions]
+    )
+    determinant = simplify(jacobian.det())
+    if determinant == 0:
+        raise SolveError("方程组雅可比行列式为零，不能唯一确定隐函数")
+
+    right_hand_side = Matrix([-diff(function, variable) for function in functions])
+    try:
+        derivatives = jacobian.LUsolve(right_hand_side)
+    except Exception as exc:
+        raise SolveError("方程组线性求解失败，请检查方程和变量设置") from exc
+
+    result = simplify(derivatives[dependents.index(target)])
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            "由 F_i(...)=0 对自变量求导，再用因变量雅可比矩阵求解目标偏导"
+        ],
+    }
+
+
 @_solver(method="多元函数极值")
 def _multivariable_extrema(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
@@ -914,6 +1043,157 @@ def _multivariable_extrema(view: _InputView) -> dict[str, Any]:
     return {"result": classified, "notes": ["使用二元函数极值判别法"]}
 
 
+@_solver(method="条件极值（拉格朗日乘数法）")
+def _conditional_extrema(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variables = _parse_symbol_list(view.items("variables"), "variables")
+    if len(variables) < 2:
+        raise SolveError("条件极值至少需要两个变量")
+    constraint_texts = _constraint_texts(view)
+    if len(constraint_texts) >= len(variables):
+        raise SolveError("等式约束数量必须少于变量数量")
+    constraints = [
+        _parse_constraint(value, f"constraints[{index}]")
+        for index, value in enumerate(constraint_texts)
+    ]
+
+    declared_symbols = set(variables)
+    actual_symbols = expression.free_symbols
+    for constraint in constraints:
+        actual_symbols |= constraint.free_symbols
+    undeclared = actual_symbols - declared_symbols
+    if undeclared:
+        raise SolveError(
+            f"expression 或 constraints 包含未声明变量：{sorted(map(str, undeclared))}"
+        )
+
+    if len(constraints) == 1:
+        lambda_symbols = [
+            _parse_symbol(
+                view.text("lambda", required=False, default="lambda"),
+                "lambda",
+            )
+        ]
+    else:
+        lambda_inputs = view.items("lambdas", required=False)
+        if lambda_inputs:
+            if len(lambda_inputs) != len(constraints):
+                raise SolveError("lambdas 数量必须与 constraints 数量一致")
+            lambda_symbols = _parse_symbol_list(lambda_inputs, "lambdas")
+        else:
+            lambda_symbols = [
+                _parse_symbol(f"lambda{index}", f"lambdas[{index - 1}]")
+                for index in range(1, len(constraints) + 1)
+            ]
+    if len(set(lambda_symbols)) != len(lambda_symbols):
+        raise SolveError("拉格朗日乘子不能重复")
+    if declared_symbols.intersection(lambda_symbols):
+        raise SolveError("拉格朗日乘子不能与 variables 重复")
+
+    lagrangian = expression + sum(
+        lambda_symbol * constraint
+        for lambda_symbol, constraint in zip(
+            lambda_symbols,
+            constraints,
+            strict=True,
+        )
+    )
+    equations = [
+        diff(lagrangian, variable) for variable in variables
+    ] + constraints
+    solution_symbols = [*variables, *lambda_symbols]
+    solutions = solve(equations, solution_symbols, dict=True)
+    if not solutions:
+        raise SolveError("未找到满足约束的条件驻点")
+
+    classified = []
+    for solution in solutions:
+        if any(symbol not in solution for symbol in solution_symbols):
+            raise SolveError("条件驻点含有自由参数，暂不支持")
+        point = {variable: simplify(solution[variable]) for variable in variables}
+        lambda_values = {
+            lambda_symbol: simplify(solution[lambda_symbol])
+            for lambda_symbol in lambda_symbols
+        }
+        substitutions = {**point, **lambda_values}
+
+        constraint_jacobian = Matrix(
+            [
+                [diff(constraint, variable) for variable in variables]
+                for constraint in constraints
+            ]
+        ).subs(substitutions)
+        kind = "需进一步判断"
+        if constraint_jacobian.rank() == len(constraints):
+            tangent_basis = constraint_jacobian.nullspace()
+            if tangent_basis:
+                basis_matrix = Matrix.hstack(*tangent_basis)
+                hessian = Matrix(
+                    [
+                        [
+                            diff(lagrangian, left, right)
+                            for right in variables
+                        ]
+                        for left in variables
+                    ]
+                ).subs(substitutions)
+                projected_hessian = simplify(
+                    basis_matrix.T * hessian * basis_matrix
+                )
+                signs: set[int] = set()
+                uncertain = False
+                for eigenvalue in projected_hessian.eigenvals():
+                    eigenvalue = simplify(eigenvalue)
+                    if eigenvalue.is_positive:
+                        signs.add(1)
+                    elif eigenvalue.is_negative:
+                        signs.add(-1)
+                    elif eigenvalue.is_zero:
+                        signs.add(0)
+                    else:
+                        uncertain = True
+                if not uncertain:
+                    if signs == {1}:
+                        kind = "极小值"
+                    elif signs == {-1}:
+                        kind = "极大值"
+                    elif 1 in signs and -1 in signs:
+                        kind = "非极值点"
+        classified.append(
+            {
+                "point": point,
+                "value": simplify(expression.subs(point)),
+                "kind": kind,
+            }
+        )
+        if len(lambda_symbols) == 1:
+            classified[-1]["lambda"] = lambda_values[lambda_symbols[0]]
+        else:
+            classified[-1]["lambdas"] = lambda_values
+
+    latex_parts = []
+    for item in classified:
+        coordinates = ", ".join(
+            f"{variable} = {latex(item['point'][variable])}" for variable in variables
+        )
+        if len(lambda_symbols) == 1:
+            lambda_latex = f"\\lambda = {latex(item['lambda'])}"
+        else:
+            lambda_latex = ", ".join(
+                f"\\lambda_{{{index}}} = {latex(item['lambdas'][lambda_symbol])}"
+                for index, lambda_symbol in enumerate(lambda_symbols, start=1)
+            )
+        latex_parts.append(
+            f"{coordinates},\\quad {lambda_latex},"
+            f"\\quad f = {latex(item['value'])},\\quad \\text{{{item['kind']}}}"
+        )
+    return {
+        "result": classified,
+        "latex": ",\\quad ".join(latex_parts),
+        "notes": ["使用拉格朗日乘数法和约束切空间投影 Hessian 判断条件极值"],
+    }
+
+
 # Multiple integrals
 
 
@@ -934,6 +1214,48 @@ def _double_integral(view: _InputView) -> dict[str, Any]:
     )
     result = simplify(result)
     return {"result": result, "comparison_value": result}
+
+
+@_solver(method="二重积分（极坐标）")
+def _double_polar_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="r"),
+        "radial_variable",
+    )
+    angle = _parse_symbol(
+        view.text("angle_variable", required=False, default="theta"),
+        "angle_variable",
+    )
+    if radial == angle:
+        raise SolveError("极坐标的两个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    cartesian_symbols = {x_symbol, y_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.cos(angle),
+                y_symbol: radial * sympy.sin(angle),
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_r"), "lower_r")
+    upper_radius = _parse_expression(view.text("upper_r"), "upper_r")
+    lower_angle = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_angle = _parse_expression(view.text("upper_theta"), "upper_theta")
+    integrand = simplify(expression * radial)
+    result = integrate(
+        integrate(integrand, (angle, lower_angle, upper_angle)),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用极坐标变换并乘以雅可比因子 r"],
+    }
 
 
 @_solver(method="三重积分")
@@ -957,6 +1279,113 @@ def _triple_integral(view: _InputView) -> dict[str, Any]:
         result = integrate(result, (variable, *bounds[variable]))
     result = simplify(result)
     return {"result": result, "comparison_value": result}
+
+
+@_solver(method="三重积分（柱面坐标）")
+def _triple_cylindrical_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="r"),
+        "radial_variable",
+    )
+    angle = _parse_symbol(
+        view.text("angle_variable", required=False, default="theta"),
+        "angle_variable",
+    )
+    height = _parse_symbol(
+        view.text("height_variable", required=False, default="z"),
+        "height_variable",
+    )
+    if len({radial, angle, height}) != 3:
+        raise SolveError("柱面坐标的三个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    z_symbol = sympy.Symbol("z")
+    cartesian_symbols = {x_symbol, y_symbol, z_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.cos(angle),
+                y_symbol: radial * sympy.sin(angle),
+                z_symbol: height,
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_r"), "lower_r")
+    upper_radius = _parse_expression(view.text("upper_r"), "upper_r")
+    lower_angle = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_angle = _parse_expression(view.text("upper_theta"), "upper_theta")
+    lower_height = _parse_expression(view.text("lower_z"), "lower_z")
+    upper_height = _parse_expression(view.text("upper_z"), "upper_z")
+    integrand = simplify(expression * radial)
+    result = integrate(
+        integrate(
+            integrate(integrand, (height, lower_height, upper_height)),
+            (angle, lower_angle, upper_angle),
+        ),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用柱面坐标变换并乘以雅可比因子 r"],
+    }
+
+
+@_solver(method="三重积分（球面坐标）")
+def _triple_spherical_integral(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    radial = _parse_symbol(
+        view.text("radial_variable", required=False, default="rho"),
+        "radial_variable",
+    )
+    polar = _parse_symbol(
+        view.text("polar_variable", required=False, default="phi"),
+        "polar_variable",
+    )
+    azimuthal = _parse_symbol(
+        view.text("azimuthal_variable", required=False, default="theta"),
+        "azimuthal_variable",
+    )
+    if len({radial, polar, azimuthal}) != 3:
+        raise SolveError("球面坐标的三个变量不能相同")
+
+    x_symbol = sympy.Symbol("x")
+    y_symbol = sympy.Symbol("y")
+    z_symbol = sympy.Symbol("z")
+    cartesian_symbols = {x_symbol, y_symbol, z_symbol}
+    if expression.free_symbols & cartesian_symbols:
+        expression = expression.subs(
+            {
+                x_symbol: radial * sympy.sin(polar) * sympy.cos(azimuthal),
+                y_symbol: radial * sympy.sin(polar) * sympy.sin(azimuthal),
+                z_symbol: radial * sympy.cos(polar),
+            }
+        )
+
+    lower_radius = _parse_expression(view.text("lower_rho"), "lower_rho")
+    upper_radius = _parse_expression(view.text("upper_rho"), "upper_rho")
+    lower_polar = _parse_expression(view.text("lower_phi"), "lower_phi")
+    upper_polar = _parse_expression(view.text("upper_phi"), "upper_phi")
+    lower_azimuthal = _parse_expression(view.text("lower_theta"), "lower_theta")
+    upper_azimuthal = _parse_expression(view.text("upper_theta"), "upper_theta")
+    jacobian = radial**2 * sympy.sin(polar)
+    integrand = simplify(expression * jacobian)
+    result = integrate(
+        integrate(
+            integrate(integrand, (azimuthal, lower_azimuthal, upper_azimuthal)),
+            (polar, lower_polar, upper_polar),
+        ),
+        (radial, lower_radius, upper_radius),
+    )
+    result = simplify(result)
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": ["已使用球面坐标变换并乘以雅可比因子 rho^2*sin(phi)"],
+    }
 
 
 # Line and surface integrals
@@ -1336,6 +1765,7 @@ _SOLVERS = {
     ("derivatives", "extrema"): _extrema,
     ("derivatives", "taylor"): _taylor,
     ("derivatives", "curvature"): _curvature,
+    ("derivatives", "parametric_derivative"): _parametric_derivative,
     ("integrals", "indefinite"): _indefinite_integral,
     ("integrals", "definite"): _definite_integral,
     ("integrals", "improper"): _improper_integral,
@@ -1352,9 +1782,23 @@ _SOLVERS = {
     ("multivariable_calculus", "hessian"): _hessian,
     ("multivariable_calculus", "directional_derivative"): _directional_derivative,
     ("multivariable_calculus", "implicit_derivative"): _implicit_derivative,
+    (
+        "multivariable_calculus",
+        "system_implicit_derivative",
+    ): _system_implicit_derivative,
     ("multivariable_calculus", "multivariable_extrema"): _multivariable_extrema,
+    ("multivariable_calculus", "conditional_extrema"): _conditional_extrema,
     ("multiple_integrals", "double"): _double_integral,
+    ("multiple_integrals", "double_polar"): _double_polar_integral,
     ("multiple_integrals", "triple"): _triple_integral,
+    (
+        "multiple_integrals",
+        "triple_cylindrical",
+    ): _triple_cylindrical_integral,
+    (
+        "multiple_integrals",
+        "triple_spherical",
+    ): _triple_spherical_integral,
     ("line_surface_integrals", "line_scalar"): _line_scalar,
     ("line_surface_integrals", "line_vector"): _line_vector,
     ("line_surface_integrals", "surface_scalar"): _surface_scalar,

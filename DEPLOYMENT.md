@@ -37,8 +37,9 @@ https://cfyyy.pythonanywhere.com
 | 函数图像 JSON/SVG | `https://cfyyy.pythonanywhere.com/plot-query` |
 | 浏览器直接显示图像 | `https://cfyyy.pythonanywhere.com/plot.svg` |
 
-独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前部署未启用 `MATH_API_KEY`，扣子请求不需要 API Key 请求头。若以后启用，
-扣子 HTTP 节点必须增加 `X-API-Key` 请求头，并与环境变量保持一致。
+独立对话页及其 `/demo/api/*` 接口始终允许浏览器直接访问，不需要登录，并继续受频率限制保护。聊天历史只保存在访问者自己的浏览器 `localStorage` 中；刷新页面后仍可看到自己的记录，但不同用户不会看到彼此的对话，也不会读取扣子中的会话历史。页面使用的 KaTeX 公式资源随项目一起部署，不依赖外部 CDN。当前公网部署已启用 `MATH_API_KEY`；扣子的 5 个计算工作流 HTTP 节点必须增加 `X-API-Key` 请求头，并与 PythonAnywhere 环境变量保持一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 不需要 API Key。
+
+普通问答默认关闭。需要在独立对话页回答非数学问题时，在 PythonAnywhere 的环境变量中配置 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL`，然后重新加载 Web 应用。配置后，非数学问题内容会发送给该模型服务；数学题仍由本项目的 SymPy 接口计算。
 
 ## 扣子节点
 
@@ -51,6 +52,8 @@ https://cfyyy.pythonanywhere.com
 | `math_limit` | `https://cfyyy.pythonanywhere.com/limit-query` |
 | `math_solve` | `https://cfyyy.pythonanywhere.com/solve-query` |
 | `math_plot` | `https://cfyyy.pythonanywhere.com/plot-query`、`https://cfyyy.pythonanywhere.com/plot.svg` |
+
+除 `/plot.svg` 只用于浏览器显示图片外，其余计算接口都要带 `X-API-Key` 请求头。`math_plot` 调用 `/plot-query` 时同样要带请求头。
 
 后端接口已经全部提供；`math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` 和 `knowledge_lookup` 已加入智能体。所有扩展章节题型统一路由到 `math_solve`，函数图像由 `math_plot` 处理。提示词和调用路由规则已完成统一更新并通过扣子回归测试。
 

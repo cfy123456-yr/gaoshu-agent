@@ -47,6 +47,11 @@ ALL_TOPIC_CASES = {
         "variable": "x",
         "point": "0",
     },
+    ("derivatives", "parametric_derivative"): {
+        "x_expression": "t^2",
+        "y_expression": "t^3",
+        "parameter": "t",
+    },
     ("integrals", "indefinite"): {"expression": "x", "variable": "x"},
     ("integrals", "definite"): {
         "expression": "x",
@@ -107,9 +112,20 @@ ALL_TOPIC_CASES = {
         "variable": "x",
         "dependent": "y",
     },
+    ("multivariable_calculus", "system_implicit_derivative"): {
+        "equations": ["u+v=x", "u-v=y"],
+        "dependents": ["u", "v"],
+        "variable": "x",
+        "dependent": "u",
+    },
     ("multivariable_calculus", "multivariable_extrema"): {
         "expression": "x^2+y^2",
         "variables": ["x", "y"],
+    },
+    ("multivariable_calculus", "conditional_extrema"): {
+        "expression": "x*y",
+        "variables": ["x", "y"],
+        "constraint": "x+y=1",
     },
     ("multiple_integrals", "double"): {
         "expression": "x*y",
@@ -118,6 +134,13 @@ ALL_TOPIC_CASES = {
         "upper_x": "1",
         "lower_y": "0",
         "upper_y": "1",
+    },
+    ("multiple_integrals", "double_polar"): {
+        "expression": "x^2+y^2",
+        "lower_r": "0",
+        "upper_r": "1",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
     },
     ("multiple_integrals", "triple"): {
         "expression": "x+y+z",
@@ -128,6 +151,24 @@ ALL_TOPIC_CASES = {
         "upper_y": "1",
         "lower_z": "0",
         "upper_z": "1",
+    },
+    ("multiple_integrals", "triple_cylindrical"): {
+        "expression": "x^2+y^2",
+        "lower_r": "0",
+        "upper_r": "1",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
+        "lower_z": "0",
+        "upper_z": "1",
+    },
+    ("multiple_integrals", "triple_spherical"): {
+        "expression": "1",
+        "lower_rho": "0",
+        "upper_rho": "1",
+        "lower_phi": "0",
+        "upper_phi": "pi",
+        "lower_theta": "0",
+        "upper_theta": "2*pi",
     },
     ("line_surface_integrals", "line_scalar"): {
         "expression": "x+y",
@@ -227,6 +268,55 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertEqual("1/4", payload["result"])
 
+    def test_double_polar_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "double_polar",
+            {
+                "expression": "x^2+y^2",
+                "lower_r": "0",
+                "upper_r": "1",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+            },
+        )
+        self.assertEqual("pi/2", payload["result"])
+        self.assertEqual("二重积分（极坐标）", payload["method"])
+
+    def test_triple_cylindrical_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "triple_cylindrical",
+            {
+                "expression": "x^2+y^2",
+                "lower_r": "0",
+                "upper_r": "1",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+                "lower_z": "0",
+                "upper_z": "1",
+            },
+        )
+        self.assertEqual("pi/2", payload["result"])
+        self.assertEqual("三重积分（柱面坐标）", payload["method"])
+
+    def test_triple_spherical_integral(self):
+        payload = self.solve(
+            "multiple_integrals",
+            "triple_spherical",
+            {
+                "expression": "1",
+                "lower_rho": "0",
+                "upper_rho": "1",
+                "lower_phi": "0",
+                "upper_phi": "pi",
+                "lower_theta": "0",
+                "upper_theta": "2*pi",
+            },
+        )
+        self.assertEqual("4*pi/3", payload["result"])
+        self.assertEqual("三重积分（球面坐标）", payload["method"])
+
     def test_vector_dot(self):
         payload = self.solve(
             "vectors",
@@ -291,6 +381,94 @@ class ChapterSolverTest(unittest.TestCase):
             {"equation": "x^2+y^2=1", "variable": "x", "dependent": "y"},
         )
         self.assertEqual("-x/y", payload["result"])
+
+    def test_system_implicit_derivative(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "system_implicit_derivative",
+            {
+                "equations": ["u+v=x", "u-v=y"],
+                "dependents": ["u", "v"],
+                "variable": "x",
+                "dependent": "u",
+            },
+        )
+        self.assertEqual("1/2", payload["result"])
+        self.assertEqual("方程组确定函数求偏导", payload["method"])
+
+    def test_system_implicit_derivative_requires_square_system(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "multivariable_calculus",
+                "system_implicit_derivative",
+                {
+                    "equations": ["u+v=x"],
+                    "dependents": ["u", "v"],
+                    "variable": "x",
+                    "dependent": "u",
+                },
+            )
+
+    def test_conditional_extrema_lagrange(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "conditional_extrema",
+            {
+                "expression": "x*y",
+                "variables": ["x", "y"],
+                "constraint": "x+y=1",
+            },
+        )
+        self.assertIn("x: 1/2", payload["result"])
+        self.assertIn("y: 1/2", payload["result"])
+        self.assertIn("'lambda': -1/2", payload["result"])
+        self.assertIn("'value': 1/4", payload["result"])
+        self.assertIn("'kind': '极大值'", payload["result"])
+        self.assertEqual("条件极值（拉格朗日乘数法）", payload["method"])
+
+    def test_conditional_extrema_multiple_constraints(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "conditional_extrema",
+            {
+                "expression": "x^2+y^2+z^2",
+                "variables": ["x", "y", "z"],
+                "constraints": ["x=0", "y=0"],
+            },
+        )
+        self.assertIn("lambda1: 0", payload["result"])
+        self.assertIn("lambda2: 0", payload["result"])
+        self.assertIn("'kind': '极小值'", payload["result"])
+        self.assertIn("\\lambda_{1}", payload["latex"])
+
+    def test_conditional_extrema_rejects_too_many_constraints(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "multivariable_calculus",
+                "conditional_extrema",
+                {
+                    "expression": "x^2+y^2",
+                    "variables": ["x", "y"],
+                    "constraints": ["x=0", "y=0"],
+                },
+            )
+
+    def test_parametric_derivative(self):
+        payload = self.solve(
+            "derivatives",
+            "parametric_derivative",
+            {"x_expression": "t^2", "y_expression": "t^3", "parameter": "t"},
+        )
+        self.assertEqual("3*t/2", payload["result"])
+        self.assertEqual("参数方程求导", payload["method"])
+
+    def test_parametric_derivative_rejects_zero_dx(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "derivatives",
+                "parametric_derivative",
+                {"x_expression": "1", "y_expression": "t^2", "parameter": "t"},
+            )
 
     def test_power_radius(self):
         payload = self.solve(

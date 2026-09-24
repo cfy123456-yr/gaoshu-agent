@@ -2,10 +2,15 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 
-PROJECT_DIR = str(Path.home() / "gaoshu-agent")
+
+PROJECT_PATH = Path.home() / "gaoshu-agent"
+PROJECT_DIR = str(PROJECT_PATH)
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
+
+load_dotenv(PROJECT_PATH / ".env", override=True)
 
 os.environ.setdefault("LOG_ENABLED", "false")
 os.environ.setdefault("CALCULATION_TIMEOUT_SECONDS", "20")

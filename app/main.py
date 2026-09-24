@@ -63,6 +63,7 @@ LOG_FILE = os.getenv(
 LOG_MAX_BYTES = read_int_env("LOG_MAX_BYTES", 5 * 1024 * 1024)
 LOG_BACKUP_COUNT = read_int_env("LOG_BACKUP_COUNT", 3, minimum=0)
 API_KEY = os.getenv("MATH_API_KEY", "").strip()
+PUBLIC_API_PATHS = {"/plot.svg"}
 SERVICE_VERSION = "0.5.0"
 SERVICE_STARTED_AT = datetime.now(timezone.utc)
 SERVICE_STARTED_MONOTONIC = time.monotonic()
@@ -465,7 +466,11 @@ def enforce_api_access(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> None:
-    if API_KEY and x_api_key != API_KEY:
+    if (
+        API_KEY
+        and request.url.path not in PUBLIC_API_PATHS
+        and x_api_key != API_KEY
+    ):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     forwarded_for = request.headers.get("x-forwarded-for", "")

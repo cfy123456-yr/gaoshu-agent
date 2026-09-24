@@ -159,6 +159,8 @@ Content-Type: application/json
 
 该接口把自然语言中的求导、积分或极限请求转换为确定性数学计算，返回适合对话页展示的意图、公式和计算结果。它是无需登录的公开演示接口，不使用或返回扣子的会话记录。
 
+普通问题默认不处理。配置 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL` 后，非数学问题会交给所配置的模型回答；普通问题内容会发送给该模型服务。数学计算始终使用本项目的 SymPy 工具，不交给通用模型猜测。
+
 ### 健康检查
 
 ```http
@@ -238,6 +240,138 @@ Content-Type: application/json
 
 该接口返回 `method`、`result`、`latex`、`notes` 等字段；提供 `candidate` 时，能确定性比较的题型会返回 `is_correct`。支持的章节包括 `limits`、`derivatives`、`integrals`、`differential_equations`、`vectors`、`multivariable_calculus`、`multiple_integrals`、`line_surface_integrals` 和 `series`。
 
+参数方程求导示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "derivatives",
+  "topic": "parametric_derivative",
+  "inputs": {
+    "x_expression": "t^2",
+    "y_expression": "t^3",
+    "parameter": "t"
+  }
+}
+```
+
+方程组确定函数求偏导示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "system_implicit_derivative",
+  "inputs": {
+    "equations": ["u+v=x", "u-v=y"],
+    "dependents": ["u", "v"],
+    "variable": "x",
+    "dependent": "u"
+  }
+}
+```
+
+条件极值示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x*y",
+    "variables": ["x", "y"],
+    "constraint": "x+y=1"
+  }
+}
+```
+
+多变量、多约束条件极值：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multivariable_calculus",
+  "topic": "conditional_extrema",
+  "inputs": {
+    "expression": "x^2+y^2+z^2",
+    "variables": ["x", "y", "z"],
+    "constraints": ["x=0", "y=0"]
+  }
+}
+```
+
+`constraints` 也可写成 `"x=0; y=0"`。等式约束数量必须少于变量数量；单约束仍可用原有的 `constraint` 字段。
+
+极坐标二重积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multiple_integrals",
+  "topic": "double_polar",
+  "inputs": {
+    "expression": "x^2+y^2",
+    "lower_r": "0",
+    "upper_r": "1",
+    "lower_theta": "0",
+    "upper_theta": "2*pi"
+  }
+}
+```
+
+柱面坐标三重积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multiple_integrals",
+  "topic": "triple_cylindrical",
+  "inputs": {
+    "expression": "x^2+y^2",
+    "lower_r": "0",
+    "upper_r": "1",
+    "lower_theta": "0",
+    "upper_theta": "2*pi",
+    "lower_z": "0",
+    "upper_z": "1"
+  }
+}
+```
+
+球面坐标三重积分示例：
+
+```http
+POST /solve
+Content-Type: application/json
+
+{
+  "chapter": "multiple_integrals",
+  "topic": "triple_spherical",
+  "inputs": {
+    "expression": "1",
+    "lower_rho": "0",
+    "upper_rho": "1",
+    "lower_phi": "0",
+    "upper_phi": "pi",
+    "lower_theta": "0",
+    "upper_theta": "2*pi"
+  }
+}
+```
+
 ### 函数图像
 
 生成 SVG 图像：
@@ -312,7 +446,15 @@ $env:CALCULATION_WORKERS = "4"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-设置 `MATH_API_KEY` 后，扣子 HTTP 节点必须增加请求头 `X-API-Key`，其值与 `MATH_API_KEY` 一致。未设置时仍保持本地演示可直接调用。
+当前公网服务已启用 `MATH_API_KEY`。扣子的 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` HTTP 节点必须增加请求头 `X-API-Key`，其值与 PythonAnywhere 的 `MATH_API_KEY` 一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 仍可直接访问。
+
+普通问答模型使用独立配置，密钥不会返回给浏览器：
+
+```powershell
+$env:GENERAL_CHAT_API_URL = "https://api.deepseek.com/chat/completions"
+$env:GENERAL_CHAT_API_KEY = "替换为你的模型密钥"
+$env:GENERAL_CHAT_MODEL = "deepseek-chat"
+```
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
@@ -339,5 +481,6 @@ $env:CALCULATION_WORKERS = "4"
 - 已加入纯 SVG 函数图像接口，本地绘图单元测试通过。
 - 已通过 `math_plot` 在智能体对话中显示函数图像。
 - 已统一更新并发布扣子提示词，完成求导、积分、极限和级数的空答案、正确/错误候选答案及不定积分补 `C` 话术回归。
+- 扣子提示词已允许普通问答；独立演示页也支持通过环境变量接入通用模型，同时保留高数题强制走确定性计算工具的规则。
 
 图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音和参赛材料仍在后续开发中。

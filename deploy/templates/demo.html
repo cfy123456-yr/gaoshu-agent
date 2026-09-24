@@ -2,8 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f8ff">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#eef1f5">
   <meta
     name="description"
     content="知微老师高等数学对话演示，支持求导、积分和极限计算。"
@@ -15,22 +18,22 @@
   >
   <style>
     :root {
-      --ink: #172033;
-      --muted: #6d7a91;
-      --line: #e4ecf7;
-      --line-strong: #cbdaf0;
-      --canvas: #f4f8ff;
+      --ink: #18202f;
+      --muted: #5f6b7f;
+      --line: #e2e6ed;
+      --line-strong: #cbd2dd;
+      --canvas: #eef1f5;
       --surface: #ffffff;
-      --soft-blue: #eaf2ff;
-      --blue: #2868d8;
-      --blue-dark: #174da3;
-      --blue-ink: #123f87;
+      --soft-blue: #e8f0fd;
+      --blue: #2563d9;
+      --blue-dark: #164daa;
+      --blue-ink: #123c7d;
       --amber: #b77916;
       --red: #c2413b;
-      --shadow: 0 12px 34px rgba(37, 99, 201, 0.09);
-      --sidebar-bg: #f7faff;
-      --sidebar-hover: #edf4ff;
-      --sidebar-active: #e4eeff;
+      --shadow: 0 12px 30px rgba(30, 41, 59, 0.08);
+      --sidebar-bg: #f3f5f8;
+      --sidebar-hover: #e9edf3;
+      --sidebar-active: #e3eaf5;
       --sidebar-width: 272px;
       --sidebar-rail-width: 68px;
       --sidebar-current-width: var(--sidebar-width);
@@ -39,22 +42,22 @@
 
     html[data-theme="dark"] {
       color-scheme: dark;
-      --ink: #e8f0ff;
-      --muted: #9aabc5;
-      --line: #293c5a;
-      --line-strong: #3e587c;
-      --canvas: #0d1626;
-      --surface: #142033;
-      --soft-blue: #1b3150;
-      --blue: #5d91ef;
-      --blue-dark: #a8c7ff;
-      --blue-ink: #c9dcff;
+      --ink: #e6ebf4;
+      --muted: #9aa6b7;
+      --line: #293342;
+      --line-strong: #3c485b;
+      --canvas: #0d121b;
+      --surface: #151b25;
+      --soft-blue: #1c2c46;
+      --blue: #6699f0;
+      --blue-dark: #b5ceff;
+      --blue-ink: #d3e1ff;
       --amber: #d9a54d;
       --red: #ef8178;
       --shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
-      --sidebar-bg: #101b2c;
-      --sidebar-hover: #192941;
-      --sidebar-active: #203655;
+      --sidebar-bg: #111722;
+      --sidebar-hover: #1b2431;
+      --sidebar-active: #223454;
       --scrim: rgba(3, 8, 16, 0.62);
     }
 
@@ -82,6 +85,8 @@
     }
 
     button,
+    input,
+    select,
     textarea {
       font: inherit;
     }
@@ -91,9 +96,33 @@
     }
 
     button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
     textarea:focus-visible {
       outline: 3px solid rgba(40, 104, 216, 0.18);
       outline-offset: 2px;
+    }
+
+    ::selection {
+      color: var(--blue-ink);
+      background: #d7e7ff;
+    }
+
+    * {
+      scrollbar-color: var(--line-strong) transparent;
+      scrollbar-width: thin;
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: var(--line-strong);
+      background-clip: padding-box;
     }
 
     .sr-only {
@@ -118,7 +147,7 @@
       margin: 0 auto;
       overflow: hidden;
       background: var(--surface);
-      box-shadow: 0 0 0 1px rgba(203, 218, 240, 0.72);
+      box-shadow: 0 0 0 1px rgba(203, 210, 221, 0.78);
     }
 
     .app-shell[data-sidebar-collapsed="true"] {
@@ -152,53 +181,16 @@
     .app-shell[data-sidebar-collapsed="true"] .sidebar-brand,
     .app-shell[data-sidebar-collapsed="true"] .sidebar-section,
     .app-shell[data-sidebar-collapsed="true"] .sidebar-footer,
-    .app-shell[data-sidebar-collapsed="true"] .sidebar-resizer,
-    .app-shell[data-sidebar-collapsed="true"] .tools-menu summary {
+    .app-shell[data-sidebar-collapsed="true"] .sidebar-resizer {
       display: none;
     }
 
-    .app-shell[data-sidebar-collapsed="true"] .new-chat-button {
-      width: 44px;
-      min-height: 44px;
-      margin: 14px auto 0;
-      padding: 0;
-      border-radius: 12px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .new-chat-label {
+    .app-shell[data-sidebar-collapsed="true"] .toolbox-scroll {
       display: none;
     }
 
-    .app-shell[data-sidebar-collapsed="true"] .tools-menu {
-      margin-top: 14px;
-      padding-top: 14px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-list {
-      grid-template-columns: 1fr;
-      gap: 8px;
-      padding: 0;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-button {
+    .app-shell[data-sidebar-collapsed="true"] .sidebar-rail {
       display: grid;
-      width: 44px;
-      min-height: 44px;
-      height: 44px;
-      margin: 0 auto;
-      padding: 0;
-      place-items: center;
-      border-radius: 12px;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-label {
-      display: none;
-    }
-
-    .app-shell[data-sidebar-collapsed="true"] .tool-icon {
-      display: block;
-      font-size: 0.7rem;
-      letter-spacing: -0.02em;
     }
 
     .sidebar-inner {
@@ -216,6 +208,48 @@
       justify-content: space-between;
       gap: 10px;
       min-height: 40px;
+    }
+
+    .sidebar-rail {
+      display: none;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .sidebar-rail-button {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto;
+      padding: 0;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .sidebar-rail-button:hover,
+    .sidebar-rail-button:focus-visible {
+      border-color: #a9c5ec;
+      color: var(--blue-dark);
+      background: var(--sidebar-hover);
+    }
+
+    .sidebar-rail-button[aria-current="true"] {
+      border-color: var(--line-strong);
+      color: var(--blue-dark);
+      background: var(--sidebar-active);
+    }
+
+    .sidebar-rail-button svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
     }
 
     .sidebar-brand {
@@ -263,26 +297,28 @@
       background: var(--sidebar-hover);
     }
 
-    .new-chat-button {
+    .conversation-panel-actions {
       display: flex;
+      flex: 0 0 auto;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      min-height: 42px;
-      margin-top: 16px;
-      padding: 8px 12px;
-      border: 1px solid var(--blue);
-      border-radius: 10px;
-      color: #ffffff;
-      background: var(--blue);
-      font-size: 0.84rem;
-      font-weight: 800;
+      gap: 4px;
     }
 
-    .new-chat-button:hover {
-      border-color: var(--blue-dark);
-      background: var(--blue-dark);
+    .conversation-panel-head .new-chat-icon {
+      flex-basis: 30px;
+      width: 30px;
+      height: 30px;
+      border-color: transparent;
+      color: var(--blue-dark);
+      background: transparent;
+      font-size: 1.05rem;
+    }
+
+    .conversation-panel-head .new-chat-icon:hover,
+    .conversation-panel-head .new-chat-icon:focus-visible {
+      border-color: #a9c5ec;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
     }
 
     .sidebar-section {
@@ -427,69 +463,6 @@
       color: var(--muted);
       font-size: 0.76rem;
       line-height: 1.6;
-    }
-
-    .tools-menu {
-      flex: 0 0 auto;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--line);
-    }
-
-    .tools-menu summary {
-      padding: 5px 6px;
-      color: var(--muted);
-      font-size: 0.75rem;
-      font-weight: 800;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .tools-menu summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .tools-menu summary::after {
-      float: right;
-      content: "+";
-      font-size: 0.9rem;
-    }
-
-    .tools-menu[open] summary::after {
-      content: "−";
-    }
-
-    .tool-list {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      padding: 7px 4px 1px;
-    }
-
-    .tool-button {
-      display: grid;
-      place-items: center;
-      min-height: 34px;
-      padding: 5px 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--blue-dark);
-      background: var(--surface);
-      font-size: 0.73rem;
-      font-weight: 800;
-    }
-
-    .tool-icon {
-      display: none;
-    }
-
-    .tool-button:hover {
-      border-color: #a9c5ec;
-      background: var(--sidebar-hover);
-    }
-
-    .tool-button.is-wide {
-      grid-column: 1 / -1;
     }
 
     .solver-dialog {
@@ -728,11 +701,1150 @@
       display: none;
     }
 
+    .conversation-panel {
+      display: flex;
+      flex: 0 0 238px;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--surface));
+    }
+
+    .conversation-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 58px;
+      padding: 12px 12px 8px;
+    }
+
+    .conversation-panel-title {
+      color: var(--ink);
+      font-size: 0.83rem;
+      font-weight: 850;
+    }
+
+    .conversation-panel .sidebar-section {
+      margin-top: 0;
+      padding: 0 8px 10px;
+    }
+
+    .conversation-panel .section-heading {
+      padding-right: 5px;
+      padding-left: 5px;
+    }
+
+    .conversation-panel .sidebar-section {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    .conversation-panel[data-collapsed="true"] {
+      flex-basis: 50px;
+    }
+
+    .conversation-panel[data-collapsed="true"] .conversation-panel-title,
+    .conversation-panel[data-collapsed="true"] .new-chat-icon,
+    .conversation-panel[data-collapsed="true"] .sidebar-section {
+      display: none;
+    }
+
+    .conversation-panel[data-collapsed="true"] .conversation-panel-head {
+      justify-content: center;
+      padding: 12px 4px;
+    }
+
+    .toolbox-scroll {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 2px 4px 12px;
+      scrollbar-width: thin;
+    }
+
+    .toolbox-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 2px 2px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbox-tab {
+      min-height: 34px;
+      padding: 5px 6px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 0.67rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .toolbox-tab:hover {
+      color: var(--blue-dark);
+      background: var(--sidebar-hover);
+    }
+
+    .toolbox-tab[aria-selected="true"] {
+      border-color: var(--line-strong);
+      color: var(--blue-dark);
+      background: var(--sidebar-active);
+    }
+
+    .toolbox-tab:focus-visible {
+      border-color: #87afea;
+      outline: 0;
+      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.1);
+    }
+
+    .toolbox-tab-count {
+      display: inline-grid;
+      min-width: 18px;
+      height: 18px;
+      margin-left: 3px;
+      padding: 0 5px;
+      place-items: center;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: color-mix(in srgb, var(--blue) 11%, transparent);
+      font-size: 0.58rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .toolbox-panel[data-active="false"] {
+      display: none;
+    }
+
+    .wrongbook-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin: 0 2px 8px;
+      color: var(--muted);
+      font-size: 0.66rem;
+    }
+
+    .wrongbook-toolbar > span {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    .wrongbook-clear {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      min-height: 26px;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 0.64rem;
+    }
+
+    .wrongbook-clear:hover {
+      border-color: #e2b7b2;
+      color: var(--red);
+      background: color-mix(in srgb, var(--red) 7%, transparent);
+    }
+
+    .wrongbook-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .wrongbook-item {
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .wrongbook-item-title {
+      display: -webkit-box;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 0.72rem;
+      font-weight: 750;
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+
+    .wrongbook-item-meta {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.61rem;
+    }
+
+    .wrongbook-answer {
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+    }
+
+    .wrongbook-answer summary {
+      cursor: pointer;
+      color: var(--blue-dark);
+      font-size: 0.65rem;
+      font-weight: 800;
+    }
+
+    .wrongbook-answer-text {
+      max-height: 180px;
+      margin-top: 6px;
+      overflow: auto;
+      color: var(--muted);
+      font-size: 0.66rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .wrongbook-item-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .wrongbook-item-actions button {
+      flex: 1 1 0;
+      min-height: 28px;
+      padding: 3px 5px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
+      font-size: 0.65rem;
+      font-weight: 800;
+    }
+
+    .wrongbook-item-actions button[data-wrongbook-action="delete"] {
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .wrongbook-item-actions button:hover {
+      border-color: #a9c5ec;
+    }
+
+    .wrongbook-empty {
+      padding: 14px 8px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .learning-progress-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin: 0 2px 9px;
+    }
+
+    .progress-metric {
+      min-height: 66px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .progress-metric strong {
+      display: block;
+      color: var(--blue-ink);
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .progress-metric span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.61rem;
+      font-weight: 700;
+    }
+
+    .progress-streak {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 2px 10px;
+      padding: 9px 10px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.64rem;
+    }
+
+    .progress-streak strong {
+      color: var(--blue-dark);
+      font-size: 1rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-days {
+      display: grid;
+      gap: 6px;
+      margin: 0 2px;
+    }
+
+    .progress-day {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) 26px;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 0.61rem;
+    }
+
+    .progress-day-count {
+      color: var(--blue-dark);
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .progress-day-track {
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--sidebar-hover);
+    }
+
+    .progress-day-fill {
+      width: var(--progress-width, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue);
+      transition: width 0.25s ease;
+    }
+
+    .progress-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px;
+      margin: 12px 2px 0;
+    }
+
+    .progress-action {
+      min-height: 32px;
+      padding: 4px 6px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--blue-dark);
+      background: var(--surface);
+      font-size: 0.62rem;
+      font-weight: 800;
+    }
+
+    .progress-action:hover,
+    .progress-action:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
+    .progress-action.primary {
+      border-color: #b9d0ef;
+      background: var(--soft-blue);
+    }
+
+    .progress-status {
+      min-height: 1.6em;
+      margin: 7px 3px 0;
+      color: var(--muted);
+      font-size: 0.61rem;
+      line-height: 1.5;
+    }
+
+    .progress-status[data-state="error"] {
+      color: var(--red);
+    }
+
+    .progress-status[data-state="success"] {
+      color: var(--blue-dark);
+    }
+
+    .toolbox-section {
+      padding: 12px 2px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toolbox-section:first-child {
+      border-top: 0;
+    }
+
+    .toolbox-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 4px 9px;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+    }
+
+    .toolbox-heading span:last-child {
+      color: var(--blue-dark);
+      font-size: 0.63rem;
+      letter-spacing: 0;
+    }
+
+    .quick-stack {
+      display: grid;
+      gap: 7px;
+    }
+
+    .quick-tool {
+      padding: 8px 9px 9px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--surface) 72%, transparent);
+    }
+
+    .quick-tool-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .quick-tool-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+      font-size: 0.74rem;
+      font-weight: 850;
+    }
+
+    .quick-tool-mark {
+      display: inline-grid;
+      min-width: 20px;
+      height: 20px;
+      place-items: center;
+      color: var(--blue-dark);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 0.78rem;
+    }
+
+    .quick-tool-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-tool-row.is-limit {
+      grid-template-columns: minmax(0, 1fr) 18px 58px;
+    }
+
+    .quick-tool-row.is-integral {
+      grid-template-columns: minmax(0, 1fr) 54px 54px;
+    }
+
+    .quick-input,
+    .quick-select {
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--surface);
+      font-size: 0.75rem;
+      outline: none;
+    }
+
+    .quick-input:focus,
+    .quick-select:focus {
+      border-color: #87afea;
+      box-shadow: 0 0 0 3px rgba(40, 104, 216, 0.08);
+    }
+
+    .quick-calculate {
+      min-width: 54px;
+      height: 34px;
+      padding: 5px 9px;
+      border: 1px solid var(--blue);
+      border-radius: 7px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 0.72rem;
+      font-weight: 850;
+    }
+
+    .quick-calculate:hover {
+      border-color: var(--blue-dark);
+      background: var(--blue-dark);
+    }
+
+    .quick-calculate:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .quick-caption {
+      margin: 6px 1px 0;
+      color: var(--muted);
+      font-size: 0.64rem;
+      line-height: 1.4;
+    }
+
+    .toolbox-more-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 34px;
+      padding: 6px 9px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      color: var(--blue-dark);
+      background: transparent;
+      font-size: 0.7rem;
+      font-weight: 850;
+    }
+
+    .toolbox-more-toggle:hover,
+    .toolbox-more-toggle:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
+    .toolbox-more-toggle::after {
+      content: "+";
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .toolbox-more-toggle[aria-expanded="true"]::after {
+      content: "−";
+    }
+
+    .related-knowledge {
+      display: grid;
+      max-height: min(32vh, 280px);
+      min-height: 0;
+      gap: 7px;
+      margin: 0 0 8px;
+      padding: 2px 2px 12px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: thin;
+    }
+
+    .related-knowledge-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 4px;
+      color: var(--muted);
+      font-size: 0.67rem;
+      font-weight: 850;
+    }
+
+    .related-knowledge-head span:last-child {
+      color: var(--blue-dark);
+      font-size: 0.6rem;
+      font-weight: 750;
+    }
+
+    .related-knowledge-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .related-knowledge-empty {
+      margin: 0 4px;
+      padding: 8px 9px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.66rem;
+      line-height: 1.5;
+    }
+
+    .knowledge-item {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      padding: 8px 9px;
+      border-left: 3px solid color-mix(in srgb, var(--blue) 72%, var(--line));
+      border-radius: 0 7px 7px 0;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--soft-blue) 58%, var(--surface));
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+
+    .knowledge-item strong {
+      overflow-wrap: anywhere;
+      color: var(--blue-dark);
+      font-size: 0.68rem;
+      font-weight: 850;
+    }
+
+    .knowledge-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.64rem;
+      line-height: 1.55;
+    }
+
+    .knowledge-source {
+      display: block;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-size: 0.58rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .solver-entry {
+      display: flex;
+      width: 100%;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--blue-dark);
+      background: var(--surface);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .solver-entry::after {
+      color: var(--muted);
+      content: "›";
+      font-size: 0.9rem;
+    }
+
+    .solver-entry:hover,
+    .solver-entry:focus-visible {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
+    .topic-presets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .topic-preset,
+    .symbol-button,
+    .workspace-tab,
+    .preview-action {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--blue-dark);
+      background: var(--surface);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .topic-preset:hover,
+    .symbol-button:hover,
+    .workspace-tab:hover,
+    .preview-action:hover {
+      border-color: #a9c5ec;
+      background: var(--sidebar-hover);
+    }
+
+    .symbol-board {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 5px;
+      margin-top: 9px;
+    }
+
+    .symbol-button {
+      min-height: 29px;
+      padding: 3px 0;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 0.86rem;
+    }
+
+    .topic-library {
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .topic-library > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 5px;
+      color: var(--muted);
+      font-size: 0.69rem;
+      font-weight: 850;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .topic-library > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .conversation-panel,
+    .sidebar,
+    .chat-layout {
+      min-height: 0;
+    }
+
+    .workspace-body {
+      display: flex;
+      width: 100%;
+      min-height: 0;
+      min-width: 0;
+      flex: 1 1 auto;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f6f8fa;
+    }
+
+    .preview-panel {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      flex: 0 0 230px;
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .preview-panel[data-collapsed="true"] {
+      flex-basis: 48px;
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 46px;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preview-title-wrap {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.82rem;
+      font-weight: 850;
+    }
+
+    .preview-badge {
+      padding: 1px 7px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
+      font-size: 0.62rem;
+      font-weight: 850;
+    }
+
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .workspace-tab,
+    .preview-action {
+      min-height: 28px;
+      padding: 3px 8px;
+      border-color: transparent;
+      background: transparent;
+      font-size: 0.68rem;
+    }
+
+    .workspace-tab[data-active="true"] {
+      border-color: var(--line-strong);
+      background: var(--soft-blue);
+    }
+
+    .preview-content {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 12px 14px 15px;
+    }
+
+    .preview-empty {
+      display: grid;
+      height: 100%;
+      min-height: 150px;
+      place-items: center;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-align: center;
+    }
+
+    .preview-result {
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-result-title {
+      color: var(--muted);
+      font-size: 0.69rem;
+      font-weight: 800;
+    }
+
+    .preview-formula {
+      padding: 13px 12px;
+      overflow-x: auto;
+      border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line));
+      border-radius: 10px;
+      color: var(--blue-ink);
+      background: color-mix(in srgb, var(--soft-blue) 58%, transparent);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 1.05rem;
+      text-align: center;
+    }
+
+    .preview-result-text {
+      margin: 0;
+      color: var(--ink);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 0.79rem;
+    }
+
+    .preview-plot-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-plot-grid figure {
+      margin: 0;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .preview-plot-grid img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .inline-solver {
+      display: grid;
+      gap: 11px;
+    }
+
+    .inline-solver[hidden] {
+      display: none;
+    }
+
+    .inline-solver-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .inline-solver-head h3 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.86rem;
+    }
+
+    .inline-solver-head p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.68rem;
+    }
+
+    .inline-solver .solver-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .inline-solver .solver-field input,
+    .inline-solver .solver-field select,
+    .inline-solver .solver-field textarea {
+      min-height: 34px;
+      padding: 6px 8px;
+      font-size: 0.76rem;
+    }
+
+    .inline-solver .solver-field textarea {
+      min-height: 62px;
+    }
+
+    .inline-solver .solver-hint {
+      margin: 0;
+      padding: 8px;
+      font-size: 0.68rem;
+    }
+
+    .inline-solver-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .quick-favorites {
+      display: grid;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .favorite-item {
+      display: block;
+      width: 100%;
+      padding: 6px 7px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 0.67rem;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .quick-plot-form {
+      display: grid;
+      gap: 6px;
+    }
+
+    .quick-plot-input {
+      min-height: 62px;
+      resize: vertical;
+    }
+
+    .quick-plot-range {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .preview-result-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.68rem;
+    }
+
+    .preview-notes {
+      margin: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--soft-blue) 34%, transparent);
+      font-size: 0.72rem;
+    }
+
+    .preview-error {
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, var(--red) 46%, var(--line));
+      border-radius: 8px;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--red) 9%, transparent);
+      font-size: 0.76rem;
+    }
+
+    .preview-action[hidden],
+    .preview-output[hidden],
+    .inline-solver[hidden] {
+      display: none;
+    }
+
+    .composer-image-preview {
+      display: grid;
+      min-width: 0;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #f7faff;
+    }
+
+    .composer-image-preview[hidden] {
+      display: none;
+    }
+
+    .composer-image-list {
+      display: flex;
+      min-width: 0;
+      max-height: 196px;
+      flex-wrap: wrap;
+      gap: 8px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .composer-image-item {
+      display: grid;
+      min-width: 0;
+      flex: 1 1 238px;
+      grid-template-columns: 44px minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 9px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .composer-image-item[data-state="success"] {
+      border-color: #b8d7c1;
+      background: #f5fbf6;
+    }
+
+    .composer-image-item[data-state="error"] {
+      border-color: color-mix(in srgb, var(--red) 48%, var(--line));
+      background: color-mix(in srgb, var(--red) 7%, var(--surface));
+    }
+
+    .composer-image-thumb {
+      display: block;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--surface);
+    }
+
+    .composer-image-copy {
+      min-width: 0;
+    }
+
+    .composer-image-copy strong,
+    .composer-image-copy span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-image-copy strong {
+      color: var(--ink);
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+
+    .composer-image-copy span {
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.4;
+    }
+
+    .composer-image-item[data-state="success"] .composer-image-copy span {
+      color: #2f6b41;
+    }
+
+    .composer-image-item[data-state="error"] .composer-image-copy span {
+      color: var(--red);
+    }
+
+    .composer-image-remove {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .composer-image-remove:hover {
+      border-color: var(--line);
+      color: var(--ink);
+      background: var(--surface);
+    }
+
+    .composer-image-footer {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 2px;
+    }
+
+    .composer-image-status {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.4;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-image-clear {
+      flex: 0 0 auto;
+      min-height: 26px;
+      padding: 2px 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 0.68rem;
+      font-weight: 750;
+    }
+
+    .composer-image-clear:hover {
+      border-color: var(--line);
+      color: var(--ink);
+      background: var(--surface);
+    }
+
     .chat-layout {
       display: flex;
+      width: 100%;
       min-width: 0;
       flex: 1;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .chat-header {
@@ -858,18 +1970,22 @@
     }
 
     .messages {
+      width: 100%;
       flex: 1 1 auto;
       min-height: 0;
+      min-width: 0;
       padding: 30px 30px 22px;
       overflow-x: hidden;
       overflow-y: auto;
       overscroll-behavior: contain;
       scroll-behavior: smooth;
-      background: #f8fbff;
+      background: #f8f9fb;
     }
 
     .message {
       display: flex;
+      width: 100%;
+      min-width: 0;
       align-items: flex-start;
       gap: 10px;
       margin-bottom: 24px;
@@ -904,6 +2020,23 @@
       width: fit-content;
       max-width: min(76%, 680px);
       min-width: 0;
+      flex: 0 1 auto;
+    }
+
+    .message-text .math-inline {
+      white-space: nowrap;
+    }
+
+    .message-text .math-display {
+      display: block;
+      max-width: 100%;
+      margin: 12px 0;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+
+    .message-text .math-display .katex-display {
+      margin: 0;
     }
 
     .message[data-role="user"] .message-content {
@@ -924,14 +2057,47 @@
     }
 
     .message-meta time {
-      color: #93a0b4;
+      color: var(--muted);
       font-size: 0.64rem;
       font-weight: 500;
-      opacity: 0.8;
     }
 
     .message[data-role="user"] .message-meta {
       justify-content: flex-end;
+    }
+
+    .message-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 5px;
+      margin: 5px 6px 0;
+    }
+
+    .message[data-role="assistant"] .message-actions {
+      justify-content: flex-start;
+    }
+
+    .message-action {
+      min-height: 24px;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      font-size: 0.62rem;
+      font-weight: 800;
+    }
+
+    .message-action:hover {
+      border-color: #a9c5ec;
+      color: var(--blue-dark);
+      background: var(--sidebar-hover);
+    }
+
+    .message-action[data-bookmarked="true"] {
+      border-color: #b9d0ef;
+      color: var(--blue-dark);
+      background: var(--soft-blue);
     }
 
     .bubble {
@@ -958,6 +2124,66 @@
       margin: 0;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+
+    .message-attachments {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .message-attachments:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-attachment {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .message[data-role="user"] .message-attachment {
+      border-color: rgba(255, 255, 255, 0.36);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .message-attachment img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: #eef3f9;
+    }
+
+    .message-attachment-file {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: 7px;
+      padding: 8px;
+      font-size: 0.68rem;
+      line-height: 1.35;
+    }
+
+    .message-attachment-file svg {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .message-attachment-file span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .formula {
@@ -1042,7 +2268,7 @@
     }
 
     .calculation-grid dt {
-      color: #71809a;
+      color: #667085;
       font-size: 0.73rem;
       font-weight: 700;
     }
@@ -1104,8 +2330,11 @@
     }
 
     .composer-area {
+      width: 100%;
       flex: 0 0 auto;
-      padding: 0 28px 18px;
+      min-width: 0;
+      padding: 0 28px max(18px, env(safe-area-inset-bottom));
+      overflow: hidden;
       border-top: 1px solid var(--line);
       background: #ffffff;
     }
@@ -1150,6 +2379,9 @@
 
     .suggestions {
       display: flex;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
       flex-wrap: wrap;
       gap: 8px;
       padding: 12px 2px 10px;
@@ -1166,14 +2398,18 @@
 
     .suggestion {
       flex: 0 0 auto;
+      max-width: 100%;
       min-height: 32px;
       padding: 5px 11px;
+      overflow: hidden;
       border: 1px solid #d4e2f5;
       border-radius: 999px;
       color: var(--blue-dark);
       background: #f7faff;
       font-size: 0.77rem;
       font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       transition: transform 0.15s ease, border-color 0.15s ease,
         background-color 0.15s ease;
     }
@@ -1189,15 +2425,35 @@
     }
 
     .composer {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end;
-      gap: 9px;
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      flex-direction: column;
+      gap: 8px;
       padding: 8px;
       border: 1px solid #d7e3f3;
       border-radius: 18px;
       background: var(--surface);
       box-shadow: 0 8px 24px rgba(37, 99, 201, 0.07);
+    }
+
+    .composer-row {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+      gap: 8px;
+    }
+
+    .image-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .composer:focus-within {
@@ -1207,6 +2463,7 @@
 
     .chat-input {
       width: 100%;
+      min-width: 0;
       min-height: 42px;
       max-height: 132px;
       padding: 9px 8px 8px;
@@ -1220,10 +2477,59 @@
     }
 
     .chat-input::placeholder {
-      color: #91a0b7;
+      color: var(--muted);
+      opacity: 1;
+    }
+
+    .image-upload-button {
+      display: grid;
+      flex: 0 0 auto;
+      width: 42px;
+      min-height: 42px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--blue-dark);
+      background: var(--sidebar-bg);
+    }
+
+    .image-upload-button:hover {
+      border-color: #a9c5ec;
+      background: var(--soft-blue);
+    }
+
+    .image-upload-button:active {
+      transform: translateY(1px);
+    }
+
+    .image-upload-button:disabled {
+      cursor: wait;
+      opacity: 0.66;
+    }
+
+    .image-upload-button svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .image-upload-button[data-loading="true"] svg {
+      animation: image-spin 0.9s linear infinite;
+    }
+
+    @keyframes image-spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .send-button {
+      flex: 0 0 auto;
       min-width: 72px;
       min-height: 42px;
       padding: 8px 17px;
@@ -1239,8 +2545,15 @@
       background: var(--blue-dark);
     }
 
+    .send-button:active {
+      transform: translateY(1px);
+    }
+
     .send-button:disabled {
-      cursor: wait;
+      cursor: not-allowed;
+      border-color: #b8c2d0;
+      color: #f7f8fa;
+      background: #9aa6b7;
       opacity: 0.62;
     }
 
@@ -1249,30 +2562,52 @@
       background: rgba(20, 32, 51, 0.97);
     }
 
+    html[data-theme="dark"] .image-upload-button,
+    html[data-theme="dark"] .composer-image-preview {
+      border-color: var(--line);
+      background: #182334;
+    }
+
+    html[data-theme="dark"] .image-upload-button:hover {
+      background: var(--soft-blue);
+    }
+
+    html[data-theme="dark"] .composer-image-preview[data-state="success"] {
+      border-color: #355e42;
+      background: #14261a;
+    }
+
+    html[data-theme="dark"]
+      .composer-image-preview[data-state="success"]
+      .composer-image-copy
+      span {
+      color: #95d3a6;
+    }
+
     html[data-theme="dark"] .messages {
-      background: #101b2c;
+      background: #10151e;
     }
 
-    html[data-theme="dark"] .status-chip,
-    html[data-theme="dark"] .suggestion {
-      background: #182840;
-    }
+      html[data-theme="dark"] .status-chip,
+      html[data-theme="dark"] .suggestion {
+        background: #1a2433;
+      }
 
-    html[data-theme="dark"] .bubble {
-      background: #182840;
-    }
+      html[data-theme="dark"] .bubble {
+        background: #1a2433;
+      }
 
     html[data-theme="dark"] .message[data-role="user"] .bubble {
       background: var(--blue);
     }
 
-    html[data-theme="dark"] .formula {
-      background: #1a2e4d;
-    }
+      html[data-theme="dark"] .formula {
+        background: #1a2b45;
+      }
 
-    html[data-theme="dark"] .message[data-role="user"] .avatar {
-      background: #182840;
-    }
+      html[data-theme="dark"] .message[data-role="user"] .avatar {
+        background: #1a2433;
+      }
 
     @media (hover: none) {
       .history-actions {
@@ -1286,6 +2621,11 @@
 
       .history-item .history-title {
         padding-right: 0;
+      }
+
+      .toolbox-tab,
+      .progress-action {
+        min-height: 44px;
       }
     }
 
@@ -1338,6 +2678,19 @@
         opacity: 1;
         pointer-events: auto;
       }
+
+      .conversation-panel {
+        display: none;
+      }
+
+      .preview-panel {
+        flex-basis: 210px;
+      }
+
+      .toolbox-tab,
+      .progress-action {
+        min-height: 44px;
+      }
     }
 
     @media (max-width: 640px) {
@@ -1347,6 +2700,8 @@
       }
 
       .chat-header {
+        width: 100%;
+        min-width: 0;
         min-height: 70px;
         padding: 11px 14px;
       }
@@ -1367,7 +2722,24 @@
       }
 
       .brand {
+        flex: 1 1 auto;
+        min-width: 0;
         gap: 8px;
+      }
+
+      .brand-copy {
+        overflow: hidden;
+      }
+
+      .brand-copy h1 {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-actions {
+        flex: 0 0 auto;
+        gap: 6px;
       }
 
       .status-chip {
@@ -1376,6 +2748,7 @@
       }
 
       .messages {
+        max-width: 100%;
         padding: 22px 12px 16px;
       }
 
@@ -1392,7 +2765,8 @@
       }
 
       .message-content {
-        max-width: 87%;
+        width: auto;
+        max-width: calc(100% - 37px);
       }
 
       .bubble {
@@ -1405,7 +2779,24 @@
       }
 
       .composer-area {
-        padding: 0 10px 12px;
+        max-width: 100%;
+        padding: 0 10px max(12px, env(safe-area-inset-bottom));
+      }
+
+      .suggestions {
+        padding-top: 10px;
+        padding-bottom: 8px;
+      }
+
+      .composer-row {
+        grid-template-columns: minmax(0, 1fr) 42px 54px;
+        gap: 6px;
+      }
+
+      .send-button {
+        min-width: 54px;
+        padding-right: 8px;
+        padding-left: 8px;
       }
 
       .solver-dialog {
@@ -1442,6 +2833,23 @@
         justify-content: flex-end;
       }
 
+      .preview-panel {
+        flex-basis: 184px;
+      }
+
+      .preview-head {
+        padding-right: 9px;
+        padding-left: 9px;
+      }
+
+      .preview-content {
+        padding: 9px 10px 12px;
+      }
+
+      .workspace-tab {
+        display: none;
+      }
+
       .send-button {
         min-width: 62px;
         padding-right: 13px;
@@ -1454,6 +2862,49 @@
   <div class="app-shell" id="appShell" data-sidebar-collapsed="false">
     <aside class="sidebar" id="sidebar" aria-label="会话与工具">
       <div class="sidebar-inner">
+        <nav class="sidebar-rail" aria-label="侧边栏快捷入口">
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-sidebar-toggle
+            aria-label="展开侧边栏"
+            title="展开侧边栏"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6"></path>
+            </svg>
+          </button>
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-rail-tab="wrongbook"
+            aria-current="true"
+            aria-label="错题集"
+            title="错题集"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3h12v18H6z"></path>
+              <path d="M9 8h6"></path>
+              <path d="M9 12h6"></path>
+              <path d="m9 16 1.5 1.5L14 14"></path>
+            </svg>
+          </button>
+          <button
+            class="sidebar-rail-button"
+            type="button"
+            data-rail-tab="progress"
+            aria-current="false"
+            aria-label="学习进度"
+            title="学习进度"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5"></path>
+              <path d="M4 19h16"></path>
+              <path d="m7 15 3-3 3 2 5-6"></path>
+            </svg>
+          </button>
+        </nav>
+
         <div class="sidebar-top">
           <div class="sidebar-brand">
             <span class="sidebar-logo" aria-hidden="true">知</span>
@@ -1468,44 +2919,150 @@
           >‹</button>
         </div>
 
-        <button class="new-chat-button" id="newChatButton" type="button">
-          <span aria-hidden="true">+</span>
-          <span class="new-chat-label">新建会话</span>
-        </button>
+        <div class="toolbox-scroll">
+          <section
+            class="related-knowledge"
+            id="questionKnowledge"
+            aria-label="本题知识点"
+          >
+            <div class="related-knowledge-head">
+              <span>本题知识点</span>
+              <span id="questionKnowledgeStatus">等待题目</span>
+            </div>
+            <div
+              class="related-knowledge-list"
+              id="questionKnowledgeList"
+              aria-live="polite"
+            ></div>
+          </section>
 
-        <section class="sidebar-section" aria-labelledby="historyHeading">
-          <div class="section-heading" id="historyHeading">
-            <span>历史对话</span>
-            <span id="historyCount">0</span>
-          </div>
-          <div class="history-list" id="historyList"></div>
-        </section>
-
-        <details class="tools-menu">
-          <summary>高数工具</summary>
-          <div class="tool-list">
-            <button class="tool-button" type="button" data-prompt="求导 x^2">
-              <span class="tool-icon" aria-hidden="true">d/dx</span>
-              <span class="tool-label">求导</span>
-            </button>
-            <button class="tool-button" type="button" data-prompt="积分 x^2">
-              <span class="tool-icon" aria-hidden="true">∫</span>
-              <span class="tool-label">积分</span>
-            </button>
-            <button class="tool-button" type="button" data-prompt="lim x→0 sin(x)/x">
-              <span class="tool-icon" aria-hidden="true">lim</span>
-              <span class="tool-label">极限</span>
-            </button>
+          <div class="toolbox-tabs" role="tablist" aria-label="学习工具">
             <button
-              class="tool-button is-wide"
-              id="openSolverButton"
+              class="toolbox-tab"
               type="button"
-            >
-              <span class="tool-icon" aria-hidden="true">∑</span>
-              <span class="tool-label">全章节解题</span>
-            </button>
+              role="tab"
+              aria-selected="true"
+              data-toolbox-tab="wrongbook"
+            >错题集 <span
+                class="toolbox-tab-count"
+                id="wrongBookTabCount"
+              >0</span></button>
+            <button
+              class="toolbox-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-toolbox-tab="progress"
+            >学习进度</button>
           </div>
-        </details>
+
+          <div
+            class="toolbox-panel"
+            data-toolbox-panel="wrongbook"
+            data-active="true"
+          >
+            <section class="toolbox-section">
+              <div class="toolbox-heading">
+                <span>错题集</span>
+                <span id="wrongBookCount">0 题</span>
+              </div>
+              <div class="wrongbook-toolbar">
+                <span>浏览器本地保存，可反复练习</span>
+                <button
+                  class="wrongbook-clear"
+                  id="wrongBookExport"
+                  type="button"
+                >&#23548;&#20986;</button>
+                <button
+                  class="wrongbook-clear"
+                  id="wrongBookClear"
+                  type="button"
+                >清空</button>
+              </div>
+              <div class="wrongbook-list" id="wrongBookList"></div>
+              <div class="wrongbook-empty" id="wrongBookEmpty">
+                解答完成后，如果你确认这是需要复习的错题，可在答案下方加入。
+              </div>
+            </section>
+          </div>
+
+          <div
+            class="toolbox-panel"
+            data-toolbox-panel="progress"
+            data-active="false"
+          >
+            <section class="toolbox-section">
+              <div class="toolbox-heading">
+                <span>学习进度</span>
+                <span id="learningProgressUpdated">尚未开始</span>
+              </div>
+              <div
+                class="learning-progress-summary"
+                aria-label="学习进度摘要"
+              >
+                <div class="progress-metric">
+                  <strong id="learningProgressQuestions">0</strong>
+                  <span>完成题目</span>
+                </div>
+                <div class="progress-metric">
+                  <strong id="learningProgressCalculations">0</strong>
+                  <span>工具计算</span>
+                </div>
+                <div class="progress-metric">
+                  <strong id="learningProgressPractice">0</strong>
+                  <span>错题重练</span>
+                </div>
+                <div class="progress-metric">
+                  <strong id="learningProgressWrongBook">0</strong>
+                  <span>加入错题集</span>
+                </div>
+              </div>
+              <div class="progress-streak">
+                <span>连续学习 <strong id="learningProgressStreak">0</strong> 天</span>
+                <span>共学习 <strong id="learningProgressDays">0</strong> 天</span>
+              </div>
+              <div
+                class="progress-days"
+                id="learningProgressDaysList"
+                aria-label="最近七天学习记录"
+              ></div>
+              <div class="progress-actions">
+                <button
+                  class="progress-action primary"
+                  id="learningProgressExport"
+                  type="button"
+                >导出报告</button>
+                <button
+                  class="progress-action"
+                  id="learningProgressBackup"
+                  type="button"
+                >备份数据</button>
+                <button
+                  class="progress-action"
+                  id="learningProgressMerge"
+                  type="button"
+                >合并导入</button>
+                <button
+                  class="progress-action"
+                  id="learningProgressOverwrite"
+                  type="button"
+                >覆盖导入</button>
+              </div>
+              <input
+                id="learningProgressImportInput"
+                type="file"
+                accept=".json,application/json"
+                class="sr-only"
+                tabindex="-1"
+              >
+              <p
+                class="progress-status"
+                id="learningProgressStatus"
+                role="status"
+              >报告用于查看，数据备份用于以后恢复。</p>
+            </section>
+          </div>
+        </div>
 
         <div class="sidebar-footer">
           <button class="theme-button" id="themeToggle" type="button">
@@ -1530,6 +3087,36 @@
       aria-label="关闭侧边栏"
       tabindex="-1"
     ></button>
+
+    <aside class="conversation-panel" id="conversationPanel" aria-label="会话列表">
+      <div class="conversation-panel-head">
+        <span class="conversation-panel-title">会话</span>
+        <div class="conversation-panel-actions">
+          <button
+            class="icon-button new-chat-icon"
+            id="newChatButton"
+            type="button"
+            aria-label="新建会话"
+            title="新建会话"
+          >+</button>
+          <button
+            class="icon-button"
+            id="conversationPanelToggle"
+            type="button"
+            aria-label="收起会话列表"
+            title="收起会话列表"
+          >‹</button>
+        </div>
+      </div>
+
+      <section class="sidebar-section" aria-labelledby="historyHeading">
+        <div class="section-heading" id="historyHeading">
+          <span>历史对话</span>
+          <span id="historyCount">0</span>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </aside>
 
     <div class="chat-layout">
       <header class="chat-header">
@@ -1562,12 +3149,48 @@
         </div>
       </header>
 
-      <main
-        class="messages"
-        id="messageList"
-        aria-label="知微老师对话记录"
-        aria-live="polite"
-      ></main>
+      <div class="workspace-body">
+        <main
+          class="messages"
+          id="messageList"
+          aria-label="知微老师对话记录"
+          aria-live="polite"
+        ></main>
+
+        <section
+          class="preview-panel"
+          id="previewPanel"
+          data-collapsed="true"
+          aria-label="计算过程总览"
+        >
+          <div class="preview-head">
+            <div class="preview-title-wrap">
+              <h2 class="preview-title">计算过程总览</h2>
+              <span class="preview-badge" id="previewBadge">待计算</span>
+            </div>
+            <div class="preview-actions">
+              <button
+                class="workspace-tab"
+                id="previewToggle"
+                type="button"
+                aria-expanded="false"
+                title="展开计算过程总览"
+              >展开</button>
+              <button
+                class="preview-action"
+                id="previewClear"
+                type="button"
+                title="清空计算过程"
+              >清空</button>
+            </div>
+          </div>
+          <div class="preview-content" id="previewContent">
+            <div class="preview-empty" id="previewEmpty">
+              解题过程与结果会显示在这里
+            </div>
+          </div>
+        </section>
+      </div>
 
       <footer class="composer-area" data-suggestions-collapsed="false">
         <div class="suggestions-toolbar">
@@ -1585,19 +3208,66 @@
         </div>
         <div class="suggestions" id="suggestions" aria-label="示例题目"></div>
         <form class="composer" id="chatForm">
-          <label class="sr-only" for="chatInput">输入高等数学题目</label>
-          <textarea
-            class="chat-input"
-            id="chatInput"
-            name="message"
-            rows="1"
-            maxlength="600"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="输入题目，例如：求导 x^2"
-            required
-          ></textarea>
-          <button class="send-button" id="sendButton" type="submit">发送</button>
+          <div
+            class="composer-image-preview"
+            id="composerImagePreview"
+            hidden
+          >
+            <div
+              class="composer-image-list"
+              id="composerImageList"
+              aria-label="待发送题目图片"
+            ></div>
+            <div class="composer-image-footer">
+              <span
+                class="composer-image-status"
+                id="composerImageStatus"
+                role="status"
+                aria-live="polite"
+              ></span>
+              <button
+                class="composer-image-clear"
+                id="composerImageClear"
+                type="button"
+                title="移除全部待发送图片"
+              >移除全部</button>
+            </div>
+          </div>
+          <div class="composer-row">
+            <label class="sr-only" for="chatInput">输入高等数学题目</label>
+            <textarea
+              class="chat-input"
+              id="chatInput"
+              name="message"
+              rows="1"
+              maxlength="600"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="发图或输入题目"
+            ></textarea>
+            <input
+              class="image-file-input"
+              id="imageFileInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              tabindex="-1"
+            >
+            <button
+              class="image-upload-button"
+              id="imageUploadButton"
+              type="button"
+              aria-label="添加题目图片，可一次选择多张"
+              title="添加题目图片，支持 JPG、PNG、WebP、GIF，可一次选择多张"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect>
+                <circle cx="9" cy="9.5" r="1.5"></circle>
+                <path d="m5.5 17 4.4-4.4 3.1 3.1 2-2 3.5 3.3"></path>
+              </svg>
+            </button>
+            <button class="send-button" id="sendButton" type="submit">发送</button>
+          </div>
         </form>
       </footer>
     </div>
@@ -1658,17 +3328,48 @@
       const SESSION_KEY = "zhiwei-demo-session-v1";
       const CONVERSATIONS_KEY = "zhiwei-demo-conversations-v1";
       const ACTIVE_CONVERSATION_KEY = "zhiwei-demo-active-conversation-v1";
+      const WELCOME_INDEX_KEY = "zhiwei-demo-welcome-index-v1";
       const THEME_KEY = "zhiwei-demo-theme-v1";
       const SIDEBAR_WIDTH_KEY = "zhiwei-demo-sidebar-width-v1";
       const SIDEBAR_COLLAPSED_KEY = "zhiwei-demo-sidebar-collapsed-v1";
+      const WRONG_BOOK_KEY = "zhiwei-demo-wrong-book-v1";
+      const LEARNING_PROGRESS_KEY =
+        "zhiwei-demo-learning-progress-v1";
+      const LEARNING_PROGRESS_VERSION = 1;
+      const LEARNING_PROGRESS_FORMAT = "zhiwei-learning-progress";
+      const MAX_PROGRESS_COUNT = 9999999;
+      const MAX_PROGRESS_DAYS = 366;
+      const MAX_PROGRESS_TIMESTAMP = 8640000000000000;
       const MAX_STORED_MESSAGES = 40;
       const MAX_REQUEST_HISTORY = 20;
       const MAX_CONVERSATIONS = 30;
+      const MAX_WRONG_BOOK_ITEMS = 100;
       const RESPONSE_CACHE_LIMIT = 20;
-      const REQUEST_TIMEOUT_MS = 20000;
+      const REQUEST_TIMEOUT_MS = 45000;
+      const MAX_QUESTION_IMAGE_COUNT = 4;
+      const MAX_QUESTION_IMAGE_BYTES = 6 * 1024 * 1024;
+      const MAX_QUESTION_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
+      const MAX_QUESTION_IMAGE_EDGE = 1600;
+      const QUESTION_IMAGE_RECOMPRESS_BYTES = 700 * 1024;
+      const QUESTION_IMAGE_JPEG_QUALITY = 0.82;
+      const WRONG_BOOK_ELIGIBLE_INTENTS = new Set([
+        "verify",
+        "integrate",
+        "limit",
+        "solve",
+        "plot",
+      ]);
+      const QUESTION_IMAGE_TYPES = new Set([
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ]);
       const MIN_SIDEBAR_WIDTH = 220;
       const MAX_SIDEBAR_WIDTH = 420;
       const DEFAULT_SIDEBAR_WIDTH = 272;
+      const KNOWLEDGE_API_URL = "/demo/api/knowledge";
+      const KNOWLEDGE_API_TIMEOUT_MS = 4000;
       const DEFAULT_SUGGESTIONS = [
         "求导 x^2",
         "判断 2x 是不是 x^2 的导数",
@@ -1676,6 +3377,145 @@
         "积分 0 到 1 x^2",
         "lim x→0 sin(x)/x",
         "我以前做过哪些题",
+      ];
+      const QUESTION_KNOWLEDGE_RULES = [
+        {
+          id: "limits",
+          title: "极限与连续性",
+          keywords: ["极限", "lim", "趋于", "趋近", "无穷小", "连续"],
+          points: [
+            "先判断趋近方向、未定式和函数在邻域内的定义。",
+            "常用路径是等价无穷小、洛必达法则、夹逼准则或有理化。",
+          ],
+        },
+        {
+          id: "derivatives",
+          title: "导数与微分",
+          keywords: [
+            "导数",
+            "求导",
+            "微分",
+            "切线",
+            "法线",
+            "高阶导",
+            "罗尔",
+            "拉格朗日",
+          ],
+          patterns: [/[dD][a-zA-Z]?\/d[a-zA-Z]/],
+          points: [
+            "先看函数结构，再选择四则、链式、隐函数或参数方程求导。",
+            "注意可导性、定义域和所求阶数，最后检查符号与因式。",
+          ],
+        },
+        {
+          id: "indefinite-integrals",
+          title: "不定积分与换元",
+          keywords: ["不定积分", "原函数", "换元", "分部积分", "积分", "∫"],
+          points: [
+            "先识别基本积分形式，再判断换元、分部或部分分式。",
+            "不定积分结果需要保留任意常数 C，并回代换元变量。",
+          ],
+        },
+        {
+          id: "definite-integrals",
+          title: "定积分与几何应用",
+          keywords: ["定积分", "上限", "下限", "面积", "体积", "弧长"],
+          patterns: [/\d+(?:\.\d+)?\s*到\s*\d+(?:\.\d+)?/],
+          points: [
+            "先确认积分变量、上下限和被积函数，区分数值与含 C 的结果。",
+            "可考虑换元、分部、对称性或奇偶性，并用几何量检查结果。",
+          ],
+        },
+        {
+          id: "multivariable",
+          title: "多元函数与偏导",
+          keywords: ["偏导", "多元", "全微分", "梯度", "方向导数", "∂"],
+          points: [
+            "对某个变量求偏导时，其余变量暂按常数处理。",
+            "复合结构要使用链式法则，并留意二阶混合偏导的条件。",
+          ],
+        },
+        {
+          id: "multiple-integrals",
+          title: "重积分与积分次序",
+          keywords: ["二重积分", "三重积分", "重积分", "积分区域", "积分次序"],
+          points: [
+            "先根据积分区域判断是否适合直角坐标或坐标变换。",
+            "确定内外层变量的上下限，避免边界表达式中出现同层变量。",
+          ],
+        },
+        {
+          id: "coordinate-systems",
+          title: "极坐标与坐标变换",
+          keywords: ["极坐标", "柱面坐标", "球面坐标", "theta", "rho", "phi"],
+          points: [
+            "先画区域并确定半径、角度或坐标变量的取值范围。",
+            "坐标变换时不要遗漏雅可比因子 r、rho 或 rho^2 sin(phi)。",
+          ],
+        },
+        {
+          id: "line-surface",
+          title: "曲线积分与曲面积分",
+          keywords: ["曲线积分", "曲面积分", "通量", "向量场", "格林", "高斯"],
+          points: [
+            "先区分第一类和第二类积分，再确认参数化或曲面方向。",
+            "使用格林、高斯或斯托克斯公式前，要检查区域、边界和方向条件。",
+          ],
+        },
+        {
+          id: "series",
+          title: "无穷级数",
+          keywords: ["级数", "收敛", "发散", "幂级数", "收敛半径", "泰勒", "麦克劳林"],
+          points: [
+            "先判断正项、交错、幂级数或函数项级数，再选择判别法。",
+            "收敛半径的端点要单独判断，函数展开要写清收敛域。",
+          ],
+        },
+        {
+          id: "differential-equations",
+          title: "微分方程",
+          keywords: ["微分方程", "通解", "特解", "齐次", "线性方程", "y'"],
+          points: [
+            "先识别阶数、线性性和方程类型，再匹配变量分离或特征方程。",
+            "通解中的常数个数应与阶数一致，代入初值后再确定特解。",
+          ],
+        },
+        {
+          id: "vectors",
+          title: "向量与空间解析几何",
+          keywords: ["向量", "点乘", "叉乘", "数量积", "向量积", "法向量"],
+          points: [
+            "先明确向量维数、方向以及所求是长度、夹角还是投影。",
+            "点乘处理夹角与投影，叉乘处理面积、法向量和空间方向。",
+          ],
+        },
+        {
+          id: "conditional-extrema",
+          title: "条件极值",
+          keywords: ["条件极值", "拉格朗日乘数", "约束", "极值"],
+          points: [
+            "先写出目标函数和全部约束条件，再构造拉格朗日函数。",
+            "求出候选点后要比较函数值，并检查边界和约束异常情况。",
+          ],
+        },
+        {
+          id: "implicit-parametric",
+          title: "参数方程与隐函数",
+          keywords: ["参数方程", "隐函数", "方程组", "因变量", "自变量"],
+          points: [
+            "参数方程先分别求导，再按 dy/dx = (dy/dt)/(dx/dt) 计算。",
+            "隐函数或方程组求导时，要明确因变量、自变量和链式关系。",
+          ],
+        },
+        {
+          id: "plots",
+          title: "函数图像",
+          keywords: ["画函数", "图像", "曲线图", "plot", "sin(x)", "cos(x)"],
+          points: [
+            "先确定定义域、关键点和渐近线，再判断单调性与极值。",
+            "图像题要同时检查横纵坐标范围以及函数值的变化趋势。",
+          ],
+        },
       ];
       const solverText = (
         key,
@@ -1877,6 +3717,21 @@
                 solverPoint(false),
               ],
             },
+            parametric_derivative: {
+              label: "参数方程求导",
+              hint: "填写 x、y 关于参数的表达式，由 dy/dx = (dy/dt)/(dx/dt) 计算。",
+              fields: [
+                solverText("x_expression", "x(t)", "例如：t^2"),
+                solverText("y_expression", "y(t)", "例如：t^3"),
+                solverText(
+                  "parameter",
+                  "参数",
+                  "例如：t",
+                  "t",
+                  optionalField,
+                ),
+              ],
+            },
           },
         },
         integrals: {
@@ -2032,12 +3887,46 @@
                 ),
               ],
             },
+            system_implicit_derivative: {
+              label: "方程组确定函数求偏导",
+              hint: "方程个数必须与因变量个数一致，用逗号分隔多个方程。",
+              fields: [
+                solverList(
+                  "equations",
+                  "方程组",
+                  "例如：u+v=x, u-v=y",
+                  "u+v=x, u-v=y",
+                ),
+                solverList(
+                  "dependents",
+                  "因变量列表",
+                  "例如：u, v",
+                  "u, v",
+                ),
+                solverVariable(),
+                solverText("dependent", "求偏导的因变量", "例如：u", "u"),
+              ],
+            },
             multivariable_extrema: {
               label: "二元函数极值",
               hint: "当前支持二元函数的驻点与极值类型判定。",
               fields: [
                 solverExpression("例如：x^2+y^2"),
                 solverList("variables", "变量列表", "例如：x, y", "x, y"),
+              ],
+            },
+            conditional_extrema: {
+              label: "条件极值",
+              hint: "支持多个变量和多条等式约束，约束数量必须少于变量数量。",
+              fields: [
+                solverExpression("例如：x*y"),
+                solverList("variables", "变量列表", "例如：x, y", "x, y"),
+                solverList(
+                  "constraints",
+                  "约束条件",
+                  "例如：x+y=1 或 x=0, y=0",
+                  "x+y=1",
+                ),
               ],
             },
           },
@@ -2057,6 +3946,17 @@
                 solverText("upper_y", "第二个变量上限", "例如：1", "1"),
               ],
             },
+            double_polar: {
+              label: "极坐标二重积分",
+              hint: "被积函数可写 x、y，自动代入极坐标并乘以 r。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverText("lower_r", "半径下限", "例如：0", "0"),
+                solverText("upper_r", "半径上限", "例如：1", "1"),
+                solverText("lower_theta", "角度下限", "例如：0", "0"),
+                solverText("upper_theta", "角度上限", "例如：2*pi", "2*pi"),
+              ],
+            },
             triple: {
               label: "三重积分",
               hint: "按变量列表顺序填写对应上下限，支持 x、y、z。",
@@ -2074,6 +3974,32 @@
                 solverText("upper_y", "y 上限", "例如：1", "1"),
                 solverText("lower_z", "z 下限", "例如：0", "0"),
                 solverText("upper_z", "z 上限", "例如：1", "1"),
+              ],
+            },
+            triple_cylindrical: {
+              label: "柱面坐标三重积分",
+              hint: "被积函数可写 x、y、z，自动代入柱面坐标并乘以 r。",
+              fields: [
+                solverExpression("例如：x^2+y^2"),
+                solverText("lower_r", "半径下限", "例如：0", "0"),
+                solverText("upper_r", "半径上限", "例如：1", "1"),
+                solverText("lower_theta", "角度下限", "例如：0", "0"),
+                solverText("upper_theta", "角度上限", "例如：2*pi", "2*pi"),
+                solverText("lower_z", "z 下限", "例如：0", "0"),
+                solverText("upper_z", "z 上限", "例如：1", "1"),
+              ],
+            },
+            triple_spherical: {
+              label: "球面坐标三重积分",
+              hint: "被积函数可写 x、y、z，自动代入球面坐标并乘以 rho^2*sin(phi)。",
+              fields: [
+                solverExpression("例如：1"),
+                solverText("lower_rho", "半径下限", "例如：0", "0"),
+                solverText("upper_rho", "半径上限", "例如：1", "1"),
+                solverText("lower_phi", "极角下限", "例如：0", "0"),
+                solverText("upper_phi", "极角上限", "例如：pi", "pi"),
+                solverText("lower_theta", "方位角下限", "例如：0", "0"),
+                solverText("upper_theta", "方位角上限", "例如：2*pi", "2*pi"),
               ],
             },
           },
@@ -2096,6 +4022,22 @@
                 ...solverBounds(),
               ],
             },
+            line_scalar_explicit: {
+              label: "第一类曲线积分（显式曲线）",
+              hint: "曲线写成 y=f(x)，按 x 增大的方向积分。",
+              fields: [
+                solverExpression("例如：x+y"),
+                solverList(
+                  "variables",
+                  "变量",
+                  "默认：x, y",
+                  "x, y",
+                  optionalField,
+                ),
+                solverText("y_expression", "曲线 y =", "例如：x^2", "x^2"),
+                ...solverBounds(),
+              ],
+            },
             line_vector: {
               label: "第二类曲线积分",
               hint: "vector_field 与 components 的分量顺序必须一致。",
@@ -2113,6 +4055,27 @@
                   '例如：{"x":"cos(t)","y":"sin(t)"}',
                   '{"x":"cos(t)","y":"sin(t)"}',
                 ),
+                ...solverBounds(),
+              ],
+            },
+            line_vector_explicit: {
+              label: "第二类曲线积分（显式曲线）",
+              hint: "曲线写成 y=f(x)，按 x 增大的方向积分。",
+              fields: [
+                solverList(
+                  "vector_field",
+                  "向量场",
+                  "例如：x, y",
+                  "x, y",
+                ),
+                solverList(
+                  "variables",
+                  "变量",
+                  "默认：x, y",
+                  "x, y",
+                  optionalField,
+                ),
+                solverText("y_expression", "曲线 y =", "例如：x^2", "x^2"),
                 ...solverBounds(),
               ],
             },
@@ -2138,6 +4101,25 @@
                 solverText("u_upper", "u 上限", "例如：1", "1"),
                 solverText("v_lower", "v 下限", "例如：0", "0"),
                 solverText("v_upper", "v 上限", "例如：1", "1"),
+              ],
+            },
+            surface_scalar_explicit: {
+              label: "第一类曲面积分（显式曲面）",
+              hint: "曲面写成 z=f(x,y)，在 x、y 的矩形区域上积分。",
+              fields: [
+                solverExpression("例如：x+y+z"),
+                solverList(
+                  "variables",
+                  "变量",
+                  "默认：x, y",
+                  "x, y",
+                  optionalField,
+                ),
+                solverText("z_expression", "曲面 z =", "例如：x^2+y^2", "x^2+y^2"),
+                solverText("x_lower", "x 下限", "例如：0", "0"),
+                solverText("x_upper", "x 上限", "例如：1", "1"),
+                solverText("y_lower", "y 下限", "例如：0", "0"),
+                solverText("y_upper", "y 上限", "例如：1", "1"),
               ],
             },
             flux: {
@@ -2167,6 +4149,31 @@
                 solverText("u_upper", "u 上限", "例如：1", "1"),
                 solverText("v_lower", "v 下限", "例如：0", "0"),
                 solverText("v_upper", "v 上限", "例如：1", "1"),
+              ],
+            },
+            flux_explicit: {
+              label: "第二类曲面积分（显式曲面）",
+              hint: "曲面写成 z=f(x,y)，orientation 默认 up。",
+              fields: [
+                solverList(
+                  "vector_field",
+                  "向量场",
+                  "例如：0, 0, 1",
+                  "0, 0, 1",
+                ),
+                solverList(
+                  "variables",
+                  "变量",
+                  "默认：x, y",
+                  "x, y",
+                  optionalField,
+                ),
+                solverText("z_expression", "曲面 z =", "例如：x^2+y^2", "x^2+y^2"),
+                solverText("x_lower", "x 下限", "例如：0", "0"),
+                solverText("x_upper", "x 上限", "例如：1", "1"),
+                solverText("y_lower", "y 下限", "例如：0", "0"),
+                solverText("y_upper", "y 上限", "例如：1", "1"),
+                solverText("orientation", "方向", "up 或 down", "up", optionalField),
               ],
             },
           },
@@ -2209,14 +4216,28 @@
           },
         },
       };
-      const WELCOME_TEXT =
-        "你好，我是知微老师。把题目发给我，我会用数学工具计算，再和你一起检查思路。想回顾之前的题目，直接问我“我以前做过哪些题”，也可以说“再算一遍上一题”。";
+      const WELCOME_TEXTS = [
+        "我是知微老师。把高数题发来就行，文字或图片都可以，我会先算，再把关键步骤讲清楚。",
+        "有问题就直接发，求导、积分、极限和函数图像都能一起看。",
+        "把题目原样发来即可，不用先整理格式，图片也能识别。",
+        "这里是知微。高数题文字或图片都行，我会先给你结果，再陪你核对思路。",
+      ];
 
       const messageList = document.getElementById("messageList");
       const suggestions = document.getElementById("suggestions");
       const chatForm = document.getElementById("chatForm");
       const chatInput = document.getElementById("chatInput");
       const sendButton = document.getElementById("sendButton");
+      const imageFileInput = document.getElementById("imageFileInput");
+      const imageUploadButton = document.getElementById("imageUploadButton");
+      const composerImagePreview = document.getElementById(
+        "composerImagePreview",
+      );
+      const composerImageList = document.getElementById("composerImageList");
+      const composerImageStatus = document.getElementById(
+        "composerImageStatus",
+      );
+      const composerImageClear = document.getElementById("composerImageClear");
       const clearButton = document.getElementById("clearButton");
       const serviceStatus = document.getElementById("serviceStatus");
       const serviceStatusText = document.getElementById("serviceStatusText");
@@ -2231,7 +4252,6 @@
       const newChatButton = document.getElementById("newChatButton");
       const themeToggle = document.getElementById("themeToggle");
       const themeLabel = document.getElementById("themeLabel");
-      const toolsMenu = document.querySelector(".tools-menu");
       const sidebarResizer = document.getElementById("sidebarResizer");
       const sidebarScrim = document.getElementById("sidebarScrim");
       const solverDialog = document.getElementById("solverDialog");
@@ -2245,15 +4265,94 @@
       const closeSolverButton = document.getElementById("closeSolverButton");
       const cancelSolverButton = document.getElementById("cancelSolverButton");
       const submitSolverButton = document.getElementById("submitSolverButton");
+      const conversationPanel = document.getElementById("conversationPanel");
+      const conversationPanelToggle = document.getElementById(
+        "conversationPanelToggle",
+      );
+      const previewPanel = document.getElementById("previewPanel");
+      const previewContent = document.getElementById("previewContent");
+      const previewEmpty = document.getElementById("previewEmpty");
+      const previewBadge = document.getElementById("previewBadge");
+      const previewToggle = document.getElementById("previewToggle");
+      const previewClear = document.getElementById("previewClear");
+      const questionKnowledge = document.getElementById("questionKnowledge");
+      const questionKnowledgeList = document.getElementById(
+        "questionKnowledgeList",
+      );
+      const questionKnowledgeStatus = document.getElementById(
+        "questionKnowledgeStatus",
+      );
+      const wrongBookList = document.getElementById("wrongBookList");
+      const wrongBookEmpty = document.getElementById("wrongBookEmpty");
+      const wrongBookCount = document.getElementById("wrongBookCount");
+      const wrongBookTabCount = document.getElementById("wrongBookTabCount");
+      const wrongBookClear = document.getElementById("wrongBookClear");
+      const wrongBookExport = document.getElementById("wrongBookExport");
+      const learningProgressQuestions = document.getElementById(
+        "learningProgressQuestions",
+      );
+      const learningProgressCalculations = document.getElementById(
+        "learningProgressCalculations",
+      );
+      const learningProgressPractice = document.getElementById(
+        "learningProgressPractice",
+      );
+      const learningProgressWrongBook = document.getElementById(
+        "learningProgressWrongBook",
+      );
+      const learningProgressStreak = document.getElementById(
+        "learningProgressStreak",
+      );
+      const learningProgressDays = document.getElementById(
+        "learningProgressDays",
+      );
+      const learningProgressDaysList = document.getElementById(
+        "learningProgressDaysList",
+      );
+      const learningProgressUpdated = document.getElementById(
+        "learningProgressUpdated",
+      );
+      const learningProgressExport = document.getElementById(
+        "learningProgressExport",
+      );
+      const learningProgressBackup = document.getElementById(
+        "learningProgressBackup",
+      );
+      const learningProgressMerge = document.getElementById(
+        "learningProgressMerge",
+      );
+      const learningProgressOverwrite = document.getElementById(
+        "learningProgressOverwrite",
+      );
+      const learningProgressImportInput = document.getElementById(
+        "learningProgressImportInput",
+      );
+      const learningProgressStatus = document.getElementById(
+        "learningProgressStatus",
+      );
+      const toolbox = document.querySelector(".toolbox-scroll");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
+      const compactComposerMedia = window.matchMedia("(max-width: 640px)");
 
       let messages = [];
       let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
+      let pendingQuestionImages = [];
+      let questionImageRecognitionQueue = Promise.resolve();
+      let lastRecognizedQuestion = "";
+      let composerImageNotice = "";
+      let pendingComposerSubmission = false;
+      let lastWelcomeIndex = -1;
       const responseCache = new Map();
       let conversations = [];
       let activeConversationId = "";
-      let toolsMenuRestoreOpen = null;
+      let wrongBook = [];
+      let learningProgress = createDefaultLearningProgress();
+      let learningProgressImportMode = "merge";
+      let knowledgeDebounceId = 0;
+      let lastSubmittedKnowledgeText = "";
+      let knowledgeRequestSerial = 0;
+      let knowledgeAbortController = null;
 
       function normalizeMessages(value) {
         if (!Array.isArray(value)) {
@@ -2266,14 +4365,42 @@
             id: String(item.id || makeId()),
             role: item.role,
             text: String(item.text || ""),
+            intent: String(item.intent || ""),
             formulaLatex: String(item.formulaLatex || ""),
             formulaText: String(item.formulaText || ""),
             resultLabel: String(item.resultLabel || ""),
             resultValue: String(item.resultValue || ""),
             verdict: typeof item.verdict === "boolean" ? item.verdict : null,
             plotUrl: String(item.plotUrl || ""),
+            attachments: Array.isArray(item.attachments)
+              ? item.attachments
+                .slice(0, MAX_QUESTION_IMAGE_COUNT)
+                .map((attachment) => ({
+                  name: String(
+                    (attachment && attachment.name) || "题目图片",
+                  ),
+                  previewUrl: String(
+                    (attachment && attachment.previewUrl) || "",
+                  ).startsWith("blob:")
+                    ? ""
+                    : String((attachment && attachment.previewUrl) || ""),
+                }))
+              : [],
             createdAt: String(item.createdAt || currentTime()),
           }));
+      }
+
+      function messagesForStorage(value) {
+        return value.map((message) => ({
+          ...message,
+          attachments: Array.isArray(message.attachments)
+            ? message.attachments.map((attachment) => ({
+                name: String(
+                  (attachment && attachment.name) || "题目图片",
+                ),
+              }))
+            : [],
+        }));
       }
 
       function loadConversations() {
@@ -2341,10 +4468,45 @@
       }
 
       function welcomeMessage() {
+        let previousIndex = lastWelcomeIndex;
+        if (previousIndex < 0) {
+          try {
+            const storedIndex = Number(
+              window.sessionStorage.getItem(WELCOME_INDEX_KEY),
+            );
+            if (
+              Number.isInteger(storedIndex)
+              && storedIndex >= 0
+              && storedIndex < WELCOME_TEXTS.length
+            ) {
+              previousIndex = storedIndex;
+            }
+          } catch (error) {
+            previousIndex = -1;
+          }
+        }
+
+        const availableIndexes = WELCOME_TEXTS
+          .map((_, index) => index)
+          .filter((index) => index !== previousIndex);
+        const pool = availableIndexes.length
+          ? availableIndexes
+          : WELCOME_TEXTS.map((_, index) => index);
+        const welcomeIndex = pool[Math.floor(Math.random() * pool.length)];
+        lastWelcomeIndex = welcomeIndex;
+        try {
+          window.sessionStorage.setItem(
+            WELCOME_INDEX_KEY,
+            String(welcomeIndex),
+          );
+        } catch (error) {
+          // The welcome message still varies in memory when storage is unavailable.
+        }
         return {
           id: makeId(),
           role: "assistant",
-          text: WELCOME_TEXT,
+          text: WELCOME_TEXTS[welcomeIndex],
+          intent: "welcome",
           formulaLatex: "",
           formulaText: "",
           resultLabel: "",
@@ -2371,7 +4533,9 @@
         try {
           window.localStorage.setItem(
             STORAGE_KEY,
-            JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)),
+            JSON.stringify(
+              messagesForStorage(messages).slice(-MAX_STORED_MESSAGES),
+            ),
           );
         } catch (error) {
           // The conversation still works when browser storage is unavailable.
@@ -2422,7 +4586,7 @@
                 : currentConversationTitle(),
             renamed: Boolean(existingConversation?.renamed),
             updatedAt: Date.now(),
-            messages: messages.slice(-MAX_STORED_MESSAGES),
+            messages: messagesForStorage(messages).slice(-MAX_STORED_MESSAGES),
           });
           conversations = conversations.slice(0, MAX_CONVERSATIONS);
         }
@@ -2508,13 +4672,31 @@
           .slice(-MAX_REQUEST_HISTORY)
           .map((message) => ({
             role: message.role,
-            text: message.text.slice(0, 600),
+            text: (
+              message.role === "user"
+              && Array.isArray(message.attachments)
+              && message.attachments.length
+              && message.text
+                ? `${message.text}\n请你确认题目识别是否正确。`
+                : message.text
+            ).slice(0, 600),
           }))
           .filter((message) => message.text);
       }
 
       function cacheResponse(question, data) {
-        if (!data || data.history_used || data.intent === "history") {
+        if (
+          !data
+          || data.history_used
+          || [
+            "general",
+            "help",
+            "history",
+            "unknown",
+            "needs_input",
+            "ocr_error",
+          ].includes(data.intent)
+        ) {
           return;
         }
         const key = question.trim();
@@ -2539,6 +4721,1102 @@
         return node;
       }
 
+      function normalizeWrongBookItem(item) {
+        if (!item || !String(item.text || "").trim()) {
+          return null;
+        }
+        return {
+          id: String(item.id || makeId()),
+          text: String(item.text).trim(),
+          answer: String(item.answer || ""),
+          createdAt: Number(item.createdAt) || Date.now(),
+          lastPracticedAt: Number(item.lastPracticedAt) || 0,
+          practiceCount: Math.max(0, Number(item.practiceCount) || 0),
+          sourceConversationId: String(item.sourceConversationId || ""),
+          sourceMessageId: String(item.sourceMessageId || ""),
+        };
+      }
+
+      function loadWrongBook() {
+        try {
+          const parsed = JSON.parse(
+            window.localStorage.getItem(WRONG_BOOK_KEY) || "[]",
+          );
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+          return parsed
+            .map(normalizeWrongBookItem)
+            .filter(Boolean)
+            .slice(0, MAX_WRONG_BOOK_ITEMS);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveWrongBook() {
+        try {
+          window.localStorage.setItem(
+            WRONG_BOOK_KEY,
+            JSON.stringify(wrongBook.slice(0, MAX_WRONG_BOOK_ITEMS)),
+          );
+        } catch (error) {
+          // The wrong-book remains available in memory for this page.
+        }
+      }
+
+      function wrongBookHasMessage(message) {
+        const text = String(message.text || "").trim();
+        return wrongBook.some(
+          (item) =>
+            (message.id && item.sourceMessageId === message.id)
+            || (text && item.text === text),
+        );
+      }
+
+      function resolvedAnswerForUserMessage(messageId) {
+        const index = messages.findIndex((message) => message.id === messageId);
+        if (index === -1) {
+          return null;
+        }
+        for (let cursor = index + 1; cursor < messages.length; cursor += 1) {
+          const candidate = messages[cursor];
+          if (candidate.role === "user") {
+            return null;
+          }
+          if (candidate.role !== "assistant" || candidate.loading) {
+            continue;
+          }
+          return candidate;
+        }
+        return null;
+      }
+
+      function sourceUserMessageForAnswer(message) {
+        if (!message || message.role !== "assistant" || message.loading) {
+          return null;
+        }
+        if (message.sourceUserMessageId) {
+          const linkedMessage = messages.find(
+            (item) =>
+              item.id === message.sourceUserMessageId
+              && item.role === "user",
+          );
+          if (linkedMessage) {
+            return linkedMessage;
+          }
+        }
+        const index = messages.findIndex((item) => item.id === message.id);
+        for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+          const candidate = messages[cursor];
+          if (candidate.role === "user" && !candidate.loading) {
+            return candidate;
+          }
+        }
+        return null;
+      }
+
+      function messageCanJoinWrongBook(message) {
+        if (!message || message.loading) {
+          return false;
+        }
+        const userMessage = message.role === "assistant"
+          ? sourceUserMessageForAnswer(message)
+          : message;
+        if (
+          !userMessage
+          || userMessage.role !== "user"
+          || userMessage.loading
+        ) {
+          return false;
+        }
+        const answer = message.role === "assistant"
+          ? message
+          : resolvedAnswerForUserMessage(userMessage.id);
+        if (
+          !answer
+          || !WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))
+        ) {
+          return false;
+        }
+        return Boolean(
+          String(answer.resultValue || "").trim()
+          || String(answer.formulaLatex || "").trim()
+          || String(answer.formulaText || "").trim()
+          || String(answer.plotUrl || "").trim()
+        );
+      }
+
+      function wrongBookAnswerFor(messageId) {
+        const answerMessage = resolvedAnswerForUserMessage(messageId);
+        if (!answerMessage) {
+          return "";
+        }
+        const answer = String(answerMessage.text || "").trim();
+        const formula = String(answerMessage.formulaText || "").trim();
+        return [answer, formula].filter(Boolean).join("\n");
+      }
+
+      function syncWrongBookAnswer(messageId, questionText = "") {
+        const normalizedQuestion = String(questionText || "").trim();
+        const item = wrongBook.find(
+          (entry) =>
+            (messageId && entry.sourceMessageId === messageId)
+            || (normalizedQuestion && entry.text === normalizedQuestion),
+        );
+        if (!item || String(item.answer || "").trim()) {
+          return;
+        }
+        const answer = wrongBookAnswerFor(messageId);
+        if (!answer) {
+          return;
+        }
+        item.answer = answer;
+        saveWrongBook();
+        renderWrongBook();
+      }
+
+      function formatWrongBookDate(timestamp) {
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) {
+          return "";
+        }
+        return date.toLocaleString("zh-CN", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
+
+      function renderWrongBook() {
+        if (!wrongBookList || !wrongBookEmpty) {
+          return;
+        }
+        const total = wrongBook.length;
+        if (wrongBookCount) {
+          wrongBookCount.textContent = `${total} 题`;
+        }
+        if (wrongBookTabCount) {
+          wrongBookTabCount.textContent = String(total);
+        }
+        wrongBookEmpty.hidden = total > 0;
+
+        const fragment = document.createDocumentFragment();
+        wrongBook
+          .slice()
+          .sort(
+            (left, right) =>
+              (right.lastPracticedAt || right.createdAt)
+              - (left.lastPracticedAt || left.createdAt),
+          )
+          .forEach((item) => {
+            const card = element("article", "wrongbook-item");
+            card.dataset.wrongBookId = item.id;
+            card.append(
+              element("div", "wrongbook-item-title", item.text),
+            );
+
+            const practiceText = item.practiceCount
+              ? ` · 已练 ${item.practiceCount} 次`
+              : "";
+            card.append(
+              element(
+                "div",
+                "wrongbook-item-meta",
+                `收藏 ${formatWrongBookDate(item.createdAt)}${practiceText}`,
+              ),
+            );
+            if (item.answer) {
+              const answer = element("details", "wrongbook-answer");
+              answer.append(
+                element("summary", "", "查看参考答案"),
+                element("div", "wrongbook-answer-text", item.answer),
+              );
+              card.append(answer);
+            }
+
+            const actions = element("div", "wrongbook-item-actions");
+            const practiceButton = element(
+              "button",
+              "",
+              "重新练习",
+            );
+            practiceButton.type = "button";
+            practiceButton.dataset.wrongbookAction = "practice";
+            practiceButton.dataset.wrongBookId = item.id;
+
+            const deleteButton = element("button", "", "删除");
+            deleteButton.type = "button";
+            deleteButton.dataset.wrongbookAction = "delete";
+            deleteButton.dataset.wrongBookId = item.id;
+
+            actions.append(practiceButton, deleteButton);
+            card.append(actions);
+            fragment.append(card);
+          });
+        wrongBookList.replaceChildren(fragment);
+      }
+
+      function setToolboxTab(tab) {
+        const allowed = ["wrongbook", "progress"];
+        const nextTab = allowed.includes(tab) ? tab : "wrongbook";
+        document.querySelectorAll("[data-toolbox-tab]").forEach((button) => {
+          const active = button.dataset.toolboxTab === nextTab;
+          button.setAttribute("aria-selected", String(active));
+        });
+        document.querySelectorAll("[data-rail-tab]").forEach((button) => {
+          button.setAttribute(
+            "aria-current",
+            String(button.dataset.railTab === nextTab),
+          );
+        });
+        document.querySelectorAll("[data-toolbox-panel]").forEach((panel) => {
+          panel.dataset.active = String(
+            panel.dataset.toolboxPanel === nextTab,
+          );
+        });
+        if (nextTab === "wrongbook") {
+          renderWrongBook();
+        } else if (nextTab === "progress") {
+          renderLearningProgress();
+        }
+      }
+
+      function knowledgeMatchScore(text, rule) {
+        let score = 0;
+        rule.keywords.forEach((keyword) => {
+          const normalizedKeyword = String(keyword).toLowerCase();
+          if (normalizedKeyword && text.includes(normalizedKeyword)) {
+            score += Math.max(2, Math.min(6, normalizedKeyword.length));
+          }
+        });
+        (rule.patterns || []).forEach((pattern) => {
+          if (pattern.test(text)) {
+            score += 7;
+          }
+        });
+        return score;
+      }
+
+      function localMatchedQuestionKnowledge(rawText) {
+        const text = String(rawText || "").trim().toLowerCase();
+        if (!text) {
+          return [];
+        }
+        return QUESTION_KNOWLEDGE_RULES
+          .map((rule) => ({
+            rule,
+            score: knowledgeMatchScore(text, rule),
+          }))
+          .filter((item) => item.score > 0)
+          .sort((left, right) => right.score - left.score)
+          .slice(0, 3)
+          .map((item) => item.rule);
+      }
+
+      function serverKnowledgeMatches(payload) {
+        const results = Array.isArray(payload && payload.results)
+          ? payload.results
+          : [];
+        return results
+          .slice(0, 3)
+          .map((result, index) => {
+            const points = Array.isArray(result && result.points)
+              ? result.points
+                .map((point) => String(point || "").trim())
+                .filter(Boolean)
+              : [];
+            const excerpt = String(
+              (result && result.excerpt) || "",
+            ).trim();
+            return {
+              id: String((result && result.id) || `server-${index}`),
+              title: String(
+                (result && result.title) || excerpt || "知识点",
+              ),
+              chapter: String((result && result.chapter) || ""),
+              source: String((result && result.source) || ""),
+              points: points.length ? points : [excerpt].filter(Boolean),
+              origin: "server",
+            };
+          })
+          .filter((result) => result.title);
+      }
+
+      async function fetchQuestionKnowledge(rawText, signal) {
+        const text = String(rawText || "").trim();
+        const localMatches = localMatchedQuestionKnowledge(text);
+        if (!text) {
+          return localMatches;
+        }
+
+        const timeoutId = window.setTimeout(
+          () => signal.abort(),
+          KNOWLEDGE_API_TIMEOUT_MS,
+        );
+        try {
+          const response = await fetch(KNOWLEDGE_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query: text, limit: 3 }),
+            signal,
+          });
+          if (!response.ok) {
+            return localMatches;
+          }
+          const data = await response.json();
+          const remoteMatches = serverKnowledgeMatches(data);
+          return remoteMatches.length ? remoteMatches : localMatches;
+        } catch (error) {
+          return localMatches;
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      }
+
+      async function renderQuestionKnowledge(rawText, options = {}) {
+        if (!questionKnowledgeList || !questionKnowledgeStatus) {
+          return;
+        }
+        const text = String(rawText || "").trim();
+        const requestId = ++knowledgeRequestSerial;
+        if (knowledgeAbortController) {
+          knowledgeAbortController.abort();
+        }
+        const controller = new AbortController();
+        knowledgeAbortController = controller;
+        const fragment = document.createDocumentFragment();
+        const matches = await fetchQuestionKnowledge(text, controller.signal);
+        if (requestId !== knowledgeRequestSerial) {
+          return;
+        }
+        if (!text) {
+          questionKnowledgeStatus.textContent = "等待题目";
+          questionKnowledge.dataset.state = "empty";
+          fragment.append(
+            element(
+              "div",
+              "related-knowledge-empty",
+              "输入题目后，这里会显示与当前问题相关的知识点。",
+            ),
+          );
+        } else if (!matches.length) {
+          questionKnowledgeStatus.textContent = "识别题型";
+          questionKnowledge.dataset.state = "generic";
+          const item = element("article", "knowledge-item");
+          item.append(
+            element("strong", "", "审题与验证"),
+            element(
+              "p",
+              "",
+              "先明确已知条件、目标量和所求形式；计算后再用代入或量纲检查结果。",
+            ),
+          );
+          fragment.append(item);
+        } else {
+          questionKnowledgeStatus.textContent =
+            options.source === "input"
+              ? `正在匹配 ${matches.length} 个知识点`
+              : `已匹配 ${matches.length} 个知识点`;
+          questionKnowledge.dataset.state = "ready";
+          matches.forEach((rule) => {
+            const item = element("article", "knowledge-item");
+            item.dataset.knowledgeId = rule.id;
+            item.append(element("strong", "", rule.title));
+            if (rule.origin === "server") {
+              const source = [rule.chapter, rule.source]
+                .filter(Boolean)
+                .join(" / ");
+              if (source) {
+                item.append(element("span", "knowledge-source", source));
+              }
+            }
+            (rule.points || []).forEach((point) => {
+              item.append(element("p", "", point));
+            });
+            fragment.append(item);
+          });
+        }
+        questionKnowledgeList.replaceChildren(fragment);
+      }
+
+      function queueQuestionKnowledgeUpdate(rawText) {
+        window.clearTimeout(knowledgeDebounceId);
+        knowledgeDebounceId = window.setTimeout(() => {
+          const text = String(rawText || "").trim();
+          renderQuestionKnowledge(
+            text || lastSubmittedKnowledgeText,
+            { source: text ? "input" : "saved" },
+          );
+        }, 180);
+      }
+
+      function toggleWrongBook(messageId) {
+        const message = messages.find(
+          (item) => item.id === messageId && item.role === "user",
+        );
+        if (!message || !messageCanJoinWrongBook(message)) {
+          return;
+        }
+        const existingIndex = wrongBook.findIndex(
+          (item) =>
+            (message.id && item.sourceMessageId === message.id)
+            || item.text === message.text.trim(),
+        );
+        if (existingIndex !== -1) {
+          if (!window.confirm("确认从错题集移除这道题吗？")) {
+            return;
+          }
+          wrongBook.splice(existingIndex, 1);
+        } else {
+          if (
+            !window.confirm(
+              "确认这是一道需要收录的错题吗？加入后可在错题集里重练。",
+            )
+          ) {
+            return;
+          }
+          wrongBook.unshift({
+            id: makeId(),
+            text: message.text.trim(),
+            answer: wrongBookAnswerFor(message.id),
+            createdAt: Date.now(),
+            lastPracticedAt: 0,
+            practiceCount: 0,
+            sourceConversationId: activeConversationId,
+            sourceMessageId: message.id,
+          });
+          wrongBook = wrongBook.slice(0, MAX_WRONG_BOOK_ITEMS);
+        }
+        saveWrongBook();
+        renderWrongBook();
+        syncLearningProgressWrongBookCount();
+        renderMessages();
+      }
+
+      function practiceWrongBookItem(itemId) {
+        if (requestInFlight) {
+          return;
+        }
+        const item = wrongBook.find((entry) => entry.id === itemId);
+        if (!item) {
+          return;
+        }
+        item.practiceCount += 1;
+        item.lastPracticedAt = Date.now();
+        saveWrongBook();
+        renderWrongBook();
+        recordLearningActivity("practice");
+        if (sidebarMedia.matches) {
+          setSidebarCollapsed(true);
+        }
+        sendMessage(item.text);
+      }
+
+      function deleteWrongBookItem(itemId) {
+        wrongBook = wrongBook.filter((item) => item.id !== itemId);
+        saveWrongBook();
+        renderWrongBook();
+        syncLearningProgressWrongBookCount();
+        renderMessages();
+      }
+
+      function clearWrongBook() {
+        if (!wrongBook.length) {
+          return;
+        }
+        wrongBook = [];
+        saveWrongBook();
+        renderWrongBook();
+        syncLearningProgressWrongBookCount();
+        renderMessages();
+      }
+
+      function exportWrongBook() {
+        if (!wrongBook.length) {
+          return;
+        }
+        const blocks = wrongBook
+          .slice()
+          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+          .map((item, index) => {
+            const lines = [
+              `${index + 1}. ${item.text}`,
+              `收藏时间：${formatWrongBookDate(item.createdAt) || "-"}`,
+              `练习次数：${item.practiceCount || 0}`,
+            ];
+            const answer = String(item.answer || "").trim();
+            if (answer) {
+              lines.push(`参考答案：${answer}`);
+            }
+            return lines.join("\n");
+          });
+        const header = `知微高数错题集（共 ${wrongBook.length} 题，导出于 ${formatWrongBookDate(Date.now())}）`;
+        const blob = new Blob([`${header}\n\n${blocks.join("\n\n")}\n`], {
+          type: "text/plain;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `知微高数错题集-${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function clampProgressCount(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) {
+          return 0;
+        }
+        return Math.min(
+          MAX_PROGRESS_COUNT,
+          Math.max(0, Math.round(number)),
+        );
+      }
+
+      function clampProgressTimestamp(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number) || number < 0) {
+          return 0;
+        }
+        return Math.min(MAX_PROGRESS_TIMESTAMP, Math.round(number));
+      }
+
+      function localDateKey(value = Date.now()) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return "";
+        }
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function isValidProgressDate(value) {
+        const text = String(value || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+          return false;
+        }
+        return localDateKey(`${text}T12:00:00`) === text;
+      }
+
+      function createDefaultLearningProgress() {
+        return {
+          version: LEARNING_PROGRESS_VERSION,
+          updatedAt: 0,
+          questionCount: 0,
+          calculationCount: 0,
+          practiceCount: 0,
+          wrongBookSavedCount: 0,
+          studyDays: [],
+          dailyCounts: {},
+        };
+      }
+
+      function normalizeLearningProgress(value) {
+        const source = value
+          && typeof value === "object"
+          && !Array.isArray(value)
+          && value.progress
+          && typeof value.progress === "object"
+          && !Array.isArray(value.progress)
+          ? value.progress
+          : value;
+
+        if (
+          !source
+          || typeof source !== "object"
+          || Array.isArray(source)
+        ) {
+          throw new Error("进度文件内容无法识别。");
+        }
+        if (
+          value
+          && value.format
+          && value.format !== LEARNING_PROGRESS_FORMAT
+        ) {
+          throw new Error("这不是知微高数学习进度文件。");
+        }
+
+        const version = Number(source.version);
+        if (
+          Number.isFinite(version)
+          && version !== LEARNING_PROGRESS_VERSION
+        ) {
+          throw new Error("进度文件版本不受支持。");
+        }
+
+        const progress = createDefaultLearningProgress();
+        progress.updatedAt = clampProgressTimestamp(source.updatedAt);
+        progress.questionCount = clampProgressCount(source.questionCount);
+        progress.calculationCount = clampProgressCount(
+          source.calculationCount,
+        );
+        progress.practiceCount = clampProgressCount(source.practiceCount);
+        progress.wrongBookSavedCount = clampProgressCount(
+          source.wrongBookSavedCount,
+        );
+
+        const rawDailyCounts = (
+          source.dailyCounts
+          && typeof source.dailyCounts === "object"
+          && !Array.isArray(source.dailyCounts)
+        )
+          ? source.dailyCounts
+          : {};
+        const studyDays = new Set();
+
+        if (Array.isArray(source.studyDays)) {
+          source.studyDays.forEach((day) => {
+            const text = String(day || "");
+            if (isValidProgressDate(text)) {
+              studyDays.add(text);
+            }
+          });
+        }
+        Object.entries(rawDailyCounts).forEach(([day, count]) => {
+          const text = String(day || "");
+          if (!isValidProgressDate(text)) {
+            return;
+          }
+          const normalizedCount = clampProgressCount(count);
+          if (normalizedCount > 0) {
+            progress.dailyCounts[text] = normalizedCount;
+            studyDays.add(text);
+          }
+        });
+
+        progress.studyDays = [...studyDays]
+          .sort()
+          .slice(-MAX_PROGRESS_DAYS);
+        const retainedDays = new Set(progress.studyDays);
+        Object.keys(progress.dailyCounts).forEach((day) => {
+          if (!retainedDays.has(day)) {
+            delete progress.dailyCounts[day];
+          }
+        });
+        return progress;
+      }
+
+      function loadLearningProgress() {
+        try {
+          const parsed = JSON.parse(
+            window.localStorage.getItem(LEARNING_PROGRESS_KEY) || "null",
+          );
+          return parsed
+            ? normalizeLearningProgress(parsed)
+            : createDefaultLearningProgress();
+        } catch (error) {
+          return createDefaultLearningProgress();
+        }
+      }
+
+      function saveLearningProgress() {
+        try {
+          window.localStorage.setItem(
+            LEARNING_PROGRESS_KEY,
+            JSON.stringify(normalizeLearningProgress(learningProgress)),
+          );
+        } catch (error) {
+          // Progress remains available in memory for this page.
+        }
+      }
+
+      function learningProgressStreakValue() {
+        const today = new Date();
+        today.setHours(12, 0, 0, 0);
+        const todayKey = localDateKey(today);
+        let cursor = new Date(today);
+        if (!(learningProgress.dailyCounts[todayKey] > 0)) {
+          cursor.setDate(cursor.getDate() - 1);
+        }
+
+        let streak = 0;
+        while (streak < MAX_PROGRESS_DAYS) {
+          const key = localDateKey(cursor);
+          if (!(learningProgress.dailyCounts[key] > 0)) {
+            break;
+          }
+          streak += 1;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+      }
+
+      function recentProgressDateKeys() {
+        const keys = [];
+        const cursor = new Date();
+        cursor.setHours(12, 0, 0, 0);
+        for (let offset = 6; offset >= 0; offset -= 1) {
+          const date = new Date(cursor);
+          date.setDate(date.getDate() - offset);
+          keys.push(localDateKey(date));
+        }
+        return keys;
+      }
+
+      function renderLearningProgress() {
+        if (!learningProgressDaysList) {
+          return;
+        }
+        const progress = normalizeLearningProgress(learningProgress);
+        learningProgressQuestions.textContent = String(
+          progress.questionCount,
+        );
+        learningProgressCalculations.textContent = String(
+          progress.calculationCount,
+        );
+        learningProgressPractice.textContent = String(
+          progress.practiceCount,
+        );
+        learningProgressWrongBook.textContent = String(wrongBook.length);
+        learningProgressStreak.textContent = String(
+          learningProgressStreakValue(),
+        );
+        learningProgressDays.textContent = String(
+          progress.studyDays.length,
+        );
+        learningProgressUpdated.textContent = progress.updatedAt
+          ? `最近 ${new Date(progress.updatedAt).toLocaleString("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })}`
+          : "尚未开始";
+
+        const dateKeys = recentProgressDateKeys();
+        const maxCount = Math.max(
+          1,
+          ...dateKeys.map(
+            (key) => clampProgressCount(progress.dailyCounts[key]),
+          ),
+        );
+        const fragment = document.createDocumentFragment();
+        dateKeys.forEach((key) => {
+          const count = clampProgressCount(progress.dailyCounts[key]);
+          const row = element("div", "progress-day");
+          const date = new Date(`${key}T12:00:00`);
+          const label = date.toLocaleDateString("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+          });
+          const track = element("div", "progress-day-track");
+          const fill = element("div", "progress-day-fill");
+          fill.style.setProperty(
+            "--progress-width",
+            `${Math.round((count / maxCount) * 100)}%`,
+          );
+          track.append(fill);
+          row.append(
+            element("span", "", label),
+            track,
+            element("span", "progress-day-count", String(count)),
+          );
+          fragment.append(row);
+        });
+        learningProgressDaysList.replaceChildren(fragment);
+      }
+
+      function setLearningProgressStatus(message, state = "") {
+        if (!learningProgressStatus) {
+          return;
+        }
+        learningProgressStatus.textContent = message;
+        if (state) {
+          learningProgressStatus.dataset.state = state;
+        } else {
+          learningProgressStatus.removeAttribute("data-state");
+        }
+      }
+
+      function recordLearningActivity(kind, amount = 1) {
+        const fields = {
+          question: "questionCount",
+          calculation: "calculationCount",
+          practice: "practiceCount",
+        };
+        const field = fields[kind];
+        if (!field) {
+          return;
+        }
+
+        const increment = Math.max(1, Math.round(Number(amount) || 1));
+        learningProgress[field] = clampProgressCount(
+          learningProgress[field] + increment,
+        );
+        const day = localDateKey();
+        learningProgress.dailyCounts[day] = clampProgressCount(
+          (learningProgress.dailyCounts[day] || 0) + increment,
+        );
+        if (!learningProgress.studyDays.includes(day)) {
+          learningProgress.studyDays.push(day);
+        }
+        learningProgress.studyDays = learningProgress.studyDays
+          .filter(isValidProgressDate)
+          .sort()
+          .slice(-MAX_PROGRESS_DAYS);
+        learningProgress.updatedAt = Date.now();
+        saveLearningProgress();
+        renderLearningProgress();
+      }
+
+      function syncLearningProgressWrongBookCount() {
+        learningProgress.wrongBookSavedCount = wrongBook.length;
+        learningProgress.updatedAt = Date.now();
+        saveLearningProgress();
+        renderLearningProgress();
+      }
+
+      function mergeLearningProgress(currentValue, importedValue) {
+        const current = normalizeLearningProgress(currentValue);
+        const imported = normalizeLearningProgress(importedValue);
+        current.updatedAt = Math.max(
+          current.updatedAt,
+          imported.updatedAt,
+        );
+        current.questionCount = Math.max(
+          current.questionCount,
+          imported.questionCount,
+        );
+        current.calculationCount = Math.max(
+          current.calculationCount,
+          imported.calculationCount,
+        );
+        current.practiceCount = Math.max(
+          current.practiceCount,
+          imported.practiceCount,
+        );
+        current.wrongBookSavedCount = Math.max(
+          current.wrongBookSavedCount,
+          imported.wrongBookSavedCount,
+        );
+
+        const days = new Set([
+          ...current.studyDays,
+          ...imported.studyDays,
+        ]);
+        current.studyDays = [...days]
+          .filter(isValidProgressDate)
+          .sort()
+          .slice(-MAX_PROGRESS_DAYS);
+        const retainedDays = new Set(current.studyDays);
+        Object.keys(current.dailyCounts).forEach((day) => {
+          if (!retainedDays.has(day)) {
+            delete current.dailyCounts[day];
+          }
+        });
+        Object.entries(imported.dailyCounts).forEach(([day, count]) => {
+          if (!retainedDays.has(day)) {
+            return;
+          }
+          current.dailyCounts[day] = Math.max(
+            current.dailyCounts[day] || 0,
+            count,
+          );
+        });
+        return normalizeLearningProgress(current);
+      }
+
+      function triggerProgressDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function formatProgressReportDateTime(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return "暂无记录";
+        }
+        return date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
+
+      function exportLearningProgress() {
+        learningProgress.wrongBookSavedCount = wrongBook.length;
+        const normalized = normalizeLearningProgress(learningProgress);
+        const reportDate = formatProgressReportDateTime(Date.now());
+        const lastUpdated = normalized.updatedAt
+          ? formatProgressReportDateTime(normalized.updatedAt)
+          : "暂无记录";
+        const studyRows = normalized.studyDays
+          .slice()
+          .reverse()
+          .map((day) => {
+            const count = clampProgressCount(normalized.dailyCounts[day]);
+            return `<tr><td>${day}</td><td>${count} 道</td></tr>`;
+          })
+          .join("");
+        const report = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>知微高数学习报告</title>
+  <style>
+    :root { color-scheme: light; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 20px; color: #173252; background: #f4f7fb; }
+    main { width: min(760px, 100%); margin: 0 auto; padding: 36px; border: 1px solid #dbe6f4; border-radius: 12px; background: #fff; box-shadow: 0 18px 48px rgba(31, 72, 128, 0.08); }
+    header { padding-bottom: 22px; border-bottom: 1px solid #e2eaf4; }
+    .eyebrow { margin: 0 0 8px; color: #2d6fc2; font-size: 13px; font-weight: 700; letter-spacing: 0; }
+    h1 { margin: 0; font-size: 30px; line-height: 1.25; }
+    .meta { margin: 12px 0 0; color: #66788f; font-size: 13px; line-height: 1.7; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 24px 0; }
+    .metric { min-height: 92px; padding: 16px; border: 1px solid #dbe6f4; border-radius: 9px; background: #f8fbff; }
+    .metric strong { display: block; color: #225fae; font-size: 26px; line-height: 1.1; }
+    .metric span { display: block; margin-top: 8px; color: #66788f; font-size: 12px; font-weight: 700; }
+    .rhythm { display: flex; gap: 28px; margin: 0 0 26px; padding: 16px 18px; border: 1px solid #dbe6f4; border-radius: 9px; }
+    .rhythm div { color: #66788f; font-size: 13px; }
+    .rhythm strong { margin-left: 6px; color: #225fae; font-size: 20px; }
+    h2 { margin: 26px 0 12px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #e6edf5; text-align: left; }
+    th { color: #66788f; background: #f8fbff; font-size: 12px; }
+    td:last-child, th:last-child { text-align: right; }
+    .empty { padding: 22px; border: 1px dashed #cbd9ea; border-radius: 8px; color: #66788f; font-size: 13px; text-align: center; }
+    footer { margin-top: 30px; color: #8a99ab; font-size: 11px; line-height: 1.7; }
+    @media (max-width: 640px) {
+      body { padding: 16px 10px; }
+      main { padding: 22px 16px; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rhythm { gap: 16px; justify-content: space-between; }
+    }
+    @media print {
+      body { padding: 0; background: #fff; }
+      main { width: 100%; border: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">知微高数</p>
+      <h1>学习进度报告</h1>
+      <p class="meta">导出时间：${reportDate}<br>最近更新：${lastUpdated}</p>
+    </header>
+    <section class="summary">
+      <article class="metric"><strong>${normalized.questionCount}</strong><span>完成题目</span></article>
+      <article class="metric"><strong>${normalized.calculationCount}</strong><span>工具计算</span></article>
+      <article class="metric"><strong>${normalized.practiceCount}</strong><span>错题重练</span></article>
+      <article class="metric"><strong>${wrongBook.length}</strong><span>当前错题</span></article>
+    </section>
+    <section class="rhythm">
+      <div>连续学习<strong>${learningProgressStreakValue()} 天</strong></div>
+      <div>累计学习<strong>${normalized.studyDays.length} 天</strong></div>
+    </section>
+    <h2>学习记录</h2>
+    ${studyRows
+      ? `<table><thead><tr><th>日期</th><th>完成题目</th></tr></thead><tbody>${studyRows}</tbody></table>`
+      : '<p class="empty">暂无学习记录。</p>'}
+    <footer>本报告由知微高数在当前浏览器中生成，仅用于查看和打印。需要恢复或合并记录时，请使用“数据备份”导出的 JSON 文件。</footer>
+  </main>
+</body>
+</html>
+`;
+        triggerProgressDownload(
+          new Blob([report], { type: "text/html;charset=utf-8" }),
+          `知微高数_学习报告_${localDateKey() || "export"}.html`,
+        );
+        setLearningProgressStatus("学习报告已导出，可直接打开查看或打印。", "success");
+      }
+
+      function exportLearningProgressBackup() {
+        learningProgress.wrongBookSavedCount = wrongBook.length;
+        const normalized = normalizeLearningProgress(learningProgress);
+        const payload = {
+          format: LEARNING_PROGRESS_FORMAT,
+          version: LEARNING_PROGRESS_VERSION,
+          exportedAt: new Date().toISOString(),
+          progress: normalized,
+        };
+        const blob = new Blob(
+          [`${JSON.stringify(payload, null, 2)}\n`],
+          { type: "application/json;charset=utf-8" },
+        );
+        triggerProgressDownload(
+          blob,
+          `知微高数_学习进度备份_${localDateKey() || "export"}.json`,
+        );
+        setLearningProgressStatus("学习进度备份已导出，可用于恢复或合并。", "success");
+      }
+
+      function readLearningProgressFile(file) {
+        if (typeof file.text === "function") {
+          return file.text();
+        }
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.addEventListener("load", () => {
+            resolve(String(reader.result || ""));
+          });
+          reader.addEventListener("error", () => {
+            reject(new Error("进度文件读取失败。"));
+          });
+          reader.readAsText(file);
+        });
+      }
+
+      async function importLearningProgress(file, mode = "merge") {
+        if (!file) {
+          return;
+        }
+        try {
+          if (file.size > 1024 * 1024) {
+            throw new Error("进度文件过大，请选择 1 MB 以内的文件。");
+          }
+          const text = await readLearningProgressFile(file);
+          const parsed = JSON.parse(text);
+          const imported = normalizeLearningProgress(parsed);
+          learningProgress = mode === "overwrite"
+            ? imported
+            : mergeLearningProgress(learningProgress, imported);
+          learningProgress.wrongBookSavedCount = Math.max(
+            learningProgress.wrongBookSavedCount,
+            wrongBook.length,
+          );
+          saveLearningProgress();
+          renderLearningProgress();
+          setLearningProgressStatus(
+            mode === "overwrite"
+              ? "已覆盖当前学习进度。"
+              : "已合并进度，重复记录不会重复累计。",
+            "success",
+          );
+        } catch (error) {
+          setLearningProgressStatus(
+            error instanceof SyntaxError
+              ? "进度文件不是有效的 JSON。"
+              : error.message || "进度导入失败。",
+            "error",
+          );
+        } finally {
+          if (learningProgressImportInput) {
+            learningProgressImportInput.value = "";
+          }
+        }
+      }
+
       function renderFormula(container, message) {
         container.textContent = "";
         if (!message.formulaLatex) {
@@ -2559,6 +5837,93 @@
           }
         }
         container.textContent = message.formulaText || message.formulaLatex;
+      }
+
+      function renderRichMessageText(container, rawText) {
+        const source = String(rawText || "");
+        container.textContent = "";
+        if (!source) {
+          return;
+        }
+        if (!window.katex) {
+          container.textContent = source;
+          return;
+        }
+
+        const mathPattern = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[^$\n]+?\$)/g;
+        let cursor = 0;
+        for (const match of source.matchAll(mathPattern)) {
+          const token = match[0];
+          const index = match.index ?? 0;
+          if (index > cursor) {
+            container.append(document.createTextNode(source.slice(cursor, index)));
+          }
+
+          let expression = "";
+          let displayMode = false;
+          if (token.startsWith("$$") && token.endsWith("$$")) {
+            expression = token.slice(2, -2).trim();
+            displayMode = true;
+          } else if (token.startsWith("\\[") && token.endsWith("\\]")) {
+            expression = token.slice(2, -2).trim();
+            displayMode = true;
+          } else if (token.startsWith("\\(") && token.endsWith("\\)")) {
+            expression = token.slice(2, -2).trim();
+          } else {
+            expression = token.slice(1, -1).trim();
+          }
+
+          const math = element(
+            "span",
+            displayMode ? "math-display" : "math-inline",
+          );
+          let rendered = false;
+          if (expression) {
+            try {
+              window.katex.render(expression, math, {
+                displayMode,
+                throwOnError: true,
+                strict: false,
+                trust: false,
+              });
+              rendered = true;
+            } catch (error) {
+              rendered = false;
+            }
+          }
+          if (rendered) {
+            container.append(math);
+          } else {
+            container.append(document.createTextNode(token));
+          }
+          cursor = index + token.length;
+        }
+
+        if (cursor < source.length) {
+          container.append(document.createTextNode(source.slice(cursor)));
+        }
+      }
+
+      function renderMessageAttachments(attachments) {
+        const gallery = element("div", "message-attachments");
+        attachments.forEach((attachment, index) => {
+          const card = element("div", "message-attachment");
+          if (attachment.previewUrl) {
+            const image = element("img");
+            image.src = attachment.previewUrl;
+            image.alt = attachment.name || `题目图片 ${index + 1}`;
+            image.loading = "lazy";
+            card.append(image);
+          } else {
+            const fallback = element("div", "message-attachment-file");
+            fallback.append(
+              element("span", "", attachment.name || "题目图片"),
+            );
+            card.append(fallback);
+          }
+          gallery.append(card);
+        });
+        return gallery;
       }
 
       function createMessageNode(message) {
@@ -2587,7 +5952,14 @@
           typing.append(element("span"), element("span"), element("span"));
           bubble.append(typing);
         } else {
-          bubble.append(element("p", "message-text", message.text));
+          if (Array.isArray(message.attachments) && message.attachments.length) {
+            bubble.append(renderMessageAttachments(message.attachments));
+          }
+          if (message.text) {
+            const text = element("p", "message-text");
+            renderRichMessageText(text, message.text);
+            bubble.append(text);
+          }
 
           if (message.formulaLatex) {
             const formula = element("div", "formula");
@@ -2633,6 +6005,33 @@
         }
 
         content.append(meta, bubble);
+        if (message.role === "assistant" && !message.loading) {
+          const sourceUserMessage = sourceUserMessageForAnswer(message);
+          const bookmarked = sourceUserMessage
+            ? wrongBookHasMessage(sourceUserMessage)
+            : false;
+          if (
+            sourceUserMessage
+            && (bookmarked || messageCanJoinWrongBook(message))
+          ) {
+            const actions = element("div", "message-actions");
+            const bookmarkButton = element(
+              "button",
+              "message-action",
+              bookmarked ? "已加入错题集" : "加入错题集",
+            );
+            bookmarkButton.type = "button";
+            bookmarkButton.dataset.messageAction = "toggle-wrongbook";
+            bookmarkButton.dataset.messageId = sourceUserMessage.id;
+            bookmarkButton.dataset.bookmarked = String(bookmarked);
+            bookmarkButton.setAttribute(
+              "aria-pressed",
+              String(bookmarked),
+            );
+            actions.append(bookmarkButton);
+            content.append(actions);
+          }
+        }
         article.append(avatar, content);
         return article;
       }
@@ -2641,6 +6040,16 @@
         window.requestAnimationFrame(() => {
           messageList.scrollTop = messageList.scrollHeight;
         });
+      }
+
+      function latestUserQuestion() {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const message = messages[index];
+          if (message.role === "user" && !message.loading && message.text) {
+            return message.text;
+          }
+        }
+        return "";
       }
 
       function renderMessages() {
@@ -2685,13 +6094,569 @@
         chatInput.style.height = `${Math.min(chatInput.scrollHeight, 132)}px`;
       }
 
-      function setRequestState(active) {
-        requestInFlight = active;
-        sendButton.disabled = active;
-        sendButton.textContent = active ? "计算中" : "发送";
+      function imageSizeLabel(bytes) {
+        if (bytes < 1024 * 1024) {
+          return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+        }
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       }
 
-      function responseToMessage(data) {
+      function pendingImageSummary() {
+        if (composerImageNotice) {
+          return composerImageNotice;
+        }
+        const total = pendingQuestionImages.length;
+        if (!total) {
+          return "";
+        }
+        const completed = pendingQuestionImages.filter(
+          (item) => item.state === "success",
+        ).length;
+        const failed = pendingQuestionImages.filter(
+          (item) => item.state === "error",
+        ).length;
+        const loading = pendingQuestionImages.filter(
+          (item) => item.state === "loading",
+        ).length;
+        if (loading) {
+          return `正在识别题目（${completed}/${total}），点击发送后会等识别结束再发送。`;
+        }
+        if (failed === total) {
+          return "图片识别失败，仍可直接发送图片，或补充文字后发送。";
+        }
+        if (failed) {
+          return `${completed} 张已识别，${failed} 张失败；仍可直接发送并补充说明。`;
+        }
+        return `已识别 ${completed} 张图片，可直接发送。`;
+      }
+
+      function renderComposerImages() {
+        composerImageList.replaceChildren();
+        composerImagePreview.hidden = !pendingQuestionImages.length;
+        if (!pendingQuestionImages.length) {
+          composerImageStatus.textContent = "";
+          syncComposerState();
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        pendingQuestionImages.forEach((item, index) => {
+          const card = element("div", "composer-image-item");
+          card.dataset.state = item.state;
+
+          const thumb = element("img", "composer-image-thumb");
+          thumb.alt = `待发送题目图片 ${index + 1}`;
+          thumb.src = item.previewUrl;
+          thumb.loading = "lazy";
+
+          const copy = element("div", "composer-image-copy");
+          copy.append(
+            element("strong", "", item.name),
+            element("span", "", item.statusText),
+          );
+
+          const removeButton = element("button", "composer-image-remove", "×");
+          removeButton.type = "button";
+          removeButton.dataset.imageId = item.id;
+          removeButton.setAttribute("aria-label", `移除图片 ${item.name}`);
+          removeButton.title = "移除图片";
+
+          card.append(thumb, copy, removeButton);
+          fragment.append(card);
+        });
+        composerImageList.append(fragment);
+        composerImageStatus.textContent = pendingImageSummary();
+        syncComposerState();
+      }
+
+      function appendRecognizedText(text) {
+        const existing = chatInput.value.trimEnd();
+        const separator = existing ? "\n\n" : "";
+        const maximum = Number(chatInput.maxLength) || 600;
+        const remaining = Math.max(
+          0,
+          maximum - existing.length - separator.length,
+        );
+        const accepted = text.slice(0, remaining).trim();
+        if (!accepted) {
+          return "";
+        }
+        chatInput.value = `${existing}${separator}${accepted}`;
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+        return accepted;
+      }
+
+      function removeInsertedText(item) {
+        if (!item.insertedText) {
+          return;
+        }
+        const index = chatInput.value.indexOf(item.insertedText);
+        if (index === -1) {
+          return;
+        }
+        const before = chatInput.value
+          .slice(0, index)
+          .replace(/\s+$/, "");
+        const after = chatInput.value
+          .slice(index + item.insertedText.length)
+          .replace(/^\s+/, "");
+        chatInput.value = [before, after].filter(Boolean).join("\n\n");
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+      }
+
+      function decodeQuestionImage(file) {
+        if (typeof createImageBitmap === "function") {
+          return createImageBitmap(file, {imageOrientation: "from-image"})
+            .then((bitmap) => ({
+              source: bitmap,
+              width: bitmap.width,
+              height: bitmap.height,
+              close: () => bitmap.close(),
+            }))
+            .catch(() => decodeQuestionImageElement(file));
+        }
+        return decodeQuestionImageElement(file);
+      }
+
+      function decodeQuestionImageElement(file) {
+        return new Promise((resolve, reject) => {
+          const source = new Image();
+          const objectUrl = URL.createObjectURL(file);
+          source.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve({
+              source,
+              width: source.naturalWidth || source.width,
+              height: source.naturalHeight || source.height,
+              close: () => {},
+            });
+          };
+          source.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("图片无法读取，请重新选择。"));
+          };
+          source.src = objectUrl;
+        });
+      }
+
+      function canvasToBlob(canvas, type, quality) {
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error("图片压缩失败，请重新选择。"));
+              }
+            },
+            type,
+            quality,
+          );
+        });
+      }
+
+      function preparedImageName(name, type) {
+        const baseName = String(name || "question").replace(/\.[^.]+$/, "");
+        return `${baseName}${type === "image/jpeg" ? ".jpg" : ".png"}`;
+      }
+
+      async function prepareQuestionImage(file) {
+        const decoded = await decodeQuestionImage(file);
+        try {
+          const longestEdge = Math.max(decoded.width, decoded.height);
+          const scale = Math.min(
+            1,
+            MAX_QUESTION_IMAGE_EDGE / Math.max(1, longestEdge),
+          );
+          const shouldReencode =
+            scale < 1
+            || file.size > QUESTION_IMAGE_RECOMPRESS_BYTES;
+          if (!shouldReencode) {
+            return {
+              file,
+              size: file.size,
+              compressed: false,
+            };
+          }
+
+          const width = Math.max(1, Math.round(decoded.width * scale));
+          const height = Math.max(1, Math.round(decoded.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d", {alpha: false});
+          if (!context) {
+            throw new Error("当前浏览器无法压缩图片，请重新选择。");
+          }
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, width, height);
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = "high";
+          context.drawImage(decoded.source, 0, 0, width, height);
+
+          let blob = await canvasToBlob(
+            canvas,
+            "image/jpeg",
+            QUESTION_IMAGE_JPEG_QUALITY,
+          );
+          if (blob.size > MAX_QUESTION_IMAGE_BYTES) {
+            blob = await canvasToBlob(canvas, "image/jpeg", 0.8);
+          }
+          if (blob.size > MAX_QUESTION_IMAGE_BYTES) {
+            throw new Error("图片压缩后仍超过 6 MB，请重新拍摄。");
+          }
+          if (blob.size >= file.size && scale === 1) {
+            return {
+              file,
+              size: file.size,
+              compressed: false,
+            };
+          }
+          return {
+            file: new File(
+              [blob],
+              preparedImageName(file.name, blob.type),
+              {
+                type: blob.type,
+                lastModified: Date.now(),
+              },
+            ),
+            size: blob.size,
+            compressed: true,
+          };
+        } finally {
+          decoded.close();
+        }
+      }
+
+      function enqueueQuestionImageRecognition(item) {
+        questionImageRecognitionQueue = questionImageRecognitionQueue
+          .catch(() => {})
+          .then(() => recognizeQuestionImage(item));
+      }
+
+      async function recognizeQuestionImage(item) {
+        if (
+          !item.file
+          || item.state === "error"
+          || !pendingQuestionImages.includes(item)
+        ) {
+          return;
+        }
+        item.controller = new AbortController();
+        const controller = item.controller;
+        item.state = "loading";
+        item.statusText = `正在优化图片（${imageSizeLabel(item.size)}）...`;
+        renderComposerImages();
+
+        try {
+          const prepared = await prepareQuestionImage(item.file);
+          if (controller.signal.aborted) {
+            return;
+          }
+          item.uploadFile = prepared.file;
+          item.uploadSize = prepared.size;
+          item.compressed = prepared.compressed;
+          item.statusText = prepared.compressed
+            ? `正在识别（${imageSizeLabel(item.size)} → ${imageSizeLabel(prepared.size)}）...`
+            : `正在识别（${imageSizeLabel(prepared.size)}）...`;
+          renderComposerImages();
+
+          const formData = new FormData();
+          formData.append(
+            "image",
+            prepared.file,
+            prepared.file.name || "question.jpg",
+          );
+          const response = await fetch("/demo/api/ocr", {
+            method: "POST",
+            headers: {"X-Demo-Session": demoSessionId},
+            body: formData,
+            signal: controller.signal,
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (error) {
+            if (!response.ok) {
+              throw new Error(`图片识别服务返回错误（${response.status}）。`);
+            }
+            throw new Error("图片识别服务返回了无法识别的内容。");
+          }
+          if (!response.ok) {
+            throw new Error(
+              data.detail || `图片识别服务返回错误（${response.status}）。`,
+            );
+          }
+
+          const text = String(data.text || "").trim();
+          if (!text) {
+            throw new Error("图片中没有识别到可用题目，请重新拍摄。");
+          }
+
+          const recognitionSource = String(data.provider || "").trim();
+          const recognitionWarning = String(data.warning || "").trim();
+          item.text = text;
+          item.state = "success";
+          lastRecognizedQuestion = text;
+          item.insertedText = appendRecognizedText(text);
+          item.statusText = recognitionSource === "windows"
+            ? "已离线识别，请核对公式后发送"
+            : item.insertedText
+              ? item.compressed
+                ? "已识别（上传前已压缩），可直接发送"
+                : "已识别，可直接发送"
+              : "已识别，但输入内容已达上限";
+          if (!item.insertedText) {
+            composerImageNotice = "输入内容已达 600 字，发送时将使用图片识别内容。";
+          } else if (item.insertedText.length < text.length) {
+            composerImageNotice = "部分识别内容超出 600 字，发送时将自动截取。";
+          }
+          if (recognitionWarning) {
+            composerImageNotice = recognitionWarning;
+          }
+        } catch (error) {
+          if (error.name === "AbortError") {
+            return;
+          }
+          item.state = "error";
+          item.statusText =
+            error.message || "图片识别失败，请稍后重试。";
+        } finally {
+          if (item.controller === controller) {
+            item.controller = null;
+          }
+          renderComposerImages();
+          flushPendingComposerSubmission();
+        }
+      }
+
+      function addQuestionImages(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) {
+          return;
+        }
+        composerImageNotice = "";
+        const available = Math.max(
+          0,
+          MAX_QUESTION_IMAGE_COUNT - pendingQuestionImages.length,
+        );
+        if (!available) {
+          composerImageNotice = `最多同时发送 ${MAX_QUESTION_IMAGE_COUNT} 张图片。`;
+          renderComposerImages();
+          return;
+        }
+        if (files.length > available) {
+          composerImageNotice = `最多同时发送 ${MAX_QUESTION_IMAGE_COUNT} 张图片，已保留前 ${available} 张。`;
+        }
+
+        files.slice(0, available).forEach((file) => {
+          const mimeType = String(file.type || "").toLowerCase();
+          const item = {
+            id: makeId(),
+            file,
+            name: file.name || "题目图片",
+            size: file.size,
+            previewUrl: "",
+            state: "loading",
+            statusText: `等待识别（${imageSizeLabel(file.size)}）...`,
+            text: "",
+            insertedText: "",
+            uploadFile: null,
+            uploadSize: file.size,
+            compressed: false,
+            controller: null,
+          };
+          if (!QUESTION_IMAGE_TYPES.has(mimeType)) {
+            item.state = "error";
+            item.statusText = "仅支持 JPG、PNG、WebP 或 GIF 图片。";
+          } else if (file.size > MAX_QUESTION_IMAGE_INPUT_BYTES) {
+            item.state = "error";
+            item.statusText = "原始图片不能超过 20 MB，请压缩后重试。";
+          } else {
+            item.previewUrl = URL.createObjectURL(file);
+          }
+          pendingQuestionImages.push(item);
+        });
+
+        renderComposerImages();
+        pendingQuestionImages
+          .filter((item) => item.state === "loading" && item.file)
+          .forEach((item) => {
+            enqueueQuestionImageRecognition(item);
+          });
+      }
+
+      function removeQuestionImage(imageId, { focus = false } = {}) {
+        const index = pendingQuestionImages.findIndex(
+          (item) => item.id === imageId,
+        );
+        if (index === -1) {
+          return;
+        }
+        const item = pendingQuestionImages[index];
+        if (item.controller) {
+          item.controller.abort();
+        }
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+        removeInsertedText(item);
+        pendingQuestionImages.splice(index, 1);
+        if (!pendingQuestionImages.length) {
+          pendingComposerSubmission = false;
+        }
+        composerImageNotice = "";
+        renderComposerImages();
+        if (focus) {
+          imageUploadButton.focus();
+        }
+      }
+
+      function clearQuestionImages({
+        focus = false,
+        revokeUrls = true,
+      } = {}) {
+        pendingQuestionImages.forEach((item) => {
+          if (item.controller) {
+            item.controller.abort();
+          }
+          if (revokeUrls && item.previewUrl) {
+            URL.revokeObjectURL(item.previewUrl);
+          }
+        });
+        pendingQuestionImages = [];
+        composerImageNotice = "";
+        pendingComposerSubmission = false;
+        imageFileInput.value = "";
+        composerImageList.replaceChildren();
+        composerImagePreview.hidden = true;
+        composerImageStatus.textContent = "";
+        syncComposerState();
+        if (focus) {
+          imageUploadButton.focus();
+        }
+      }
+
+      function hasImageRecognitionInFlight() {
+        return pendingQuestionImages.some(
+          (item) => item.state === "loading",
+        );
+      }
+
+      function composeQuestionText() {
+        const manualText = chatInput.value.trim();
+        const recognizedTexts = pendingQuestionImages
+          .filter((item) => item.state === "success" && item.text)
+          .map((item) => item.text.trim())
+          .filter(Boolean);
+        const parts = manualText ? [manualText] : [];
+        recognizedTexts.forEach((text) => {
+          if (!parts.some((part) => part.includes(text))) {
+            parts.push(text);
+          }
+        });
+        const combined = parts.join("\n\n").trim();
+        if (combined.length <= 600) {
+          return combined;
+        }
+        composerImageNotice = "题目内容超过 600 字，发送时已截取前 600 字。";
+        renderComposerImages();
+        return combined.slice(0, 600).trim();
+      }
+
+      function pendingImageAttachments() {
+        return pendingQuestionImages
+          .filter((item) => item.previewUrl)
+          .map((item) => ({
+            name: item.name,
+            previewUrl: item.previewUrl,
+          }));
+      }
+
+      function syncComposerState() {
+        const hasText = Boolean(chatInput.value.trim());
+        const hasRecognizedImage = pendingQuestionImages.some(
+          (item) => item.state === "success" && item.text,
+        );
+        const recognizing = hasImageRecognitionInFlight();
+        const hasPendingImage = pendingQuestionImages.some(
+          (item) => item.previewUrl,
+        );
+        sendButton.disabled =
+          requestInFlight
+          || (!hasText && !hasRecognizedImage && !hasPendingImage);
+        sendButton.textContent = requestInFlight
+          ? "计算中"
+          : "发送";
+        sendButton.setAttribute("aria-busy", String(requestInFlight));
+        imageUploadButton.disabled =
+          requestInFlight
+          || pendingQuestionImages.length >= MAX_QUESTION_IMAGE_COUNT;
+        if (recognizing) {
+          imageUploadButton.dataset.loading = "true";
+        } else {
+          imageUploadButton.removeAttribute("data-loading");
+        }
+      }
+
+      function flushPendingComposerSubmission() {
+        if (
+          !pendingComposerSubmission
+          || requestInFlight
+          || hasImageRecognitionInFlight()
+        ) {
+          return;
+        }
+        pendingComposerSubmission = false;
+        window.setTimeout(() => {
+          if (!requestInFlight) {
+            submitComposer();
+          }
+        }, 0);
+      }
+
+      function submitComposer() {
+        if (requestInFlight) {
+          return;
+        }
+        if (hasImageRecognitionInFlight()) {
+          pendingComposerSubmission = true;
+          composerImageNotice = "正在识别图片，完成后会自动发送。";
+          renderComposerImages();
+          return;
+        }
+        pendingComposerSubmission = false;
+        const text = composeQuestionText();
+        const attachments = pendingImageAttachments();
+        const recognizedImage = pendingQuestionImages.some(
+          (item) => item.state === "success" && item.text,
+        );
+        if (!text && !recognizedImage) {
+          composerImageNotice =
+            "图片识别失败，请重新上传清晰图片或在输入框补充题目。";
+          renderComposerImages();
+          return;
+        }
+        clearQuestionImages({ revokeUrls: false });
+        sendMessage(
+          text,
+          {
+            attachments,
+            source: recognizedImage ? "ocr" : "text",
+          },
+        );
+      }
+
+      function setRequestState(active) {
+        requestInFlight = active;
+        syncComposerState();
+      }
+
+      function responseToMessage(data, sourceUserMessageId = "") {
         const calculation = data.calculation || {};
         let resultLabel = "";
         let resultValue = "";
@@ -2714,6 +6679,7 @@
           id: makeId(),
           role: "assistant",
           text: String(data.reply || "这次没有得到可用的计算结果。"),
+          intent: String(data.intent || ""),
           formulaLatex: String(data.formula_latex || ""),
           formulaText: String(data.formula_text || ""),
           resultLabel,
@@ -2723,6 +6689,7 @@
               ? calculation.is_correct
               : null,
           plotUrl: String(calculation.plot_url || ""),
+          sourceUserMessageId: String(sourceUserMessageId || ""),
           createdAt: currentTime(),
         };
       }
@@ -2889,11 +6856,21 @@
         }`;
       }
 
-      function openSolverDialog() {
+      function openSolverDialog(chapterKey, topicKey) {
         if (requestInFlight) {
           return;
         }
         populateSolverChapters();
+        const nextChapter =
+          chapterKey && SOLVER_CHAPTERS[chapterKey]
+            ? chapterKey
+            : solverChapter.value;
+        solverChapter.value = nextChapter;
+        populateSolverTopics();
+        if (topicKey && solverTopic.querySelector(`option[value="${topicKey}"]`)) {
+          solverTopic.value = topicKey;
+          renderSolverFields();
+        }
         solverStatus.textContent = "";
         if (typeof solverDialog.showModal === "function") {
           solverDialog.showModal();
@@ -2965,9 +6942,10 @@
           const notes = Array.isArray(data.notes) && data.notes.length
             ? `\n\n提示：${data.notes.join("；")}`
             : "";
+          const solverUserMessageId = makeId();
           messages.push(
             {
-              id: makeId(),
+              id: solverUserMessageId,
               role: "user",
               text: `【全章节解题】${solverSummary(selected, payload.inputs)}`,
               formulaLatex: "",
@@ -2981,6 +6959,7 @@
               id: makeId(),
               role: "assistant",
               text: `已用“${data.method}”完成计算。${notes}`,
+              intent: "solve",
               formulaLatex: String(data.latex || ""),
               formulaText: String(data.result || ""),
               resultLabel: String(data.method || ""),
@@ -2989,9 +6968,11 @@
                 typeof data.is_correct === "boolean"
                   ? data.is_correct
                   : null,
+              sourceUserMessageId: solverUserMessageId,
               createdAt: currentTime(),
             },
           );
+          recordLearningActivity("calculation");
           renderMessages();
           saveMessages();
           closeSolverDialog();
@@ -3007,15 +6988,33 @@
         }
       }
 
-      async function sendMessage(rawMessage) {
+      async function sendMessage(rawMessage, options = {}) {
         const text = String(rawMessage || "").trim();
-        if (!text || requestInFlight) {
+        const source = options.source === "ocr" ? "ocr" : "text";
+        const attachments = Array.isArray(options.attachments)
+          ? options.attachments
+            .slice(0, MAX_QUESTION_IMAGE_COUNT)
+            .map((attachment) => ({
+              name: String(
+                (attachment && attachment.name) || "题目图片",
+              ),
+              previewUrl: String(
+                (attachment && attachment.previewUrl) || "",
+              ),
+            }))
+          : [];
+        if ((!text && !attachments.length) || requestInFlight) {
           return;
         }
+        const requestText = text;
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = text;
+        renderQuestionKnowledge(text, { source: "submit" });
         const history = requestHistory();
 
+        const userMessageId = makeId();
         messages.push({
-          id: makeId(),
+          id: userMessageId,
           role: "user",
           text,
           formulaLatex: "",
@@ -3023,6 +7022,7 @@
           resultLabel: "",
           resultValue: "",
           verdict: null,
+          attachments,
           createdAt: currentTime(),
         });
 
@@ -3053,16 +7053,49 @@
         );
 
         try {
+          const compactRequestText = text.replace(
+            /[\s,，。！!？?；;]/g,
+            "",
+          );
+          const isConfirmationRequest = [
+            "确认",
+            "正确",
+            "无误",
+            "继续",
+            "开始",
+          ].some((marker) => compactRequestText.includes(marker));
+          const messagePendingQuestion =
+            [...messages]
+              .reverse()
+              .find(
+                (message) =>
+                  message.role === "assistant" &&
+                  message.intent === "ocr_confirm" &&
+                  message.formulaText,
+              )?.formulaText || "";
+          const pendingOcrQuestion = isConfirmationRequest
+            ? (lastRecognizedQuestion || messagePendingQuestion)
+            : messagePendingQuestion;
           const cachedResponse = responseCache.get(text);
-          if (cachedResponse) {
+          if (
+            cachedResponse
+            && cachedResponse.intent !== "ocr_confirm"
+            && !pendingOcrQuestion
+            && !isConfirmationRequest
+          ) {
             window.clearTimeout(timeoutId);
             await new Promise((resolve) => window.setTimeout(resolve, 120));
             const cachedIndex = messages.findIndex(
               (message) => message.id === loadingId,
             );
             if (cachedIndex !== -1) {
-              messages[cachedIndex] = responseToMessage(cachedResponse);
+              messages[cachedIndex] = responseToMessage(
+                cachedResponse,
+                userMessageId,
+              );
             }
+            syncWrongBookAnswer(userMessageId, text);
+            recordLearningActivity("question");
             renderSuggestions(cachedResponse.suggestions);
             return;
           }
@@ -3073,7 +7106,12 @@
               "Content-Type": "application/json",
               "X-Demo-Session": demoSessionId,
             },
-            body: JSON.stringify({ message: text, history }),
+            body: JSON.stringify({
+              message: requestText,
+              history,
+              source,
+              pending_question: pendingOcrQuestion,
+            }),
             signal: controller.signal,
           }).finally(() => window.clearTimeout(timeoutId));
 
@@ -3090,9 +7128,20 @@
 
           const index = messages.findIndex((message) => message.id === loadingId);
           if (index !== -1) {
-            messages[index] = responseToMessage(data);
+            messages[index] = responseToMessage(data, userMessageId);
           }
-          cacheResponse(text, data);
+          syncWrongBookAnswer(userMessageId, text);
+          recordLearningActivity("question");
+          if (data.intent !== "ocr_confirm") {
+            cacheResponse(text, data);
+          }
+          if (
+            data.intent !== "ocr_confirm"
+            && data.intent !== "needs_input"
+            && data.intent !== "unknown"
+          ) {
+            lastRecognizedQuestion = "";
+          }
           renderSuggestions(data.suggestions);
         } catch (error) {
           const index = messages.findIndex((message) => message.id === loadingId);
@@ -3104,6 +7153,7 @@
                 error.name === "AbortError"
                   ? "这次等待时间有点长，已停止等待。可以再发一次同一题，系统会复用已有结果。"
                   : error.message || "计算服务暂时不可用，请稍后重试。",
+              intent: "error",
               formulaLatex: "",
               formulaText: "",
               resultLabel: "",
@@ -3154,18 +7204,6 @@
           }
         }
 
-        if (!sidebarMedia.matches) {
-          if (nextCollapsed) {
-            if (toolsMenuRestoreOpen === null) {
-              toolsMenuRestoreOpen = toolsMenu.open;
-            }
-            toolsMenu.open = true;
-          } else if (toolsMenuRestoreOpen !== null) {
-            toolsMenu.open = toolsMenuRestoreOpen;
-            toolsMenuRestoreOpen = null;
-          }
-        }
-
         document.querySelectorAll("[data-sidebar-toggle]").forEach((button) => {
           button.setAttribute(
             "aria-label",
@@ -3209,6 +7247,7 @@
         if (requestInFlight) {
           return;
         }
+        resetDemoSession();
         activeConversationId = makeId();
         try {
           window.localStorage.setItem(
@@ -3219,7 +7258,11 @@
           // The new conversation is still available in memory.
         }
         messages = [welcomeMessage()];
+        pendingComposerSubmission = false;
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = "";
+        renderQuestionKnowledge("");
         renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
@@ -3233,12 +7276,215 @@
         if (requestInFlight) {
           return;
         }
+        resetDemoSession();
         messages = [welcomeMessage()];
+        pendingComposerSubmission = false;
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = "";
+        renderQuestionKnowledge("");
         renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
         chatInput.focus();
+      }
+
+      function resetDemoSession() {
+        fetch("/demo/api/session/reset", {
+          method: "POST",
+          headers: {"X-Demo-Session": demoSessionId},
+        }).catch(() => {
+          // The next OCR request will also establish a fresh state.
+        });
+      }
+
+      const PREVIEW_EMPTY_TEXT = "用左侧工具箱计算后，结果会显示在这里";
+
+      function setPreviewEmpty(text = PREVIEW_EMPTY_TEXT) {
+        previewContent.replaceChildren();
+        previewContent.append(element("div", "preview-empty", text));
+        previewBadge.textContent = "待计算";
+      }
+
+      function setPreviewLoading(label) {
+        previewContent.replaceChildren();
+        const wrap = element("div", "preview-result");
+        wrap.append(element("div", "preview-result-title", `${label}计算中…`));
+        previewContent.append(wrap);
+        previewBadge.textContent = "计算中";
+      }
+
+      function setPreviewError(message) {
+        previewContent.replaceChildren();
+        previewContent.append(element("div", "preview-error", message));
+        previewBadge.textContent = "出错";
+      }
+
+      function setPreviewCollapsed(collapsed) {
+        const nextCollapsed = Boolean(collapsed);
+        previewPanel.dataset.collapsed = String(nextCollapsed);
+        previewToggle.textContent = nextCollapsed ? "展开" : "收起";
+        previewToggle.setAttribute("aria-expanded", String(!nextCollapsed));
+        previewToggle.setAttribute(
+          "title",
+          nextCollapsed ? "展开计算过程总览" : "收起计算过程总览",
+        );
+      }
+
+      function renderPreviewResult(data, options = {}) {
+        const label = options.label || data.method || "计算结果";
+        const latex = String(options.latex ?? data.latex ?? "");
+        const text = String(options.text ?? data.result ?? "");
+        const notes = options.notes ?? data.notes;
+        const question = options.question || "";
+
+        previewContent.replaceChildren();
+        const wrap = element("div", "preview-result");
+        wrap.append(element("div", "preview-result-title", label));
+
+        if (latex || text) {
+          const formula = element("div", "preview-formula");
+          let rendered = false;
+          if (latex && window.katex) {
+            try {
+              window.katex.render(latex, formula, {
+                displayMode: true,
+                throwOnError: true,
+                strict: false,
+                trust: false,
+              });
+              rendered = true;
+            } catch (error) {
+              rendered = false;
+            }
+          }
+          if (!rendered) {
+            formula.textContent = text || latex;
+          }
+          wrap.append(formula);
+        }
+
+        if (latex && text) {
+          wrap.append(element("p", "preview-result-text", text));
+        }
+
+        if (Array.isArray(notes) && notes.length) {
+          wrap.append(
+            element("p", "preview-notes", `提示：${notes.join("；")}`),
+          );
+        }
+
+        const meta = element("div", "preview-result-meta");
+        meta.append(element("span", "", currentTime()));
+        if (question) {
+          const askButton = element("button", "preview-action", "让知微讲解");
+          askButton.type = "button";
+          askButton.addEventListener("click", () => {
+            sendMessage(question);
+          });
+          meta.append(askButton);
+        }
+        wrap.append(meta);
+
+        previewContent.append(wrap);
+        previewBadge.textContent = options.badge || "已完成";
+        setPreviewCollapsed(false);
+      }
+
+      async function runInlineSolve({ chapter, topic, inputs, label, question }) {
+        if (requestInFlight) {
+          setPreviewError("正在处理上一题，请稍候再试。");
+          return;
+        }
+
+        setPreviewLoading(label);
+        setRequestState(true);
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(
+          () => controller.abort(),
+          REQUEST_TIMEOUT_MS,
+        );
+        try {
+          const response = await fetch("/demo/api/solve", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ chapter, topic, inputs }),
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeoutId));
+
+          let data;
+          try {
+            data = await response.json();
+          } catch (error) {
+            throw new Error("计算服务返回了无法识别的内容");
+          }
+          if (!response.ok) {
+            throw new Error(
+              data.detail || `计算服务返回错误（${response.status}）`,
+            );
+          }
+
+          renderPreviewResult(data, { label, question });
+          recordLearningActivity("calculation");
+        } catch (error) {
+          setPreviewError(
+            error.name === "AbortError"
+              ? "等待时间过长，请稍后重试。"
+              : error.message || "计算服务暂时不可用",
+          );
+        } finally {
+          setRequestState(false);
+        }
+      }
+
+      function runInlinePlot(expressions, xMin, xMax) {
+        const curves = expressions
+          .map((value) => String(value).trim())
+          .filter(Boolean);
+        if (!curves.length) {
+          return;
+        }
+
+        previewContent.replaceChildren();
+        const grid = element("div", "preview-plot-grid");
+        curves.forEach((expression) => {
+          const figure = document.createElement("figure");
+          const image = document.createElement("img");
+          const params = new URLSearchParams({
+            expression,
+            variable: "x",
+            x_min: String(xMin),
+            x_max: String(xMax),
+            samples: "600",
+            width: "720",
+            height: "420",
+          });
+          image.src = `/demo/api/plot.svg?${params.toString()}`;
+          image.alt = `y = ${expression}`;
+          image.loading = "lazy";
+          figure.append(image);
+          grid.append(figure);
+        });
+        previewContent.append(grid);
+        recordLearningActivity("calculation");
+        previewBadge.textContent = "函数图像";
+        setPreviewCollapsed(false);
+      }
+
+      function setConversationPanelCollapsed(collapsed) {
+        const nextCollapsed = Boolean(collapsed);
+        conversationPanel.dataset.collapsed = String(nextCollapsed);
+        conversationPanelToggle.textContent = nextCollapsed ? "›" : "‹";
+        conversationPanelToggle.setAttribute(
+          "aria-label",
+          nextCollapsed ? "展开会话列表" : "收起会话列表",
+        );
+        conversationPanelToggle.setAttribute(
+          "title",
+          nextCollapsed ? "展开会话列表" : "收起会话列表",
+        );
       }
 
       function selectConversation(conversationId) {
@@ -3256,6 +7502,9 @@
           ? normalizeMessages(conversation.messages)
           : [welcomeMessage()];
         responseCache.clear();
+        window.clearTimeout(knowledgeDebounceId);
+        lastSubmittedKnowledgeText = latestUserQuestion();
+        renderQuestionKnowledge(lastSubmittedKnowledgeText);
         try {
           window.localStorage.setItem(
             ACTIVE_CONVERSATION_KEY,
@@ -3359,20 +7608,123 @@
         }
       });
 
-      newChatButton.addEventListener("click", startNewConversation);
-
-      document.querySelector(".tools-menu").addEventListener("click", (event) => {
-        const button = event.target.closest("[data-prompt]");
-        if (!button) {
-          return;
+      messageList.addEventListener("click", (event) => {
+        const bookmarkButton = event.target.closest(
+          '[data-message-action="toggle-wrongbook"]',
+        );
+        if (bookmarkButton) {
+          toggleWrongBook(bookmarkButton.dataset.messageId);
         }
-        if (sidebarMedia.matches) {
-          setSidebarCollapsed(true);
-        }
-        sendMessage(button.dataset.prompt);
       });
 
-      openSolverButton.addEventListener("click", openSolverDialog);
+      newChatButton.addEventListener("click", startNewConversation);
+
+      function readQuickInput(id) {
+        const input = document.getElementById(id);
+        return input ? input.value.trim() : "";
+      }
+
+      if (conversationPanelToggle) {
+        conversationPanelToggle.addEventListener("click", () => {
+          setConversationPanelCollapsed(
+            conversationPanel.dataset.collapsed !== "true",
+          );
+        });
+      }
+
+      if (previewToggle) {
+        previewToggle.addEventListener("click", () => {
+          setPreviewCollapsed(previewPanel.dataset.collapsed !== "true");
+        });
+      }
+
+      if (previewClear) {
+        previewClear.addEventListener("click", () => {
+          setPreviewEmpty();
+          setPreviewCollapsed(true);
+        });
+      }
+
+      document.querySelectorAll("[data-rail-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setToolboxTab(button.dataset.railTab);
+          setSidebarCollapsed(false);
+        });
+      });
+
+      if (toolbox) {
+        toolbox.addEventListener("click", (event) => {
+          const tabButton = event.target.closest("[data-toolbox-tab]");
+          if (tabButton) {
+            setToolboxTab(tabButton.dataset.toolboxTab);
+            return;
+          }
+
+          const wrongBookAction = event.target.closest(
+            "[data-wrongbook-action]",
+          );
+          if (wrongBookAction) {
+            const itemId = wrongBookAction.dataset.wrongBookId;
+            if (wrongBookAction.dataset.wrongbookAction === "practice") {
+              practiceWrongBookItem(itemId);
+            } else if (
+              wrongBookAction.dataset.wrongbookAction === "delete"
+            ) {
+              deleteWrongBookItem(itemId);
+            }
+            return;
+          }
+        });
+      }
+
+      if (wrongBookClear) {
+        wrongBookClear.addEventListener("click", clearWrongBook);
+      }
+
+      if (wrongBookExport) {
+        wrongBookExport.addEventListener("click", exportWrongBook);
+      }
+
+      if (learningProgressExport) {
+        learningProgressExport.addEventListener(
+          "click",
+          exportLearningProgress,
+        );
+      }
+
+      if (learningProgressBackup) {
+        learningProgressBackup.addEventListener(
+          "click",
+          exportLearningProgressBackup,
+        );
+      }
+
+      if (learningProgressMerge) {
+        learningProgressMerge.addEventListener("click", () => {
+          learningProgressImportMode = "merge";
+          learningProgressImportInput.value = "";
+          learningProgressImportInput.click();
+        });
+      }
+
+      if (learningProgressOverwrite) {
+        learningProgressOverwrite.addEventListener("click", () => {
+          learningProgressImportMode = "overwrite";
+          learningProgressImportInput.value = "";
+          learningProgressImportInput.click();
+        });
+      }
+
+      if (learningProgressImportInput) {
+        learningProgressImportInput.addEventListener("change", (event) => {
+          const file = event.target.files && event.target.files[0];
+          importLearningProgress(file, learningProgressImportMode);
+        });
+      }
+
+      if (openSolverButton) {
+        openSolverButton.addEventListener("click", openSolverDialog);
+      }
       closeSolverButton.addEventListener("click", closeSolverDialog);
       cancelSolverButton.addEventListener("click", closeSolverDialog);
       solverChapter.addEventListener("change", populateSolverTopics);
@@ -3477,10 +7829,14 @@
 
       chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        sendMessage(chatInput.value);
+        submitComposer();
       });
 
-      chatInput.addEventListener("input", resizeInput);
+      chatInput.addEventListener("input", () => {
+        resizeInput();
+        queueQuestionKnowledgeUpdate(chatInput.value);
+        syncComposerState();
+      });
       chatInput.addEventListener("keydown", (event) => {
         if (
           event.key === "Enter"
@@ -3493,10 +7849,49 @@
         }
       });
 
+      imageUploadButton.addEventListener("click", () => {
+        imageFileInput.click();
+      });
+
+      imageFileInput.addEventListener("change", () => {
+        addQuestionImages(imageFileInput.files);
+        imageFileInput.value = "";
+      });
+
+      composerImageList.addEventListener("click", (event) => {
+        const removeButton = event.target.closest(".composer-image-remove");
+        if (removeButton) {
+          removeQuestionImage(removeButton.dataset.imageId, { focus: true });
+        }
+      });
+
+      composerImageClear.addEventListener("click", () => {
+        clearQuestionImages({ focus: true });
+      });
+
+      chatInput.addEventListener("paste", (event) => {
+        const items = Array.from(
+          (event.clipboardData && event.clipboardData.items) || [],
+        );
+        const imageFiles = items
+          .filter((item) => String(item.type || "").startsWith("image/"))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+        if (!imageFiles.length) {
+          return;
+        }
+        event.preventDefault();
+        addQuestionImages(imageFiles);
+      });
+
       suggestions.addEventListener("click", (event) => {
         const button = event.target.closest(".suggestion");
         if (button) {
-          sendMessage(button.dataset.message);
+          chatInput.value = button.dataset.message || "";
+          resizeInput();
+          queueQuestionKnowledgeUpdate(chatInput.value);
+          syncComposerState();
+          chatForm.requestSubmit();
         }
       });
 
@@ -3508,6 +7903,9 @@
 
       clearButton.addEventListener("click", clearCurrentConversation);
 
+      wrongBook = loadWrongBook();
+      learningProgress = loadLearningProgress();
+      learningProgress.wrongBookSavedCount = wrongBook.length;
       conversations = loadConversations();
       try {
         activeConversationId =
@@ -3562,17 +7960,24 @@
       }
       setTheme(savedTheme);
       setSidebarWidth(savedSidebarWidth, false);
-      setSuggestionsCollapsed(false);
+      setSuggestionsCollapsed(compactComposerMedia.matches);
       setSidebarCollapsed(
         sidebarMedia.matches ? true : savedSidebarCollapsed,
         false,
       );
+      setPreviewCollapsed(true);
 
       populateSolverChapters();
+      setToolboxTab("wrongbook");
+      lastSubmittedKnowledgeText = latestUserQuestion();
+      renderQuestionKnowledge(lastSubmittedKnowledgeText);
+      renderWrongBook();
+      renderLearningProgress();
       saveMessages();
       renderSuggestions(DEFAULT_SUGGESTIONS);
       renderMessages();
       resizeInput();
+      syncComposerState();
       checkService();
     })();
   </script>

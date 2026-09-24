@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import re
 import time
@@ -28,15 +29,63 @@ from app.main import (
     solve_math,
     verify_derivative,
 )
-from deploy.demo_chat import DemoChatRequest, _normalize_text, build_chat_response
+from deploy.demo_chat import (
+    DemoChatRequest,
+    _is_confirmation,
+    _is_rejection,
+    _normalize_text,
+    _pending_ocr_question,
+    _solve_confirmed_question,
+    build_chat_response,
+)
+from deploy.demo_interval_solver import solve_interval_extrema
+from deploy.demo_coze_ocr import (
+    CozeConfigurationError,
+    CozeUpstreamError,
+    coze_ocr_configured,
+    coze_ocr_mode,
+    transcribe_question_image,
+)
+from deploy.demo_knowledge import (
+    DEFAULT_RESULT_LIMIT,
+    MAX_QUERY_CHARS,
+    MAX_RESULT_LIMIT,
+    search_knowledge,
+)
+from deploy.demo_session import (
+    AWAITING_OCR_CONFIRMATION,
+    NO_PENDING_QUESTION_MESSAGE,
+    OCR_FAILURE_MESSAGE,
+    demo_sessions,
+    is_valid_ocr_question,
+)
+from deploy.demo_vision import (
+    MAX_IMAGE_BYTES,
+    SUPPORTED_IMAGE_TYPES,
+    VisionConfigurationError,
+    VisionUpstreamError,
+    image_matches_type,
+    transcribe_question_image as transcribe_vision_question_image,
+    vision_ocr_configured,
+)
+from deploy.demo_windows_ocr import (
+    WindowsOcrError,
+    WindowsOcrUnavailable,
+    windows_ocr_available,
+    transcribe_question_image as transcribe_windows_question_image,
+)
 
 
 application = Flask(__name__)
+application.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_BYTES + 1024 * 1024
 
 _CHAT_CACHE_TTL_SECONDS = 300
 _CHAT_CACHE_MAX_PER_SESSION = 40
 _CHAT_CACHE_MAX_SESSIONS = 100
 _chat_response_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+_OCR_CACHE_TTL_SECONDS = 600
+_OCR_CACHE_MAX_ENTRIES = 128
+_ocr_response_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 def is_public_demo_request() -> bool:
@@ -45,6 +94,10 @@ def is_public_demo_request() -> bool:
 
 def is_public_health_request() -> bool:
     return request.path == "/health"
+
+
+def is_public_plot_request() -> bool:
+    return request.path == "/plot.svg"
 
 
 def should_rate_limit_request() -> bool:
@@ -61,6 +114,7 @@ def enforce_api_access():
         API_KEY
         and not is_public_demo_request()
         and not is_public_health_request()
+        and not is_public_plot_request()
         and request.headers.get("X-API-Key") != API_KEY
     ):
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -111,7 +165,10 @@ def service_index():
                 "/demo/api/integrate",
                 "/demo/api/limit",
                 "/demo/api/solve",
+                "/demo/api/knowledge",
                 "/demo/api/chat",
+                "/demo/api/ocr",
+                "/demo/api/session/reset",
                 "/verify",
                 "/verify-query",
                 "/integrate",
@@ -140,7 +197,56 @@ def demo_health():
         "page": "/demo",
         "service": "math-tool",
     }
+    vision_configured = vision_ocr_configured()
+    coze_configured = coze_ocr_configured()
+    payload["ocr"] = {
+        "provider": "vision" if vision_configured else "coze",
+        "configured": vision_configured or coze_configured,
+        "vision_configured": vision_configured,
+        "coze_configured": coze_configured,
+        "coze_mode": coze_ocr_mode(),
+        "fallback": "windows" if windows_ocr_available() else "",
+    }
     return jsonify(payload)
+
+
+@application.post("/demo/api/knowledge")
+def demo_knowledge():
+    payload = request.get_json(silent=False)
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid request payload")
+
+    query = payload.get("query", "")
+    if not isinstance(query, str):
+        raise HTTPException(status_code=400, detail="query must be a string")
+    query = query.strip()
+    if len(query) > MAX_QUERY_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"query must not exceed {MAX_QUERY_CHARS} characters",
+        )
+
+    raw_limit = payload.get("limit", DEFAULT_RESULT_LIMIT)
+    if isinstance(raw_limit, bool):
+        raise HTTPException(status_code=400, detail="limit must be an integer")
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="limit must be an integer",
+        ) from exc
+    limit = max(1, min(limit, MAX_RESULT_LIMIT))
+
+    results = search_knowledge(query, limit=limit)
+    return jsonify(
+        {
+            "query": query,
+            "count": len(results),
+            "engine": "local-markdown-v1",
+            "results": [result.to_dict() for result in results],
+        }
+    )
 
 
 @application.post("/demo/api/verify")
@@ -190,15 +296,378 @@ def demo_chat():
     payload = request.get_json(silent=False)
     model = DemoChatRequest.model_validate(payload)
     session_id = _demo_session_id()
-    normalized = _normalize_text(model.message)
+    raw_message = str(model.message).strip()
+    normalized = _normalize_text(raw_message)
+    session = demo_sessions.get(session_id)
+    carried_question = str(
+        model.pending_question or payload.get("pending_question") or ""
+    ).strip()
+    history_question = _pending_ocr_question(model.history)
+    session_question = session.pending_question
+    confirmation_question = next(
+        (
+            question
+            for question in (
+                (
+                    session_question
+                    if session.state == AWAITING_OCR_CONFIRMATION
+                    else ""
+                ),
+                carried_question,
+                history_question,
+            )
+            if is_valid_ocr_question(question)
+        ),
+        "",
+    )
+    application.logger.warning(
+        "Demo chat request: session=%s source=%s message=%r "
+        "carried=%d history=%d session_state=%s session_question=%d",
+        session_id,
+        model.source,
+        raw_message[:80],
+        len(carried_question),
+        len(history_question),
+        session.state,
+        len(session_question),
+    )
+
+    if model.source == "ocr" and raw_message != "确认":
+        pending_question = model.message
+        if not is_valid_ocr_question(pending_question):
+            pending_question = session.pending_question
+        if not is_valid_ocr_question(pending_question):
+            demo_sessions.mark_ocr_failure(session_id)
+            return jsonify(_ocr_failure_response())
+        demo_sessions.remember_ocr_question(session_id, pending_question)
+        return jsonify(_ocr_confirmation_response(pending_question))
+
+    is_confirmation = raw_message == "确认" or _is_confirmation(normalized)
+    if not is_confirmation and confirmation_question:
+        compact = re.sub(r"[\s,，。！!？?；;]", "", normalized)
+        is_confirmation = any(
+            marker in compact
+            for marker in ("确认", "正确", "无误", "继续", "开始")
+        )
+    is_rejection = _is_rejection(normalized)
     cache_key = (session_id, normalized)
-    cached = _cached_chat_response(cache_key)
-    if cached is not None:
-        return jsonify(cached)
+    use_cache = (
+        not is_confirmation
+        and not is_rejection
+        and session.state != AWAITING_OCR_CONFIRMATION
+    )
+    if use_cache:
+        cached = _cached_chat_response(cache_key)
+        if cached is not None:
+            return jsonify(cached)
+
+    if is_confirmation:
+        # The server-side session is the source of truth once OCR has been
+        # confirmed. A stale or wrapped pending_question from the browser must
+        # not overwrite the question that was actually recognized.
+        pending_question = confirmation_question
+        if not pending_question:
+            return jsonify(_no_pending_question_response())
+        demo_sessions.remember_ocr_question(session_id, pending_question)
+        pending_question = demo_sessions.begin_solving(session_id)
+        if not pending_question:
+            return jsonify(_no_pending_question_response())
+        try:
+            try:
+                response = (
+                    solve_interval_extrema(pending_question)
+                    or _solve_confirmed_question(pending_question, model.history)
+                )
+            except Exception:
+                application.logger.exception(
+                    "Confirmed OCR question failed: %s",
+                    pending_question,
+                )
+                response = _confirmed_question_error_response()
+            if (
+                response.get("intent") == "unknown"
+                and response.get("reply") == NO_PENDING_QUESTION_MESSAGE
+            ):
+                response["status"] = "needs_input"
+                response["intent"] = "ocr_text_incomplete"
+                response["reply"] = (
+                    "已经读取到待解题目，但识别出的公式或文字不完整，"
+                    "暂时无法可靠计算。请核对上方题干中的关键公式、符号和选项，"
+                    "直接修改后再次发送。"
+                )
+            response["history_used"] = pending_question
+            response["session_state"] = "solving"
+            return _json_response(response)
+        finally:
+            try:
+                demo_sessions.finish_solving(session_id)
+            except Exception:
+                application.logger.exception(
+                    "Failed to clear solving session: %s",
+                    session_id,
+                )
+                demo_sessions.reset(session_id)
+
+    if is_rejection:
+        demo_sessions.mark_ocr_failure(session_id)
+        return jsonify(_ocr_reupload_response())
+
+    if session.state == AWAITING_OCR_CONFIRMATION:
+        demo_sessions.mark_ocr_failure(session_id)
 
     response = build_chat_response(model.message, model.history)
-    _store_chat_response(cache_key, session_id, response)
+    if response.get("intent") == "ocr_confirm":
+        recognized_question = str(response.get("formula_text", "")).strip()
+        if is_valid_ocr_question(recognized_question):
+            demo_sessions.remember_ocr_question(
+                session_id,
+                recognized_question,
+            )
+            response["session_state"] = AWAITING_OCR_CONFIRMATION
+        return jsonify(response)
+    if use_cache:
+        _store_chat_response(cache_key, session_id, response)
     return jsonify(response)
+
+
+@application.post("/demo/api/ocr")
+def demo_ocr():
+    started_at = time.perf_counter()
+    session_id = _demo_session_id()
+    uploaded = request.files.get("image")
+    if uploaded is None:
+        raise HTTPException(status_code=400, detail="请选择要识别的题目图片。")
+
+    mime_type = (uploaded.mimetype or "").lower().split(";", 1)[0].strip()
+    if mime_type not in SUPPORTED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="仅支持 JPG、PNG、WebP 或 GIF 图片。",
+        )
+
+    image_data = uploaded.read(MAX_IMAGE_BYTES + 1)
+    if len(image_data) > MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="图片不能超过 6 MB，请压缩后重试。",
+        )
+    if not image_matches_type(image_data, mime_type):
+        raise HTTPException(status_code=400, detail="图片内容无法识别，请重新选择。")
+
+    cache_key = hashlib.sha256(
+        mime_type.encode("ascii", errors="ignore") + b"\0" + image_data
+    ).hexdigest()
+    cached = _cached_ocr_response(cache_key)
+    if cached is not None:
+        text = str(cached.get("text", "")).strip()
+        if not is_valid_ocr_question(text):
+            demo_sessions.mark_ocr_failure(session_id)
+            return jsonify(_ocr_failure_response()), 422
+        demo_sessions.remember_ocr_question(session_id, text)
+        return jsonify(
+            {
+                **cached,
+                "state": AWAITING_OCR_CONFIRMATION,
+                "requires_confirmation": True,
+                "cache_hit": True,
+                "elapsed_ms": _elapsed_milliseconds(started_at),
+            }
+        )
+
+    try:
+        text, provider, warning = _transcribe_demo_ocr(image_data, mime_type)
+    except HTTPException as exc:
+        demo_sessions.mark_ocr_failure(session_id)
+        if exc.status_code >= 500:
+            return jsonify({"detail": exc.detail}), exc.status_code
+        return jsonify(_ocr_failure_response()), 422
+    if "疑似" in text and not warning:
+        warning = "识别结果包含疑似符号，请核对后再发送。"
+    text = str(text or "").strip()
+    if not is_valid_ocr_question(text):
+        demo_sessions.mark_ocr_failure(session_id)
+        return jsonify(_ocr_failure_response()), 422
+
+    demo_sessions.remember_ocr_question(session_id, text)
+
+    payload = {
+        "text": text,
+        "provider": provider,
+        "warning": warning,
+    }
+    _store_ocr_response(cache_key, payload)
+    return jsonify(
+        {
+            **payload,
+            "state": AWAITING_OCR_CONFIRMATION,
+            "requires_confirmation": True,
+            "cache_hit": False,
+            "elapsed_ms": _elapsed_milliseconds(started_at),
+        }
+    )
+
+
+@application.post("/demo/api/session/reset")
+def demo_session_reset():
+    session_id = _demo_session_id()
+    demo_sessions.reset(session_id)
+    for cache_key in list(_chat_response_cache):
+        if cache_key[0] == session_id:
+            _chat_response_cache.pop(cache_key, None)
+    return jsonify({"status": "ok", "state": "waiting_image"})
+
+
+def _ocr_confirmation_response(question: str) -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "intent": "ocr_confirm",
+        "reply": (
+            f"题目已识别，请核对：{question}。"
+            "确认无误回复“确认”，我将开始计算。"
+        ),
+        "formula_latex": "",
+        "formula_text": question,
+        "calculation": None,
+        "suggestions": [],
+        "session_state": AWAITING_OCR_CONFIRMATION,
+    }
+
+
+def _ocr_failure_response() -> dict[str, Any]:
+    return {
+        "status": "error",
+        "intent": "ocr_error",
+        "reply": OCR_FAILURE_MESSAGE,
+        "detail": OCR_FAILURE_MESSAGE,
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": [],
+        "session_state": "waiting_image",
+    }
+
+
+def _no_pending_question_response() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "intent": "needs_input",
+        "reply": NO_PENDING_QUESTION_MESSAGE,
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": [],
+        "session_state": "waiting_image",
+    }
+
+
+def _ocr_reupload_response() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "intent": "ocr_reupload",
+        "reply": "题目识别不正确，请重新上传清晰、完整的题目图片。",
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": [],
+        "session_state": "waiting_image",
+    }
+
+
+def _confirmed_question_error_response() -> dict[str, Any]:
+    return {
+        "status": "error",
+        "intent": "calculation",
+        "reply": (
+            "这次题目计算失败，可能是识别出的公式不完整。"
+            "请重新上传清晰、完整的题目图片，或者直接输入题目。"
+        ),
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": [],
+        "session_state": "waiting_image",
+    }
+
+
+def _transcribe_demo_ocr(data: bytes, mime_type: str) -> tuple[str, str, str]:
+    errors: list[str] = []
+    configuration_error = ""
+    upstream_configured = vision_ocr_configured() or coze_ocr_configured()
+
+    if vision_ocr_configured():
+        try:
+            return (
+                transcribe_vision_question_image(data, mime_type),
+                "vision",
+                "",
+            )
+        except (VisionConfigurationError, VisionUpstreamError) as exc:
+            errors.append(str(exc))
+            application.logger.warning("Vision OCR failed: %s", exc, exc_info=True)
+
+    if coze_ocr_configured():
+        try:
+            return transcribe_question_image(data, mime_type), "coze", ""
+        except CozeConfigurationError as exc:
+            configuration_error = str(exc)
+            if vision_ocr_configured():
+                errors.append(configuration_error)
+        except CozeUpstreamError as exc:
+            errors.append(str(exc))
+
+    # Never hide an upstream outage behind low-quality local OCR. The local
+    # fallback can produce plausible-looking garbage that then gets confirmed
+    # and solved as the wrong question.
+    if upstream_configured:
+        detail = "；".join(dict.fromkeys(error for error in errors if error))
+        if not detail:
+            detail = "图片识别服务暂时不可用。"
+        raise HTTPException(status_code=502, detail=detail)
+
+    try:
+        return (
+            transcribe_windows_question_image(data, mime_type),
+            "windows",
+            "已使用本机离线 OCR，公式可能不完整，请核对后再发送。",
+        )
+    except WindowsOcrUnavailable as exc:
+        if not errors:
+            errors.append(configuration_error)
+    except WindowsOcrError as exc:
+        errors.append(f"本机离线识别也未成功：{exc}")
+
+    detail = "；".join(dict.fromkeys(error for error in errors if error))
+    if not detail:
+        detail = "图片识别服务未配置或暂时不可用。"
+    raise HTTPException(
+        status_code=502 if upstream_configured else 503,
+        detail=detail,
+    )
+
+
+def _cached_ocr_response(cache_key: str) -> dict[str, Any] | None:
+    cached = _ocr_response_cache.get(cache_key)
+    if cached is None:
+        return None
+    created_at, payload = cached
+    if time.time() - created_at > _OCR_CACHE_TTL_SECONDS:
+        _ocr_response_cache.pop(cache_key, None)
+        return None
+    return copy.deepcopy(payload)
+
+
+def _store_ocr_response(cache_key: str, payload: dict[str, Any]) -> None:
+    if len(_ocr_response_cache) >= _OCR_CACHE_MAX_ENTRIES:
+        oldest_key = min(
+            _ocr_response_cache,
+            key=lambda key: _ocr_response_cache[key][0],
+        )
+        _ocr_response_cache.pop(oldest_key, None)
+    _ocr_response_cache[cache_key] = (time.time(), copy.deepcopy(payload))
+
+
+def _elapsed_milliseconds(started_at: float) -> int:
+    return max(0, round((time.perf_counter() - started_at) * 1000))
 
 
 def _demo_session_id() -> str:
@@ -229,7 +698,8 @@ def _store_chat_response(
     response: dict[str, Any],
 ) -> None:
     if (
-        response.get("intent") in {"history", "unknown"}
+        response.get("intent")
+        in {"general", "help", "history", "unknown", "ocr_confirm", "ocr_error"}
         or response.get("history_used")
     ):
         return
@@ -391,4 +861,11 @@ def _svg_response(svg: str):
 def _json_response(value: Any):
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json")
-    return jsonify(value)
+    try:
+        return jsonify(value)
+    except (TypeError, ValueError):
+        application.logger.exception("Response JSON serialization failed")
+        return Response(
+            json.dumps(value, ensure_ascii=False, default=str),
+            mimetype="application/json",
+        )
