@@ -1353,9 +1353,7 @@
     }
 
     .topic-preset,
-    .symbol-button,
-    .workspace-tab,
-    .preview-action {
+    .symbol-button {
       min-height: 32px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1366,9 +1364,7 @@
     }
 
     .topic-preset:hover,
-    .symbol-button:hover,
-    .workspace-tab:hover,
-    .preview-action:hover {
+    .symbol-button:hover {
       border-color: #a9c5ec;
       background: var(--sidebar-hover);
     }
@@ -1425,142 +1421,6 @@
       flex-direction: column;
       overflow: hidden;
       background: #f6f8fa;
-    }
-
-    .preview-panel {
-      display: flex;
-      width: 100%;
-      min-width: 0;
-      flex: 0 0 230px;
-      min-height: 0;
-      flex-direction: column;
-      overflow: hidden;
-      border-top: 1px solid var(--line);
-      background: var(--surface);
-    }
-
-    .preview-panel[data-collapsed="true"] {
-      flex-basis: 48px;
-    }
-
-    .preview-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 46px;
-      padding: 7px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .preview-title-wrap {
-      display: flex;
-      min-width: 0;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .preview-title {
-      margin: 0;
-      color: var(--ink);
-      font-size: 0.82rem;
-      font-weight: 850;
-    }
-
-    .preview-badge {
-      padding: 1px 7px;
-      border-radius: 999px;
-      color: var(--blue-dark);
-      background: var(--soft-blue);
-      font-size: 0.62rem;
-      font-weight: 850;
-    }
-
-    .preview-actions {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .workspace-tab,
-    .preview-action {
-      min-height: 28px;
-      padding: 3px 8px;
-      border-color: transparent;
-      background: transparent;
-      font-size: 0.68rem;
-    }
-
-    .workspace-tab[data-active="true"] {
-      border-color: var(--line-strong);
-      background: var(--soft-blue);
-    }
-
-    .preview-content {
-      min-height: 0;
-      flex: 1 1 auto;
-      overflow: auto;
-      padding: 12px 14px 15px;
-    }
-
-    .preview-empty {
-      display: grid;
-      height: 100%;
-      min-height: 150px;
-      place-items: center;
-      color: var(--muted);
-      font-size: 0.76rem;
-      text-align: center;
-    }
-
-    .preview-result {
-      display: grid;
-      gap: 10px;
-    }
-
-    .preview-result-title {
-      color: var(--muted);
-      font-size: 0.69rem;
-      font-weight: 800;
-    }
-
-    .preview-formula {
-      padding: 13px 12px;
-      overflow-x: auto;
-      border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line));
-      border-radius: 10px;
-      color: var(--blue-ink);
-      background: color-mix(in srgb, var(--soft-blue) 58%, transparent);
-      font-family: "Cambria Math", "Times New Roman", serif;
-      font-size: 1.05rem;
-      text-align: center;
-    }
-
-    .preview-result-text {
-      margin: 0;
-      color: var(--ink);
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      font-size: 0.79rem;
-    }
-
-    .preview-plot-grid {
-      display: grid;
-      gap: 10px;
-    }
-
-    .preview-plot-grid figure {
-      margin: 0;
-      padding: 8px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: #fff;
-    }
-
-    .preview-plot-grid img {
-      display: block;
-      width: 100%;
-      height: auto;
     }
 
     .inline-solver {
@@ -1657,36 +1517,6 @@
       gap: 6px;
     }
 
-    .preview-result-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 0.68rem;
-    }
-
-    .preview-notes {
-      margin: 0;
-      padding: 8px 10px;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      color: var(--muted);
-      background: color-mix(in srgb, var(--soft-blue) 34%, transparent);
-      font-size: 0.72rem;
-    }
-
-    .preview-error {
-      padding: 10px;
-      border: 1px solid color-mix(in srgb, var(--red) 46%, var(--line));
-      border-radius: 8px;
-      color: var(--ink);
-      background: color-mix(in srgb, var(--red) 9%, transparent);
-      font-size: 0.76rem;
-    }
-
-    .preview-action[hidden],
-    .preview-output[hidden],
     .inline-solver[hidden] {
       display: none;
     }
@@ -1708,7 +1538,7 @@
     .composer-image-list {
       display: flex;
       min-width: 0;
-      max-height: 196px;
+      max-height: 292px;
       flex-wrap: wrap;
       gap: 8px;
       overflow-y: auto;
@@ -1720,7 +1550,7 @@
       min-width: 0;
       flex: 1 1 238px;
       grid-template-columns: 44px minmax(0, 1fr) 30px;
-      align-items: center;
+      align-items: start;
       gap: 9px;
       padding: 6px;
       border: 1px solid var(--line);
@@ -1773,17 +1603,104 @@
       line-height: 1.4;
     }
 
-    .composer-image-question-select {
-      width: 100%;
-      min-height: 30px;
+    .composer-image-question-picker {
+      display: grid;
+      min-width: 0;
       margin-top: 6px;
-      padding: 3px 6px;
+      padding: 0;
+      border: 0;
+      gap: 5px;
+    }
+
+    .composer-image-question-toolbar {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .composer-image-question-count {
+      min-width: 0;
+      margin-right: auto;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.67rem;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-image-question-command {
+      min-height: 26px;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--blue-ink);
+      background: var(--soft-blue);
+      font: inherit;
+      font-size: 0.67rem;
+      font-weight: 750;
+    }
+
+    .composer-image-question-command:hover:not(:disabled) {
+      border-color: var(--line-strong);
+      background: color-mix(in srgb, var(--soft-blue) 72%, var(--surface));
+    }
+
+    .composer-image-question-command:disabled {
+      color: var(--muted);
+      background: var(--surface);
+      cursor: default;
+      opacity: 0.58;
+    }
+
+    .composer-image-question-options {
+      display: grid;
+      min-width: 0;
+      max-height: 108px;
+      grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+      gap: 4px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .composer-image-question-option {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 6px;
       border: 1px solid var(--line);
       border-radius: 7px;
       color: var(--ink);
       background: var(--surface);
-      font: inherit;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .composer-image-question-option:hover {
+      border-color: var(--line-strong);
+    }
+
+    .composer-image-question-option:has(input:checked) {
+      border-color: color-mix(in srgb, var(--blue) 50%, var(--line));
+      background: color-mix(in srgb, var(--soft-blue) 76%, var(--surface));
+    }
+
+    .composer-image-question-option input {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      margin: 0;
+      accent-color: var(--blue);
+    }
+
+    .composer-image-question-option span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .composer-image-review {
@@ -2709,10 +2626,6 @@
         display: none;
       }
 
-      .preview-panel {
-        flex-basis: 210px;
-      }
-
       .toolbox-tab,
       .progress-action {
         min-height: 44px;
@@ -2857,23 +2770,6 @@
 
       .solver-actions {
         justify-content: flex-end;
-      }
-
-      .preview-panel {
-        flex-basis: 184px;
-      }
-
-      .preview-head {
-        padding-right: 9px;
-        padding-left: 9px;
-      }
-
-      .preview-content {
-        padding: 9px 10px 12px;
-      }
-
-      .workspace-tab {
-        display: none;
       }
 
       .send-button {
@@ -3183,39 +3079,6 @@
           aria-live="polite"
         ></main>
 
-        <section
-          class="preview-panel"
-          id="previewPanel"
-          data-collapsed="true"
-          aria-label="计算过程总览"
-        >
-          <div class="preview-head">
-            <div class="preview-title-wrap">
-              <h2 class="preview-title">计算过程总览</h2>
-              <span class="preview-badge" id="previewBadge">待计算</span>
-            </div>
-            <div class="preview-actions">
-              <button
-                class="workspace-tab"
-                id="previewToggle"
-                type="button"
-                aria-expanded="false"
-                title="展开计算过程总览"
-              >展开</button>
-              <button
-                class="preview-action"
-                id="previewClear"
-                type="button"
-                title="清空计算过程"
-              >清空</button>
-            </div>
-          </div>
-          <div class="preview-content" id="previewContent">
-            <div class="preview-empty" id="previewEmpty">
-              解题过程与结果会显示在这里
-            </div>
-          </div>
-        </section>
       </div>
 
       <footer class="composer-area" data-suggestions-collapsed="false">
@@ -4295,12 +4158,6 @@
       const conversationPanelToggle = document.getElementById(
         "conversationPanelToggle",
       );
-      const previewPanel = document.getElementById("previewPanel");
-      const previewContent = document.getElementById("previewContent");
-      const previewEmpty = document.getElementById("previewEmpty");
-      const previewBadge = document.getElementById("previewBadge");
-      const previewToggle = document.getElementById("previewToggle");
-      const previewClear = document.getElementById("previewClear");
       const questionKnowledge = document.getElementById("questionKnowledge");
       const questionKnowledgeList = document.getElementById(
         "questionKnowledgeList",
@@ -6153,6 +6010,16 @@
         if (unresolved) {
           return `识别到 ${unresolved} 张图片包含多题或需要确认，请先完成选择。`;
         }
+        const selectedQuestions = pendingQuestionImages.reduce(
+          (total, item) => total + recognizedQuestionTexts(item).length,
+          0,
+        );
+        if (selectedQuestions > 1) {
+          return `已选择 ${selectedQuestions} 道题，发送后将逐题计算。`;
+        }
+        if (selectedQuestions === 1) {
+          return "已选择 1 道题，可直接发送。";
+        }
         if (failed === total) {
           return "图片识别失败，仍可直接发送图片，或补充文字后发送。";
         }
@@ -6162,34 +6029,122 @@
         return `已识别 ${completed} 张图片，可直接发送。`;
       }
 
-      function usableRecognizedText(item) {
-        if (!item || item.state !== "success") {
-          return "";
-        }
-        if (Array.isArray(item.questionBlocks) && item.questionBlocks.length > 1) {
-          return String(item.selectedBlockText || "").trim();
-        }
-        if (item.reviewRequired && !item.reviewConfirmed) {
-          return "";
-        }
-        return String(item.text || "").trim();
+      function selectedBlockIndexes(item) {
+        const blocks = Array.isArray(item?.questionBlocks)
+          ? item.questionBlocks
+          : [];
+        const selected = Array.isArray(item?.selectedBlockIndexes)
+          ? item.selectedBlockIndexes
+          : [];
+        return [...new Set(
+          selected
+            .map((value) => Number(value))
+            .filter(
+              (value) =>
+                Number.isInteger(value)
+                && value >= 0
+                && value < blocks.length,
+            ),
+        )].sort((left, right) => left - right);
       }
 
-      function selectRecognizedQuestion(item, blockIndex) {
-        const block = item.questionBlocks?.[blockIndex];
-        if (!block) {
+      function selectedRecognizedBlocks(item) {
+        return selectedBlockIndexes(item)
+          .map((blockIndex) => item.questionBlocks?.[blockIndex])
+          .filter(Boolean);
+      }
+
+      function recognizedQuestionTexts(item) {
+        if (!item || item.state !== "success") {
+          return [];
+        }
+        if (Array.isArray(item.questionBlocks) && item.questionBlocks.length > 1) {
+          return selectedRecognizedBlocks(item)
+            .map((block) => String(block.text || "").trim())
+            .filter(Boolean);
+        }
+        if (item.reviewRequired && !item.reviewConfirmed) {
+          return [];
+        }
+        const text = String(item.text || "").trim();
+        return text ? [text] : [];
+      }
+
+      function usableRecognizedText(item) {
+        return recognizedQuestionTexts(item).join("\n\n");
+      }
+
+      function setRecognizedQuestionSelection(item, blockIndex, selected) {
+        const blocks = Array.isArray(item?.questionBlocks)
+          ? item.questionBlocks
+          : [];
+        if (
+          !Number.isInteger(blockIndex)
+          || blockIndex < 0
+          || blockIndex >= blocks.length
+        ) {
           return;
         }
-        removeInsertedText(item);
-        item.selectedBlockIndex = blockIndex;
-        item.selectedBlockText = String(block.text || "").trim();
-        item.insertedText = appendRecognizedText(item.selectedBlockText);
-        item.statusText = block.label
-          ? `已选择第 ${block.label} 题`
-          : `已选择第 ${blockIndex + 1} 题`;
-        lastRecognizedQuestion = item.selectedBlockText;
+        const next = new Set(selectedBlockIndexes(item));
+        if (selected) {
+          next.add(blockIndex);
+        } else {
+          next.delete(blockIndex);
+        }
+        item.selectedBlockIndexes = [...next].sort((left, right) => left - right);
+        const selectedBlocks = selectedRecognizedBlocks(item);
+        const selectedTexts = selectedBlocks
+          .map((block) => String(block.text || "").trim())
+          .filter(Boolean);
+        item.selectedBlockText = selectedTexts.join("\n\n");
+        item.statusText = selectedTexts.length
+          ? `已选择 ${selectedTexts.length} 道题，发送后逐题计算`
+          : "请选择需要计算的题目";
+        lastRecognizedQuestion =
+          selectedTexts.length === 1 ? selectedTexts[0] : "";
         composerImageNotice = "";
-        renderComposerImages();
+      }
+
+      function syncRecognizedQuestionPicker(item, picker) {
+        const selected = new Set(selectedBlockIndexes(item));
+        picker.inputs.forEach((input) => {
+          input.checked = selected.has(Number(input.value));
+        });
+        picker.count.textContent =
+          `已选 ${selected.size}/${item.questionBlocks.length} 道`;
+        picker.selectAll.disabled =
+          selected.size === item.questionBlocks.length;
+        picker.clear.disabled = selected.size === 0;
+        picker.status.textContent = item.statusText;
+        composerImageStatus.textContent = pendingImageSummary();
+        syncComposerState();
+      }
+
+      function toggleRecognizedQuestion(
+        item,
+        blockIndex,
+        selected,
+        picker,
+      ) {
+        setRecognizedQuestionSelection(item, blockIndex, selected);
+        syncRecognizedQuestionPicker(item, picker);
+      }
+
+      function setAllRecognizedQuestions(item, picker, selected) {
+        item.selectedBlockIndexes = selected
+          ? item.questionBlocks.map((block, blockIndex) => blockIndex)
+          : [];
+        const selectedTexts = selectedRecognizedBlocks(item)
+          .map((block) => String(block.text || "").trim())
+          .filter(Boolean);
+        item.selectedBlockText = selectedTexts.join("\n\n");
+        item.statusText = selectedTexts.length
+          ? `已选择 ${selectedTexts.length} 道题，发送后逐题计算`
+          : "请选择需要计算的题目";
+        lastRecognizedQuestion =
+          selectedTexts.length === 1 ? selectedTexts[0] : "";
+        composerImageNotice = "";
+        syncRecognizedQuestionPicker(item, picker);
       }
 
       function confirmRecognizedQuestion(item) {
@@ -6229,34 +6184,92 @@
           const copy = element("div", "composer-image-copy");
           const status = element("span", "", item.statusText);
           copy.append(
-            element("strong", "", item.name),
+            element("strong", "", `第 ${index + 1} 张图 · ${item.name}`),
             status,
           );
           if (Array.isArray(item.questionBlocks) && item.questionBlocks.length > 1) {
-            const select = element(
-              "select",
-              "composer-image-question-select",
+            card.classList.add("has-question-picker");
+            const picker = element(
+              "fieldset",
+              "composer-image-question-picker",
             );
-            select.setAttribute("aria-label", "选择需要计算的题目");
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = "请选择需要计算的题";
-            select.append(placeholder);
+            picker.append(element("legend", "sr-only", "选择需要计算的题目"));
+
+            const toolbar = element("div", "composer-image-question-toolbar");
+            const count = element("span", "composer-image-question-count");
+            const selectAllButton = element(
+              "button",
+              "composer-image-question-command",
+              "全选",
+            );
+            selectAllButton.type = "button";
+            selectAllButton.setAttribute("aria-label", "全选所有识别题目");
+            const clearButton = element(
+              "button",
+              "composer-image-question-command",
+              "取消选择",
+            );
+            clearButton.type = "button";
+            clearButton.setAttribute("aria-label", "取消选择所有识别题目");
+            toolbar.append(count, selectAllButton, clearButton);
+
+            const options = element(
+              "div",
+              "composer-image-question-options",
+            );
+            const selected = new Set(selectedBlockIndexes(item));
+            const inputs = [];
             item.questionBlocks.forEach((block, blockIndex) => {
-              const option = document.createElement("option");
-              option.value = String(blockIndex);
-              option.textContent = block.label
-                ? `第 ${block.label} 题`
-                : `第 ${blockIndex + 1} 题`;
-              select.append(option);
+              const option = element(
+                "label",
+                "composer-image-question-option",
+              );
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.value = String(blockIndex);
+              checkbox.checked = selected.has(blockIndex);
+              option.append(
+                checkbox,
+                element(
+                  "span",
+                  "",
+                  block.label ? `第 ${block.label} 题` : `第 ${blockIndex + 1} 题`,
+                ),
+              );
+              options.append(option);
+              inputs.push(checkbox);
             });
-            select.value = Number.isInteger(item.selectedBlockIndex)
-              ? String(item.selectedBlockIndex)
-              : "";
-            select.addEventListener("change", (event) => {
-              selectRecognizedQuestion(item, Number(event.target.value));
+
+            const pickerState = {
+              count,
+              inputs,
+              selectAll: selectAllButton,
+              clear: clearButton,
+              status,
+            };
+            count.textContent =
+              `已选 ${selected.size}/${item.questionBlocks.length} 道`;
+            selectAllButton.disabled =
+              selected.size === item.questionBlocks.length;
+            clearButton.disabled = selected.size === 0;
+            inputs.forEach((checkbox) => {
+              checkbox.addEventListener("change", (event) => {
+                toggleRecognizedQuestion(
+                  item,
+                  Number(event.target.value),
+                  event.target.checked,
+                  pickerState,
+                );
+              });
             });
-            copy.append(select);
+            selectAllButton.addEventListener("click", () => {
+              setAllRecognizedQuestions(item, pickerState, true);
+            });
+            clearButton.addEventListener("click", () => {
+              setAllRecognizedQuestions(item, pickerState, false);
+            });
+            picker.append(toolbar, options);
+            copy.append(picker);
           } else if (item.reviewRequired && !item.reviewConfirmed) {
             const reviewButton = element(
               "button",
@@ -6526,16 +6539,17 @@
           item.text = text;
           item.state = "success";
           item.questionBlocks = questionBlocks;
-          item.selectedBlockIndex = -1;
+          item.selectedBlockIndexes = [];
           item.selectedBlockText = "";
           item.reviewRequired = Boolean(data.review_required);
           item.reviewConfirmed = false;
           if (questionBlocks.length > 1) {
             item.insertedText = "";
             item.statusText =
-              `识别到 ${questionBlocks.length} 道题，请选择需要计算的一道题`;
+              `识别到 ${questionBlocks.length} 道独立题，请选择需要计算的题目`;
             composerImageNotice =
-              recognitionWarning || "请先选择题号，系统只计算选中的题。";
+              recognitionWarning
+              || "可多选或全选，发送后会按题逐次计算。";
           } else if (item.reviewRequired) {
             item.insertedText = "";
             item.statusText = "整图可能含多题，请确认当前识别题";
@@ -6608,7 +6622,7 @@
             text: "",
             insertedText: "",
             questionBlocks: [],
-            selectedBlockIndex: -1,
+            selectedBlockIndexes: [],
             selectedBlockText: "",
             reviewRequired: false,
             reviewConfirmed: false,
@@ -6694,31 +6708,44 @@
         );
       }
 
-      function composeQuestionText() {
-        const manualText = chatInput.value.trim();
-        const recognizedTexts = pendingQuestionImages
-          .map((item) => usableRecognizedText(item))
-          .filter(Boolean);
-        const parts = manualText ? [manualText] : [];
-        recognizedTexts.forEach((text) => {
-          if (!parts.some((part) => part.includes(text))) {
-            parts.push(text);
+      function composeQuestionRequests() {
+        const requests = [];
+        const addRequest = (text, source, confirmed, origin) => {
+          const normalized = String(text || "").trim();
+          if (!normalized) {
+            return;
+          }
+          const duplicate = requests.some(
+            (request) =>
+              request.text === normalized && request.origin === origin,
+          );
+          if (!duplicate) {
+            requests.push({
+              text: normalized,
+              source,
+              confirmed: Boolean(confirmed),
+              origin,
+            });
+          }
+        };
+
+        let manualText = chatInput.value.trim();
+        pendingQuestionImages.forEach((item) => {
+          const insertedText = String(item.insertedText || "").trim();
+          if (insertedText) {
+            manualText = manualText.replace(insertedText, "");
           }
         });
-        const combined = parts.join("\n\n").trim();
-        if (combined.length <= 600) {
-          return combined;
+        manualText = manualText.replace(/\n{3,}/g, "\n\n").trim();
+        if (manualText) {
+          addRequest(manualText, "text", false, "manual");
         }
-        composerImageNotice = "题目内容超过 600 字，发送时已截取前 600 字。";
-        renderComposerImages();
-        return combined.slice(0, 600).trim();
-      }
-
-      function hasMultipleNumberedQuestions(text) {
-        const numberedStarts = String(text || "").match(
-          /(?:^|\n)\s*(?:第\s*)?[（(]?(?:\d{1,2}|[一二三四五六七八九十]+)[）)、.．:：]\s*\S/g,
-        );
-        return Boolean(numberedStarts && numberedStarts.length >= 2);
+        pendingQuestionImages.forEach((item) => {
+          recognizedQuestionTexts(item).forEach((text) => {
+            addRequest(text, "ocr", true, `image:${item.id}`);
+          });
+        });
+        return requests;
       }
 
       function pendingImageAttachments() {
@@ -6772,7 +6799,7 @@
         }, 0);
       }
 
-      function submitComposer() {
+      async function submitComposer() {
         if (requestInFlight) {
           return;
         }
@@ -6792,31 +6819,27 @@
           renderComposerImages();
           return;
         }
-        const text = composeQuestionText();
-        if (hasMultipleNumberedQuestions(text)) {
+        const requests = composeQuestionRequests();
+        if (!requests.length) {
           composerImageNotice =
-            "识别到多道小题，请只保留当前需要计算的一道题后发送。";
+            "请选择至少一道需要计算的题目后发送。";
           renderComposerImages();
           return;
         }
         const attachments = pendingImageAttachments();
-        const recognizedImage = pendingQuestionImages.some(
-          (item) => Boolean(usableRecognizedText(item)),
-        );
-        if (!text && !recognizedImage) {
-          composerImageNotice =
-            "图片识别失败，请重新上传清晰图片或在输入框补充题目。";
-          renderComposerImages();
-          return;
-        }
         clearQuestionImages({ revokeUrls: false });
-        sendMessage(
-          text,
-          {
-            attachments,
-            source: recognizedImage ? "ocr" : "text",
-          },
-        );
+        for (let index = 0; index < requests.length; index += 1) {
+          const request = requests[index];
+          await sendMessage(
+            request.text,
+            {
+              attachments: index === 0 ? attachments : [],
+              source: request.source,
+              confirmedOcr: request.confirmed,
+              pendingQuestion: request.text,
+            },
+          );
+        }
       }
 
       function setRequestState(active) {
@@ -7159,6 +7182,11 @@
       async function sendMessage(rawMessage, options = {}) {
         const text = String(rawMessage || "").trim();
         const source = options.source === "ocr" ? "ocr" : "text";
+        const confirmedOcr = options.confirmedOcr === true;
+        const confirmedOcrQuestion = confirmedOcr
+          ? String(options.pendingQuestion || text).trim()
+          : "";
+        const requestText = confirmedOcr ? "\u786e\u8ba4" : text;
         const attachments = Array.isArray(options.attachments)
           ? options.attachments
             .slice(0, MAX_QUESTION_IMAGE_COUNT)
@@ -7174,7 +7202,6 @@
         if ((!text && !attachments.length) || requestInFlight) {
           return;
         }
-        const requestText = text;
         window.clearTimeout(knowledgeDebounceId);
         lastSubmittedKnowledgeText = text;
         renderQuestionKnowledge(text, { source: "submit" });
@@ -7225,7 +7252,7 @@
             /[\s,，。！!？?；;]/g,
             "",
           );
-          const isConfirmationRequest = [
+          const isConfirmationRequest = confirmedOcr || [
             "确认",
             "正确",
             "无误",
@@ -7241,9 +7268,13 @@
                   message.intent === "ocr_confirm" &&
                   message.formulaText,
               )?.formulaText || "";
-          const pendingOcrQuestion = isConfirmationRequest
-            ? (lastRecognizedQuestion || messagePendingQuestion)
-            : messagePendingQuestion;
+          const pendingOcrQuestion = confirmedOcr
+            ? confirmedOcrQuestion
+            : (
+              isConfirmationRequest
+                ? (lastRecognizedQuestion || messagePendingQuestion)
+                : messagePendingQuestion
+            );
           const cachedResponse = responseCache.get(text);
           if (
             cachedResponse
@@ -7466,181 +7497,6 @@
         });
       }
 
-      const PREVIEW_EMPTY_TEXT = "用左侧工具箱计算后，结果会显示在这里";
-
-      function setPreviewEmpty(text = PREVIEW_EMPTY_TEXT) {
-        previewContent.replaceChildren();
-        previewContent.append(element("div", "preview-empty", text));
-        previewBadge.textContent = "待计算";
-      }
-
-      function setPreviewLoading(label) {
-        previewContent.replaceChildren();
-        const wrap = element("div", "preview-result");
-        wrap.append(element("div", "preview-result-title", `${label}计算中…`));
-        previewContent.append(wrap);
-        previewBadge.textContent = "计算中";
-      }
-
-      function setPreviewError(message) {
-        previewContent.replaceChildren();
-        previewContent.append(element("div", "preview-error", message));
-        previewBadge.textContent = "出错";
-      }
-
-      function setPreviewCollapsed(collapsed) {
-        const nextCollapsed = Boolean(collapsed);
-        previewPanel.dataset.collapsed = String(nextCollapsed);
-        previewToggle.textContent = nextCollapsed ? "展开" : "收起";
-        previewToggle.setAttribute("aria-expanded", String(!nextCollapsed));
-        previewToggle.setAttribute(
-          "title",
-          nextCollapsed ? "展开计算过程总览" : "收起计算过程总览",
-        );
-      }
-
-      function renderPreviewResult(data, options = {}) {
-        const label = options.label || data.method || "计算结果";
-        const latex = String(options.latex ?? data.latex ?? "");
-        const text = String(options.text ?? data.result ?? "");
-        const notes = options.notes ?? data.notes;
-        const question = options.question || "";
-
-        previewContent.replaceChildren();
-        const wrap = element("div", "preview-result");
-        wrap.append(element("div", "preview-result-title", label));
-
-        if (latex || text) {
-          const formula = element("div", "preview-formula");
-          let rendered = false;
-          if (latex && window.katex) {
-            try {
-              window.katex.render(latex, formula, {
-                displayMode: true,
-                throwOnError: true,
-                strict: false,
-                trust: false,
-              });
-              rendered = true;
-            } catch (error) {
-              rendered = false;
-            }
-          }
-          if (!rendered) {
-            formula.textContent = text || latex;
-          }
-          wrap.append(formula);
-        }
-
-        if (latex && text) {
-          wrap.append(element("p", "preview-result-text", text));
-        }
-
-        if (Array.isArray(notes) && notes.length) {
-          wrap.append(
-            element("p", "preview-notes", `提示：${notes.join("；")}`),
-          );
-        }
-
-        const meta = element("div", "preview-result-meta");
-        meta.append(element("span", "", currentTime()));
-        if (question) {
-          const askButton = element("button", "preview-action", "让知微讲解");
-          askButton.type = "button";
-          askButton.addEventListener("click", () => {
-            sendMessage(question);
-          });
-          meta.append(askButton);
-        }
-        wrap.append(meta);
-
-        previewContent.append(wrap);
-        previewBadge.textContent = options.badge || "已完成";
-        setPreviewCollapsed(false);
-      }
-
-      async function runInlineSolve({ chapter, topic, inputs, label, question }) {
-        if (requestInFlight) {
-          setPreviewError("正在处理上一题，请稍候再试。");
-          return;
-        }
-
-        setPreviewLoading(label);
-        setRequestState(true);
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(
-          () => controller.abort(),
-          REQUEST_TIMEOUT_MS,
-        );
-        try {
-          const response = await fetch("/demo/api/solve", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chapter, topic, inputs }),
-            signal: controller.signal,
-          }).finally(() => window.clearTimeout(timeoutId));
-
-          let data;
-          try {
-            data = await response.json();
-          } catch (error) {
-            throw new Error("计算服务返回了无法识别的内容");
-          }
-          if (!response.ok) {
-            throw new Error(
-              data.detail || `计算服务返回错误（${response.status}）`,
-            );
-          }
-
-          renderPreviewResult(data, { label, question });
-          recordLearningActivity("calculation");
-        } catch (error) {
-          setPreviewError(
-            error.name === "AbortError"
-              ? "等待时间过长，请稍后重试。"
-              : error.message || "计算服务暂时不可用",
-          );
-        } finally {
-          setRequestState(false);
-        }
-      }
-
-      function runInlinePlot(expressions, xMin, xMax) {
-        const curves = expressions
-          .map((value) => String(value).trim())
-          .filter(Boolean);
-        if (!curves.length) {
-          return;
-        }
-
-        previewContent.replaceChildren();
-        const grid = element("div", "preview-plot-grid");
-        curves.forEach((expression) => {
-          const figure = document.createElement("figure");
-          const image = document.createElement("img");
-          const params = new URLSearchParams({
-            expression,
-            variable: "x",
-            x_min: String(xMin),
-            x_max: String(xMax),
-            samples: "600",
-            width: "720",
-            height: "420",
-          });
-          image.src = `/demo/api/plot.svg?${params.toString()}`;
-          image.alt = `y = ${expression}`;
-          image.loading = "lazy";
-          figure.append(image);
-          grid.append(figure);
-        });
-        previewContent.append(grid);
-        recordLearningActivity("calculation");
-        previewBadge.textContent = "函数图像";
-        setPreviewCollapsed(false);
-      }
-
       function setConversationPanelCollapsed(collapsed) {
         const nextCollapsed = Boolean(collapsed);
         conversationPanel.dataset.collapsed = String(nextCollapsed);
@@ -7797,19 +7653,6 @@
           setConversationPanelCollapsed(
             conversationPanel.dataset.collapsed !== "true",
           );
-        });
-      }
-
-      if (previewToggle) {
-        previewToggle.addEventListener("click", () => {
-          setPreviewCollapsed(previewPanel.dataset.collapsed !== "true");
-        });
-      }
-
-      if (previewClear) {
-        previewClear.addEventListener("click", () => {
-          setPreviewEmpty();
-          setPreviewCollapsed(true);
         });
       }
 
@@ -8133,8 +7976,6 @@
         sidebarMedia.matches ? true : savedSidebarCollapsed,
         false,
       );
-      setPreviewCollapsed(true);
-
       populateSolverChapters();
       setToolboxTab("wrongbook");
       lastSubmittedKnowledgeText = latestUserQuestion();
