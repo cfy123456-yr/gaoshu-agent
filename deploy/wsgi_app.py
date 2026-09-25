@@ -52,6 +52,11 @@ from deploy.demo_knowledge import (
     MAX_RESULT_LIMIT,
     search_knowledge,
 )
+from deploy.demo_question_blocks import (
+    extract_question_blocks,
+    extract_question_blocks_from_payload,
+    image_layout_hint,
+)
 from deploy.demo_session import (
     AWAITING_OCR_CONFIRMATION,
     NO_PENDING_QUESTION_MESSAGE,
@@ -64,6 +69,7 @@ from deploy.demo_vision import (
     SUPPORTED_IMAGE_TYPES,
     VisionConfigurationError,
     VisionUpstreamError,
+    audit_question_count as audit_vision_question_count,
     image_matches_type,
     transcribe_question_image as transcribe_vision_question_image,
     vision_ocr_configured,
@@ -460,15 +466,16 @@ def demo_ocr():
     cached = _cached_ocr_response(cache_key)
     if cached is not None:
         text = str(cached.get("text", "")).strip()
-        if not is_valid_ocr_question(text):
+        payload = _cached_ocr_payload(cached, text)
+        if not _ocr_payload_has_usable_text(payload):
             demo_sessions.mark_ocr_failure(session_id)
             return jsonify(_ocr_failure_response()), 422
-        demo_sessions.remember_ocr_question(session_id, text)
+        _remember_or_clear_ocr_question(session_id, payload)
         return jsonify(
             {
-                **cached,
-                "state": AWAITING_OCR_CONFIRMATION,
-                "requires_confirmation": True,
+                **payload,
+                "state": _ocr_response_state(payload),
+                "requires_confirmation": not payload["selection_required"],
                 "cache_hit": True,
                 "elapsed_ms": _elapsed_milliseconds(started_at),
             }
@@ -484,23 +491,18 @@ def demo_ocr():
     if "疑似" in text and not warning:
         warning = "识别结果包含疑似符号，请核对后再发送。"
     text = str(text or "").strip()
-    if not is_valid_ocr_question(text):
+    payload = _build_ocr_payload(text, provider, warning, image_data, mime_type)
+    if not _ocr_payload_has_usable_text(payload):
         demo_sessions.mark_ocr_failure(session_id)
         return jsonify(_ocr_failure_response()), 422
 
-    demo_sessions.remember_ocr_question(session_id, text)
-
-    payload = {
-        "text": text,
-        "provider": provider,
-        "warning": warning,
-    }
+    _remember_or_clear_ocr_question(session_id, payload)
     _store_ocr_response(cache_key, payload)
     return jsonify(
         {
             **payload,
-            "state": AWAITING_OCR_CONFIRMATION,
-            "requires_confirmation": True,
+            "state": _ocr_response_state(payload),
+            "requires_confirmation": not payload["selection_required"],
             "cache_hit": False,
             "elapsed_ms": _elapsed_milliseconds(started_at),
         }
@@ -549,7 +551,7 @@ def _ocr_failure_response() -> dict[str, Any]:
 
 def _no_pending_question_response() -> dict[str, Any]:
     return {
-        "status": "ok",
+        "status": "needs_input",
         "intent": "needs_input",
         "reply": NO_PENDING_QUESTION_MESSAGE,
         "formula_latex": "",
@@ -587,6 +589,126 @@ def _confirmed_question_error_response() -> dict[str, Any]:
         "suggestions": [],
         "session_state": "waiting_image",
     }
+
+
+def _build_ocr_payload(
+    text: str,
+    provider: str,
+    warning: str,
+    image_data: bytes,
+    mime_type: str,
+) -> dict[str, Any]:
+    blocks = extract_question_blocks(text)
+    layout = image_layout_hint(image_data, mime_type)
+    audited_count: int | None = None
+    if (
+        provider == "vision"
+        and len(blocks) < 2
+        and layout["suspected_multi"]
+    ):
+        try:
+            audited_count = audit_vision_question_count(image_data, mime_type)
+        except (VisionConfigurationError, VisionUpstreamError) as exc:
+            application.logger.warning(
+                "Vision question-count audit failed: %s",
+                exc,
+                exc_info=True,
+            )
+
+    multiple_questions = len(blocks) >= 2 or bool(
+        audited_count is not None and audited_count > 1
+    )
+    review_required = False
+    if len(blocks) >= 2:
+        warning = _merge_ocr_warning(
+            warning,
+            "识别到多道独立题目，请先选择需要计算的一道题。",
+        )
+    elif audited_count is not None and audited_count > 1:
+        review_required = True
+        warning = _merge_ocr_warning(
+            warning,
+            "图片疑似包含多道题，但本次只完整识别出一题。"
+            "请裁剪当前小题后重新识别，或确认当前识别结果。",
+        )
+    elif layout["suspected_multi"]:
+        review_required = True
+        warning = _merge_ocr_warning(
+            warning,
+            "图片为长图，可能包含多道题。"
+            "请确认当前识别结果，或裁剪需要计算的小题后重新识别。",
+        )
+
+    selection_required = multiple_questions or review_required
+    return {
+        "text": text,
+        "provider": provider,
+        "warning": warning,
+        "question_blocks": blocks,
+        "multiple_questions": multiple_questions,
+        "selection_required": selection_required,
+        "review_required": review_required,
+        "layout_suspected_multi": bool(layout["suspected_multi"]),
+        "audited_question_count": audited_count,
+    }
+
+
+def _cached_ocr_payload(cached: dict[str, Any], text: str) -> dict[str, Any]:
+    blocks = extract_question_blocks_from_payload(cached.get("question_blocks"))
+    if not blocks:
+        blocks = extract_question_blocks(text)
+    multiple_questions = bool(
+        cached.get("multiple_questions") or len(blocks) >= 2
+    )
+    selection_required = bool(
+        cached.get("selection_required") or multiple_questions
+    )
+    review_required = bool(cached.get("review_required"))
+    return {
+        "text": text,
+        "provider": str(cached.get("provider") or ""),
+        "warning": str(cached.get("warning") or ""),
+        "question_blocks": blocks,
+        "multiple_questions": multiple_questions,
+        "selection_required": selection_required,
+        "review_required": review_required,
+        "layout_suspected_multi": bool(cached.get("layout_suspected_multi")),
+        "audited_question_count": cached.get("audited_question_count"),
+    }
+
+
+def _ocr_payload_has_usable_text(payload: dict[str, Any]) -> bool:
+    blocks = payload.get("question_blocks")
+    if isinstance(blocks, list) and blocks:
+        return any(
+            isinstance(block, dict)
+            and is_valid_ocr_question(str(block.get("text") or ""))
+            for block in blocks
+        )
+    return is_valid_ocr_question(str(payload.get("text") or ""))
+
+
+def _remember_or_clear_ocr_question(
+    session_id: str,
+    payload: dict[str, Any],
+) -> None:
+    if payload.get("selection_required") or payload.get("review_required"):
+        demo_sessions.mark_ocr_failure(session_id)
+        return
+    demo_sessions.remember_ocr_question(session_id, str(payload["text"]))
+
+
+def _ocr_response_state(payload: dict[str, Any]) -> str:
+    if payload.get("review_required"):
+        return "awaiting_ocr_review"
+    if payload.get("selection_required"):
+        return "awaiting_question_selection"
+    return AWAITING_OCR_CONFIRMATION
+
+
+def _merge_ocr_warning(current: str, addition: str) -> str:
+    parts = [str(current or "").strip(), str(addition or "").strip()]
+    return " ".join(part for part in parts if part)
 
 
 def _transcribe_demo_ocr(data: bytes, mime_type: str) -> tuple[str, str, str]:

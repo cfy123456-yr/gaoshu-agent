@@ -1,6 +1,7 @@
 import io
 import itertools
 import json
+import struct
 import unittest
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ from deploy import (
     demo_chat,
     demo_coze_ocr,
     demo_math_text,
+    demo_question_blocks,
     demo_session,
     demo_vision,
     demo_windows_ocr,
@@ -163,6 +165,9 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('fetch("/demo/api/ocr"', html)
         self.assertIn("function renderQuestionKnowledge(", html)
         self.assertNotIn("function insertIntoChatInput(", html)
+        self.assertIn("composer-image-question-select", html)
+        self.assertIn("function selectRecognizedQuestion(", html)
+        self.assertIn("按当前识别题继续", html)
         self.assertIn("function setConversationPanelCollapsed(", html)
         self.assertIn("function setPreviewCollapsed(", html)
         self.assertIn("计算过程总览", html)
@@ -197,6 +202,19 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("function submitComposer()", html)
         self.assertIn("function syncComposerState()", html)
         self.assertIn("function flushPendingComposerSubmission()", html)
+        self.assertIn("function hasMultipleNumberedQuestions(text)", html)
+        self.assertIn(
+            "识别到多道小题，请只保留当前需要计算的一道题后发送。",
+            html,
+        )
+        self.assertIn(
+            "!pendingQuestionImages.length && !hasNotice",
+            html,
+        )
+        self.assertIn(
+            "composerImageStatus.textContent = composerImageNotice;",
+            html,
+        )
         self.assertIn("pendingComposerSubmission = true", html)
         self.assertIn("hasPendingImage", html)
         self.assertIn("hasRecognizedImage", html)
@@ -613,6 +631,101 @@ class DemoPageTest(unittest.TestCase):
             response.get_json()["text"],
         )
 
+    def test_demo_ocr_splits_multiple_questions_and_requires_selection(self):
+        session_id = "test-multi-question-selection"
+        demo_session.demo_sessions.reset(session_id)
+        text = (
+            "1. solve y' + y = 0\n"
+            "2. solve y' + 2y = x\n"
+            "3. compute lim x->0 sin(x)/x\n"
+            "4. compute z = x^2 + y^2"
+        )
+        with (
+            patch.object(wsgi_app, "coze_ocr_configured", return_value=True),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=False),
+            patch.object(
+                wsgi_app,
+                "transcribe_question_image",
+                return_value=text,
+            ),
+        ):
+            response = self.client.post(
+                "/demo/api/ocr",
+                data={
+                    "image": (
+                        io.BytesIO(b"\x89PNG\r\n\x1a\nquestion"),
+                        "questions.png",
+                    )
+                },
+                content_type="multipart/form-data",
+                headers={"X-Demo-Session": session_id},
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual(4, len(payload["question_blocks"]))
+        self.assertTrue(payload["multiple_questions"])
+        self.assertTrue(payload["selection_required"])
+        self.assertFalse(payload["review_required"])
+        self.assertFalse(payload["requires_confirmation"])
+        self.assertEqual("awaiting_question_selection", payload["state"])
+        session = demo_session.demo_sessions.get(session_id)
+        self.assertEqual("waiting_image", session.state)
+        self.assertEqual("", session.pending_question)
+
+    def test_demo_ocr_audits_tall_image_when_only_one_question_is_returned(self):
+        session_id = "test-tall-page-audit"
+        demo_session.demo_sessions.reset(session_id)
+        image_data = (
+            b"\x89PNG\r\n\x1a\n"
+            b"\x00\x00\x00\rIHDR"
+            + struct.pack(">II", 1080, 2400)
+        )
+        with (
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_image",
+                return_value="4. compute the total differential of z=x^2+y^2",
+            ),
+            patch.object(
+                wsgi_app,
+                "audit_vision_question_count",
+                return_value=4,
+            ) as audit,
+        ):
+            response = self.client.post(
+                "/demo/api/ocr",
+                data={"image": (io.BytesIO(image_data), "page.png")},
+                content_type="multipart/form-data",
+                headers={"X-Demo-Session": session_id},
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual(4, payload["audited_question_count"])
+        self.assertTrue(payload["multiple_questions"])
+        self.assertTrue(payload["selection_required"])
+        self.assertTrue(payload["review_required"])
+        self.assertEqual("awaiting_ocr_review", payload["state"])
+        audit.assert_called_once()
+        session = demo_session.demo_sessions.get(session_id)
+        self.assertEqual("waiting_image", session.state)
+        self.assertEqual("", session.pending_question)
+
+    def test_question_block_detector_keeps_parenthesized_subparts_together(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1. solve y' + y = 0\n"
+            "2. solve y'' + y = 0\n"
+            "(1) find the general solution\n"
+            "(2) find y(0)=1"
+        )
+
+        self.assertEqual(2, len(blocks))
+        self.assertEqual("1", blocks[0]["label"])
+        self.assertEqual("2", blocks[1]["label"])
+        self.assertIn("(2) find y(0)=1", blocks[1]["text"])
+
     def test_demo_ocr_uses_vision_and_caches_repeated_image(self):
         image_data = b"\x89PNG\r\n\x1a\nquestion"
         with (
@@ -763,6 +876,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("轻微模糊", content[0]["text"])
         self.assertIn("疑似", content[0]["text"])
         self.assertIn("0 与字母 O/o", content[0]["text"])
+        self.assertIn("按题号逐题分行", content[0]["text"])
+        self.assertIn("不得合并", content[0]["text"])
 
     def test_coze_ocr_workflow_runs_upload_and_workflow_without_bot_chat(self):
         class FakeResponse:
@@ -987,6 +1102,9 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual(12.5, vision_urlopen.call_args.kwargs["timeout"])
         payload = json.loads(request.data)
         self.assertEqual("vision-model", payload["model"])
+        prompt = payload["messages"][0]["content"][0]["text"]
+        self.assertIn("逐题", prompt)
+        self.assertIn("不得合并", prompt)
         self.assertIn("data:image/png;base64,", payload["messages"][0]["content"][1]["image_url"]["url"])
         prompt = payload["messages"][0]["content"][0]["text"]
         self.assertIn("数字 0 与字母 O/o", prompt)
@@ -1262,6 +1380,64 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("solve", payload["intent"])
         self.assertIn("C1*exp(x)", payload["calculation"]["result"])
 
+    def test_demo_chat_cleans_ocr_differential_equation_question(self):
+        response = self.chat(
+            "微分方程 dy/dx + y = e^(-x) cos x 的通解为____。"
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertIn(
+            "(C1 + sin(x))*exp(-x)",
+            payload["calculation"]["result"],
+        )
+
+    def test_demo_chat_normalizes_ocr_differential_equation_variants(self):
+        cases = (
+            (
+                "微分方程 y′ + y = e^{-x} cos2x 的通解",
+                "sin(2*x)/2",
+            ),
+            (
+                "微分方程 y′ + y = e^(-x) sin 2x 的通解",
+                "cos(2*x)/2",
+            ),
+            (
+                "求解微分方程 (dy)/(dx) + 2y = e^(-x)",
+                "C1*exp(-x)",
+            ),
+            (
+                "微分方程 y″ + 4y = sin2x 的通解",
+                "sin(2*x)",
+            ),
+            (
+                "微分方程 xy′ + y = x² 的通解",
+                "C1 + x**3/3",
+            ),
+            (
+                "d/dx y + y = cos x",
+                "sin(x)/2",
+            ),
+            (
+                "微分方程 y'(t)+y(t)=t 的通解",
+                "C1*exp(-t)",
+            ),
+            (
+                r"微分方程 y^{\prime}+y=e^{-x}\cos x 的通解",
+                "(C1 + sin(x))*exp(-x)",
+            ),
+        )
+
+        for message, expected in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("solve", payload["intent"])
+                self.assertIn(expected, payload["calculation"]["result"])
+
     def test_demo_chat_solves_parametric_derivative(self):
         response = self.chat("参数方程 x=t^2, y=t^3 求 dy/dx")
 
@@ -1365,6 +1541,20 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("integrate", payload["intent"])
         self.assertEqual("1/3", payload["calculation"]["integral"])
         self.assertIn(r"\int_{0}^{1}", payload["formula_latex"])
+
+    def test_demo_chat_solves_interval_extrema(self):
+        response = self.client.post(
+            "/demo/api/chat",
+            json={"message": "求函数 f(x)=x^2-4x+3 在 [0,5] 上的最大值"},
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("最大值", payload["calculation"]["kind"])
+        self.assertEqual("[0, 5]", payload["calculation"]["interval"])
+        self.assertEqual("2", payload["calculation"]["critical_points"][0])
+        self.assertEqual("8", payload["calculation"]["result"])
 
     def test_demo_chat_calculates_limit(self):
         response = self.client.post(
@@ -1488,7 +1678,7 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("history,", html)
         self.assertIn("source,", html)
         self.assertIn(
-            '(item) => item.state === "success" && item.text,',
+            'item) => item.state === "success" && !usableRecognizedText(item),',
             html,
         )
         self.assertIn(

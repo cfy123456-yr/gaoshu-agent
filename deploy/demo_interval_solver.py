@@ -70,7 +70,7 @@ def solve_interval_extrema(question: str) -> dict[str, Any] | None:
         r"(?:[fgh]\((?P<variable>[A-Za-z])\)|y)="
         r"(?P<expression>[^,;\uFF0C\uFF1B\u3002]*?)"
         r"[,;\uFF0C\uFF1B\u3002]?"
-        r"(?=\u5728\u533a\u95f4|\u533a\u95f4|\u5219|\u6c42|$)",
+        r"(?=\u5728|\u533a\u95f4|\u5219|\u6c42|$)",
         text,
     )
     if function_match is None:

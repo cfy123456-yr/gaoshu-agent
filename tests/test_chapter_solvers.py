@@ -244,6 +244,88 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertIn("C1*exp(x)", payload["result"])
 
+    def test_differential_equation_notation_and_families(self):
+        cases = (
+            ("y'(x)+y(x)=1", "x", "C1*exp(-x)+1"),
+            ("y'+2y=e^x", "x", "C1*exp(-2*x)+exp(x)/3"),
+            (
+                "y''+4y=sin2x",
+                "x",
+                "C2*sin(2*x)+(C1-x/4)*cos(2*x)",
+            ),
+            (
+                "y'' - 3y' + 2y = 0",
+                "x",
+                "C1*exp(x)+C2*exp(2*x)",
+            ),
+            (
+                "y''' - 2y'' + y' = 0",
+                "x",
+                "C1+(C2+C3*x)*exp(x)",
+            ),
+            ("xy' + y = x^2", "x", "C1/x+x^2/3"),
+            ("ay' + y = 0", "x", "C1*exp(-x/a)"),
+            (
+                "(dy)/(dx)+2y=e^(-x)",
+                "x",
+                "(C1*exp(-x)+1)*exp(-x)",
+            ),
+            (
+                "d/dx y+y=cos x",
+                "x",
+                "C1*exp(-x)+sin(x)/2+cos(x)/2",
+            ),
+            (
+                r"y^{\prime}+y=e^{-x}\cos x",
+                "x",
+                "(C1+sin(x))*exp(-x)",
+            ),
+            ("y″+y=0", "x", "C1*sin(x)+C2*cos(x)"),
+            ("d^2y/dx^2+y=0", "x", "C1*sin(x)+C2*cos(x)"),
+            ("d2y/dx2+y=0", "x", "C1*sin(x)+C2*cos(x)"),
+            ("d²y/dx²+y=0", "x", "C1*sin(x)+C2*cos(x)"),
+            ("y'=y^2", "x", "-1/(C1+x)"),
+            ("y'=x²", "x", "C1+x^3/3"),
+            ("y'=sin²x", "x", "C1+x/2-sin(2*x)/4"),
+            ("y'+y=2sinx", "x", "C1*exp(-x)+sin(x)-cos(x)"),
+            (
+                "y'+2y=3sin2x",
+                "x",
+                "C1*exp(-2*x)+3*sin(2*x)/4-3*cos(2*x)/4",
+            ),
+            (
+                "y'+y=xsinx",
+                "x",
+                "C1*exp(-x)+x*sin(x)/2-x*cos(x)/2+cos(x)/2",
+            ),
+            (
+                r"\dfrac{dy}{dx}+y=e^{-x}\cos x",
+                "x",
+                "(C1+sin(x))*exp(-x)",
+            ),
+            (
+                r"\dfrac{d^2 y}{d x^2}+y=0",
+                "x",
+                "C1*sin(x)+C2*cos(x)",
+            ),
+            ("y'(t)+y(t)=t", "t", "C1*exp(-t)+t-1"),
+        )
+
+        for equation, variable, expected in cases:
+            with self.subTest(equation=equation, variable=variable):
+                payload = self.solve(
+                    "differential_equations",
+                    "dsolve",
+                    {
+                        "equation": equation,
+                        "variable": variable,
+                        "function": "y",
+                    },
+                    candidate=expected,
+                )
+
+                self.assertIs(True, payload["is_correct"])
+
     def test_gradient(self):
         payload = self.solve(
             "multivariable_calculus",

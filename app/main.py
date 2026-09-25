@@ -260,6 +260,7 @@ SAFE_LOCAL_DICT = {
     "E": sympy.E,
     "oo": sympy.oo,
     "Symbol": sympy.Symbol,
+    "Number": sympy.Number,
     "Integer": sympy.Integer,
     "Float": sympy.Float,
     "Rational": sympy.Rational,
@@ -295,6 +296,17 @@ def validate_expression_text(value: str, field_name: str = "expression") -> str:
 
 def parse_math_expression(value: str):
     normalized = validate_expression_text(value)
+    local_dict = dict(SAFE_LOCAL_DICT)
+
+    # SymPy's implicit multiplication splits C1 into C*1 unless the exact
+    # integration-constant token is known to the parser.
+    def preserve_integration_constant(match: re.Match[str]) -> str:
+        constant_name = match.group(0)
+        placeholder = f"Cmathconst{constant_name[1:]}"
+        local_dict[placeholder] = sympy.Symbol(constant_name)
+        return placeholder
+
+    normalized = re.sub(r"\bC\d+\b", preserve_integration_constant, normalized)
     normalized = re.sub(
         r"([A-Za-z][A-Za-z0-9_]*|\d+)!",
         r"factorial(\1)",
@@ -304,7 +316,7 @@ def parse_math_expression(value: str):
     return parse_expr(
         normalized,
         transformations=transformations,
-        local_dict=SAFE_LOCAL_DICT,
+        local_dict=local_dict,
         global_dict={"__builtins__": {}},
     )
 

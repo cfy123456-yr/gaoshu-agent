@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -36,7 +37,8 @@ VISION_TIMEOUT_SECONDS = max(
 
 VISION_PROMPT = """
 你是高等数学题目转写助手。只识别用户提供的图片，不计算、不讲解、不补充图中没有的条件。
-请逐行识别，输出一段可以直接发送给解题系统的中文题目文字，保留题号、已知条件、选项和问题。
+请按画面顺序逐题、逐行识别题号、已知条件、选项和问题。
+如果图片包含多道题，必须保留原题号和换行，分别完整转写，不得合并、遗漏或串题。
 数学表达式使用纯文本：乘方用 ^，除法用 /，平方根用 sqrt(...)，圆周率用 pi，
 无穷用 oo，极限写成 lim x->0 sin(x)/x 这种形式。
 必须区分容易混淆的符号：数字 0 与字母 O/o、数字 1 与字母 l/I、字母 x 与乘号 ×、
@@ -45,6 +47,14 @@ VISION_PROMPT = """
 不要擅自改正疑似符号，不要遗漏题目中的条件。只有题目主体严重模糊、关键区域被遮挡
 或图片不是数学题目时，才回复：无法识别为高等数学题目。
 不要使用 Markdown、代码块、LaTeX 定界符或 $ 符号。
+""".strip()
+
+
+VISION_LAYOUT_PROMPT = """
+请只判断图片中有几道彼此独立、带不同题号的题目。
+不要计算或解题。同一道题内部的小问 (1)(2)、(1)、a)、b) 只算一道题。
+只输出一个 JSON，例如：{"question_count": 4}。
+如果只有一道题，输出 {"question_count": 1}。
 """.strip()
 
 
@@ -115,7 +125,7 @@ def transcribe_question_image(
     payload = {
         "model": VISION_MODEL,
         "temperature": 0,
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "messages": [
             {
                 "role": "user",
@@ -169,7 +179,98 @@ def transcribe_question_image(
     text = _content_as_text(content).strip()
     if not text:
         raise VisionUpstreamError("图片中没有识别到可用题目，请重新拍摄。")
-    return _clean_transcription(text)[:2000]
+    return _clean_transcription(text)[:4000]
+
+
+def audit_question_count(
+    data: bytes,
+    mime_type: str,
+    *,
+    timeout_seconds: float | None = None,
+) -> int | None:
+    """Ask the vision model for a page-level independent-question count."""
+
+    if not vision_ocr_configured():
+        raise VisionConfigurationError("Vision OCR is not configured")
+
+    request_timeout = VISION_TIMEOUT_SECONDS
+    if timeout_seconds is not None:
+        request_timeout = max(0.1, min(VISION_TIMEOUT_SECONDS, timeout_seconds))
+
+    encoded = base64.b64encode(data).decode("ascii")
+    payload = {
+        "model": VISION_MODEL,
+        "temperature": 0,
+        "max_tokens": 96,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": VISION_LAYOUT_PROMPT},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{encoded}",
+                        },
+                    },
+                ],
+            }
+        ],
+    }
+    if VISION_MODEL.lower().startswith("qwen3"):
+        payload["enable_thinking"] = False
+    request = Request(
+        _vision_chat_endpoint(),
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {VISION_API_KEY}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=request_timeout) as response:
+            raw_response = response.read(MAX_VISION_RESPONSE_BYTES + 1)
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        raise VisionUpstreamError("Vision layout audit failed") from exc
+
+    if len(raw_response) > MAX_VISION_RESPONSE_BYTES:
+        raise VisionUpstreamError("Vision layout response is too large")
+    try:
+        result = json.loads(raw_response.decode("utf-8"))
+        content = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError, ValueError, UnicodeDecodeError) as exc:
+        raise VisionUpstreamError("Vision layout response is invalid") from exc
+    return _parse_question_count(_content_as_text(content))
+
+
+def _parse_question_count(text: str) -> int | None:
+    cleaned = str(text or "").strip()
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        lines = cleaned.splitlines()
+        if len(lines) >= 2:
+            cleaned = "\n".join(lines[1:-1]).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        parsed = None
+    if isinstance(parsed, dict):
+        value = parsed.get("question_count")
+        if isinstance(value, bool):
+            return None
+        try:
+            count = int(value)
+        except (TypeError, ValueError):
+            count = 0
+        return count if 1 <= count <= 20 else None
+
+    match = re.search(r'"?question_count"?\D{0,3}(\d{1,2})', cleaned)
+    if match is None:
+        match = re.fullmatch(r"\s*(\d{1,2})\s*", cleaned)
+    if match is None:
+        return None
+    count = int(match.group(1))
+    return count if 1 <= count <= 20 else None
 
 
 def _content_as_text(content: object) -> str:

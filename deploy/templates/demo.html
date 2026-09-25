@@ -1773,6 +1773,32 @@
       line-height: 1.4;
     }
 
+    .composer-image-question-select {
+      width: 100%;
+      min-height: 30px;
+      margin-top: 6px;
+      padding: 3px 6px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--surface);
+      font: inherit;
+      font-size: 0.7rem;
+    }
+
+    .composer-image-review {
+      min-height: 28px;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--surface);
+      font: inherit;
+      font-size: 0.68rem;
+      font-weight: 750;
+    }
+
     .composer-image-item[data-state="success"] .composer-image-copy span {
       color: #2f6b41;
     }
@@ -6121,6 +6147,12 @@
         if (loading) {
           return `正在识别题目（${completed}/${total}），点击发送后会等识别结束再发送。`;
         }
+        const unresolved = pendingQuestionImages.filter(
+          (item) => item.state === "success" && !usableRecognizedText(item),
+        ).length;
+        if (unresolved) {
+          return `识别到 ${unresolved} 张图片包含多题或需要确认，请先完成选择。`;
+        }
         if (failed === total) {
           return "图片识别失败，仍可直接发送图片，或补充文字后发送。";
         }
@@ -6130,11 +6162,56 @@
         return `已识别 ${completed} 张图片，可直接发送。`;
       }
 
+      function usableRecognizedText(item) {
+        if (!item || item.state !== "success") {
+          return "";
+        }
+        if (Array.isArray(item.questionBlocks) && item.questionBlocks.length > 1) {
+          return String(item.selectedBlockText || "").trim();
+        }
+        if (item.reviewRequired && !item.reviewConfirmed) {
+          return "";
+        }
+        return String(item.text || "").trim();
+      }
+
+      function selectRecognizedQuestion(item, blockIndex) {
+        const block = item.questionBlocks?.[blockIndex];
+        if (!block) {
+          return;
+        }
+        removeInsertedText(item);
+        item.selectedBlockIndex = blockIndex;
+        item.selectedBlockText = String(block.text || "").trim();
+        item.insertedText = appendRecognizedText(item.selectedBlockText);
+        item.statusText = block.label
+          ? `已选择第 ${block.label} 题`
+          : `已选择第 ${blockIndex + 1} 题`;
+        lastRecognizedQuestion = item.selectedBlockText;
+        composerImageNotice = "";
+        renderComposerImages();
+      }
+
+      function confirmRecognizedQuestion(item) {
+        if (!item.text) {
+          return;
+        }
+        item.reviewConfirmed = true;
+        item.insertedText = appendRecognizedText(item.text);
+        item.statusText = "已确认当前识别题，可核对后发送";
+        lastRecognizedQuestion = item.text;
+        composerImageNotice = "";
+        renderComposerImages();
+      }
+
       function renderComposerImages() {
         composerImageList.replaceChildren();
-        composerImagePreview.hidden = !pendingQuestionImages.length;
+        const hasNotice = Boolean(composerImageNotice);
+        composerImagePreview.hidden =
+          !pendingQuestionImages.length && !hasNotice;
+        composerImageClear.hidden = !pendingQuestionImages.length;
         if (!pendingQuestionImages.length) {
-          composerImageStatus.textContent = "";
+          composerImageStatus.textContent = composerImageNotice;
           syncComposerState();
           return;
         }
@@ -6150,10 +6227,48 @@
           thumb.loading = "lazy";
 
           const copy = element("div", "composer-image-copy");
+          const status = element("span", "", item.statusText);
           copy.append(
             element("strong", "", item.name),
-            element("span", "", item.statusText),
+            status,
           );
+          if (Array.isArray(item.questionBlocks) && item.questionBlocks.length > 1) {
+            const select = element(
+              "select",
+              "composer-image-question-select",
+            );
+            select.setAttribute("aria-label", "选择需要计算的题目");
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "请选择需要计算的题";
+            select.append(placeholder);
+            item.questionBlocks.forEach((block, blockIndex) => {
+              const option = document.createElement("option");
+              option.value = String(blockIndex);
+              option.textContent = block.label
+                ? `第 ${block.label} 题`
+                : `第 ${blockIndex + 1} 题`;
+              select.append(option);
+            });
+            select.value = Number.isInteger(item.selectedBlockIndex)
+              ? String(item.selectedBlockIndex)
+              : "";
+            select.addEventListener("change", (event) => {
+              selectRecognizedQuestion(item, Number(event.target.value));
+            });
+            copy.append(select);
+          } else if (item.reviewRequired && !item.reviewConfirmed) {
+            const reviewButton = element(
+              "button",
+              "composer-image-review",
+              "按当前识别题继续",
+            );
+            reviewButton.type = "button";
+            reviewButton.addEventListener("click", () => {
+              confirmRecognizedQuestion(item);
+            });
+            copy.append(reviewButton);
+          }
 
           const removeButton = element("button", "composer-image-remove", "×");
           removeButton.type = "button";
@@ -6399,24 +6514,51 @@
 
           const recognitionSource = String(data.provider || "").trim();
           const recognitionWarning = String(data.warning || "").trim();
+          const questionBlocks = Array.isArray(data.question_blocks)
+            ? data.question_blocks
+              .map((block, blockIndex) => ({
+                index: Number(block?.index) || blockIndex + 1,
+                label: String(block?.label || "").trim(),
+                text: String(block?.text || "").trim(),
+              }))
+              .filter((block) => block.text)
+            : [];
           item.text = text;
           item.state = "success";
-          lastRecognizedQuestion = text;
-          item.insertedText = appendRecognizedText(text);
-          item.statusText = recognitionSource === "windows"
-            ? "已离线识别，请核对公式后发送"
-            : item.insertedText
-              ? item.compressed
-                ? "已识别（上传前已压缩），可直接发送"
-                : "已识别，可直接发送"
-              : "已识别，但输入内容已达上限";
-          if (!item.insertedText) {
-            composerImageNotice = "输入内容已达 600 字，发送时将使用图片识别内容。";
-          } else if (item.insertedText.length < text.length) {
-            composerImageNotice = "部分识别内容超出 600 字，发送时将自动截取。";
-          }
-          if (recognitionWarning) {
-            composerImageNotice = recognitionWarning;
+          item.questionBlocks = questionBlocks;
+          item.selectedBlockIndex = -1;
+          item.selectedBlockText = "";
+          item.reviewRequired = Boolean(data.review_required);
+          item.reviewConfirmed = false;
+          if (questionBlocks.length > 1) {
+            item.insertedText = "";
+            item.statusText =
+              `识别到 ${questionBlocks.length} 道题，请选择需要计算的一道题`;
+            composerImageNotice =
+              recognitionWarning || "请先选择题号，系统只计算选中的题。";
+          } else if (item.reviewRequired) {
+            item.insertedText = "";
+            item.statusText = "整图可能含多题，请确认当前识别题";
+            composerImageNotice =
+              recognitionWarning || "请确认当前识别题，或裁剪小题后重新识别。";
+          } else {
+            lastRecognizedQuestion = text;
+            item.insertedText = appendRecognizedText(text);
+            item.statusText = recognitionSource === "windows"
+              ? "已离线识别，请核对公式后发送"
+              : item.insertedText
+                ? item.compressed
+                  ? "已识别（上传前已压缩），可直接发送"
+                  : "已识别，可直接发送"
+                : "已识别，但输入内容已达上限";
+            if (!item.insertedText) {
+              composerImageNotice = "输入内容已达 600 字，发送时将使用图片识别内容。";
+            } else if (item.insertedText.length < text.length) {
+              composerImageNotice = "部分识别内容超出 600 字，发送时将自动截取。";
+            }
+            if (recognitionWarning) {
+              composerImageNotice = recognitionWarning;
+            }
           }
         } catch (error) {
           if (error.name === "AbortError") {
@@ -6465,6 +6607,11 @@
             statusText: `等待识别（${imageSizeLabel(file.size)}）...`,
             text: "",
             insertedText: "",
+            questionBlocks: [],
+            selectedBlockIndex: -1,
+            selectedBlockText: "",
+            reviewRequired: false,
+            reviewConfirmed: false,
             uploadFile: null,
             uploadSize: file.size,
             compressed: false,
@@ -6550,8 +6697,7 @@
       function composeQuestionText() {
         const manualText = chatInput.value.trim();
         const recognizedTexts = pendingQuestionImages
-          .filter((item) => item.state === "success" && item.text)
-          .map((item) => item.text.trim())
+          .map((item) => usableRecognizedText(item))
           .filter(Boolean);
         const parts = manualText ? [manualText] : [];
         recognizedTexts.forEach((text) => {
@@ -6568,6 +6714,13 @@
         return combined.slice(0, 600).trim();
       }
 
+      function hasMultipleNumberedQuestions(text) {
+        const numberedStarts = String(text || "").match(
+          /(?:^|\n)\s*(?:第\s*)?[（(]?(?:\d{1,2}|[一二三四五六七八九十]+)[）)、.．:：]\s*\S/g,
+        );
+        return Boolean(numberedStarts && numberedStarts.length >= 2);
+      }
+
       function pendingImageAttachments() {
         return pendingQuestionImages
           .filter((item) => item.previewUrl)
@@ -6580,7 +6733,7 @@
       function syncComposerState() {
         const hasText = Boolean(chatInput.value.trim());
         const hasRecognizedImage = pendingQuestionImages.some(
-          (item) => item.state === "success" && item.text,
+          (item) => Boolean(usableRecognizedText(item)),
         );
         const recognizing = hasImageRecognitionInFlight();
         const hasPendingImage = pendingQuestionImages.some(
@@ -6630,10 +6783,25 @@
           return;
         }
         pendingComposerSubmission = false;
+        const unresolvedImage = pendingQuestionImages.find(
+          (item) => item.state === "success" && !usableRecognizedText(item),
+        );
+        if (unresolvedImage) {
+          composerImageNotice =
+            "整图可能包含多道题，请先选择题号，或确认当前识别题后发送。";
+          renderComposerImages();
+          return;
+        }
         const text = composeQuestionText();
+        if (hasMultipleNumberedQuestions(text)) {
+          composerImageNotice =
+            "识别到多道小题，请只保留当前需要计算的一道题后发送。";
+          renderComposerImages();
+          return;
+        }
         const attachments = pendingImageAttachments();
         const recognizedImage = pendingQuestionImages.some(
-          (item) => item.state === "success" && item.text,
+          (item) => Boolean(usableRecognizedText(item)),
         );
         if (!text && !recognizedImage) {
           composerImageNotice =

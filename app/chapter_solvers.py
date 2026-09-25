@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -350,6 +351,234 @@ def _point_values(
     }
 
 
+_ODE_FUNCTION_NAMES = (
+    "sinh",
+    "cosh",
+    "tanh",
+    "asin",
+    "acos",
+    "atan",
+    "acot",
+    "asec",
+    "acsc",
+    "sin",
+    "cos",
+    "tan",
+    "cot",
+    "sec",
+    "csc",
+    "ln",
+    "log",
+    "exp",
+    "sqrt",
+)
+_ODE_FUNCTION_NAME_PATTERN = "|".join(_ODE_FUNCTION_NAMES)
+_ODE_FUNCTION_ARGUMENT = (
+    r"(?:[+-]?(?:\d+(?:\.\d+)?\s*\*?\s*)?"
+    r"(?:[A-Za-z](?:\s*\^\s*\(?-?\w+\)?)?|\([^()\n]+\)))"
+)
+_ODE_FUNCTION_POWER_PATTERN = re.compile(
+    rf"\b({_ODE_FUNCTION_NAME_PATTERN})(?![A-Za-z])\s*\^\s*"
+    rf"\(?\s*(\d+)\s*\)?\s*({_ODE_FUNCTION_ARGUMENT})(?![\w(])"
+)
+_ODE_FUNCTION_ARGUMENT_PATTERN = re.compile(
+    rf"\b({_ODE_FUNCTION_NAME_PATTERN})(?!\s*\()\s*"
+    rf"({_ODE_FUNCTION_ARGUMENT})(?![\w(])"
+)
+_ODE_LATEX_FRACTION_PATTERN = re.compile(
+    r"\\(?:dfrac|tfrac|frac)\s*\{([^{}\n]+)\}\s*\{([^{}\n]+)\}"
+)
+_ODE_SUPERSCRIPT_DIGITS = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+_ODE_SUPERSCRIPT_PATTERN = re.compile(
+    r"([A-Za-z0-9_)\]}]+)([⁰¹²³⁴⁵⁶⁷⁸⁹]+)"
+)
+_ODE_SUBSCRIPT_DIGITS = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+_ODE_SUBSCRIPT_PATTERN = re.compile(r"(?<=[A-Za-z])([₀₁₂₃₄₅₆₇₈₉]+)")
+_ODE_TEXT_REPLACEMENTS = str.maketrans(
+    {
+        "\u2212": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u00b7": "*",
+        "\u22c5": "*",
+        "\u00d7": "*",
+        "\u00f7": "/",
+        "\u2215": "/",
+        "\u2044": "/",
+        "\u2032": "'",
+        "\u2033": "''",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\uff08": "(",
+        "\uff09": ")",
+        "\u3010": "(",
+        "\u3011": ")",
+    }
+)
+
+
+def _ode_derivative(function_name: str, variable: str, order: int) -> str:
+    suffix = "" if order == 1 else f", {order}"
+    return f"Derivative({function_name}({variable}), {variable}{suffix})"
+
+
+def _normalize_ode_expression(
+    value: str,
+    function_name: str,
+    variable: str,
+) -> str:
+    """Normalize common plain-text, Unicode, and LaTeX ODE notation."""
+    text = str(value).strip()
+    text = _ODE_SUPERSCRIPT_PATTERN.sub(
+        lambda match: (
+            f"{match.group(1)}^("
+            f"{match.group(2).translate(_ODE_SUPERSCRIPT_DIGITS)})"
+        ),
+        text,
+    )
+    text = _ODE_SUBSCRIPT_PATTERN.sub(
+        lambda match: (
+            "_" + match.group(1).translate(_ODE_SUBSCRIPT_DIGITS)
+        ),
+        text,
+    )
+    text = unicodedata.normalize("NFKC", text)
+    text = text.translate(_ODE_TEXT_REPLACEMENTS)
+    text = re.sub(r"\\(?:left|right)\b", "", text)
+    text = re.sub(r"\\mathrm\s*\{\s*d\s*\}", "d", text)
+    text = re.sub(
+        r"\\(?:mathrm|operatorname)\s*\{\s*([A-Za-z]+)\s*\}",
+        r"\1",
+        text,
+    )
+    text = text.replace(r"\prime", "'")
+    for name in _ODE_FUNCTION_NAMES:
+        text = re.sub(rf"\\{re.escape(name)}\b", name, text)
+    text = re.sub(r"\\[\[\]\(\)]", "", text).replace("$", "")
+
+    for _ in range(4):
+        fraction_normalized = _ODE_LATEX_FRACTION_PATTERN.sub(
+            lambda match: f"(({match.group(1)})/({match.group(2)}))",
+            text,
+        )
+        if fraction_normalized == text:
+            break
+        text = fraction_normalized
+
+    function_name_pattern = re.escape(function_name)
+    variable_pattern = re.escape(variable)
+    numeric_derivative_power = re.compile(
+        rf"(?<![A-Za-z_]){function_name_pattern}\s*\^\s*"
+        rf"\{{\s*\(\s*(\d+)\s*\)\s*\}}\s*"
+        rf"(?:\(\s*{variable_pattern}\s*\))?"
+    )
+    prime_derivative_power = re.compile(
+        rf"(?<![A-Za-z_]){function_name_pattern}\s*\^\s*"
+        rf"\{{\s*('+)\s*\}}\s*"
+        rf"(?:\(\s*{variable_pattern}\s*\))?"
+    )
+    caret_prime_derivative = re.compile(
+        rf"(?<![A-Za-z_]){function_name_pattern}\s*\^\s*('+)\s*"
+        rf"(?:\(\s*{variable_pattern}\s*\))?"
+    )
+
+    def replace_derivative_power(match: re.Match[str]) -> str:
+        return _ode_derivative(function_name, variable, int(match.group(1)))
+
+    def replace_prime_derivative_power(match: re.Match[str]) -> str:
+        return _ode_derivative(
+            function_name,
+            variable,
+            len(match.group(1)),
+        )
+
+    derivative_prefix = re.compile(
+        rf"(?<=[A-Za-z0-9_)\]])(?={function_name_pattern}\s*(?:"
+        rf"'+|\^\s*\{{\s*(?:'+|\(?\d+\)?)\s*\}}))"
+    )
+    text = derivative_prefix.sub("*", text)
+    text = numeric_derivative_power.sub(replace_derivative_power, text)
+    text = prime_derivative_power.sub(replace_prime_derivative_power, text)
+    text = caret_prime_derivative.sub(replace_prime_derivative_power, text)
+    text = re.sub(r"\^\s*\{\s*([^{}]+)\s*\}", r"^(\1)", text)
+    text = text.replace("{", "(").replace("}", ")")
+
+    derivative_fraction = re.compile(
+        rf"[\(\s]*\bd\s*(?:\^\s*\(?\s*(?P<numerator_order>\d+)\s*\)?"
+        rf"|(?P<numerator_compact>\d+))?\s*"
+        rf"{function_name_pattern}\s*[\)\s]*/\s*[\(\s]*"
+        rf"\bd\s*{variable_pattern}\s*"
+        rf"(?:\^\s*\(?\s*(?P<denominator_order>\d+)\s*\)?"
+        rf"|(?P<denominator_compact>\d+))?\s*\)*"
+    )
+
+    def replace_derivative_fraction(match: re.Match[str]) -> str:
+        numerator_order = int(
+            match.group("numerator_order")
+            or match.group("numerator_compact")
+            or 1
+        )
+        denominator_order = int(
+            match.group("denominator_order")
+            or match.group("denominator_compact")
+            or 1
+        )
+        if numerator_order != denominator_order:
+            raise SolveError("微分方程的导数阶数与自变量阶数不一致")
+        return _ode_derivative(function_name, variable, numerator_order)
+
+    text = derivative_fraction.sub(replace_derivative_fraction, text)
+    text = re.sub(
+        rf"\bd\s*/\s*d\s*{variable_pattern}\s*"
+        rf"\(?\s*{function_name_pattern}\s*\)?"
+        rf"(?:\s*\(\s*{variable_pattern}\s*\))?",
+        _ode_derivative(function_name, variable, 1),
+        text,
+    )
+    text = re.sub(
+        rf"(?<![A-Za-z_]){function_name_pattern}\s*('+)\s*"
+        rf"(?:\(\s*{variable_pattern}\s*\))?",
+        lambda match: _ode_derivative(
+            function_name,
+            variable,
+            len(match.group(1)),
+        ),
+        text,
+    )
+
+    text = re.sub(
+        rf"(?<![A-Za-z_])"
+        rf"({_ODE_FUNCTION_NAME_PATTERN})({variable_pattern})"
+        rf"(?![A-Za-z0-9_])",
+        r"\1(\2)",
+        text,
+    )
+    text = re.sub(
+        rf"(?<={variable_pattern})(?=(?:{_ODE_FUNCTION_NAME_PATTERN}))",
+        "*",
+        text,
+    )
+    text = re.sub(
+        rf"(?<=\d)(?=(?:{_ODE_FUNCTION_NAME_PATTERN}))",
+        "*",
+        text,
+    )
+    text = re.sub(
+        rf"(?<=\))(?=(?:{_ODE_FUNCTION_NAME_PATTERN}))",
+        "*",
+        text,
+    )
+    text = _ODE_FUNCTION_POWER_PATTERN.sub(r"\1(\3)^\2", text)
+    text = _ODE_FUNCTION_ARGUMENT_PATTERN.sub(r"\1(\2)", text)
+    text = re.sub(
+        rf"(?<![A-Za-z_]){function_name_pattern}"
+        rf"(?![A-Za-z0-9_])(?!\s*\()",
+        f"{function_name}({variable})",
+        text,
+    )
+    return text.strip()
+
+
 def _parse_equation(
     value: str,
     function: sympy.Function,
@@ -374,30 +603,18 @@ def _parse_ode_side(
     function: sympy.Function,
     variable: sympy.Symbol,
 ) -> sympy.Expr:
-    normalized = value.strip()
+    function_name = str(function)
+    variable_name = str(variable)
+    normalized = _normalize_ode_expression(
+        value,
+        function_name,
+        variable_name,
+    )
     if not normalized:
         raise SolveError("方程两边不能为空")
     if not re.fullmatch(r"[A-Za-z0-9_+\-*/^()., '\s]+", normalized):
         raise SolveError("方程包含不支持的字符")
 
-    function_name = str(function)
-    escaped_name = re.escape(function_name)
-
-    def replace_derivative(match: re.Match[str]) -> str:
-        order = len(match.group(1))
-        suffix = "" if order == 1 else f", {order}"
-        return f"Derivative({function_name}({variable}), {variable}{suffix})"
-
-    normalized = re.sub(
-        rf"\b{escaped_name}\s*('+)",
-        replace_derivative,
-        normalized,
-    )
-    normalized = re.sub(
-        rf"\b{escaped_name}\b(?!\s*\()",
-        f"{function_name}({variable})",
-        normalized,
-    )
     normalized = normalized.replace("^", "**")
 
     from app.main import SAFE_LOCAL_DICT

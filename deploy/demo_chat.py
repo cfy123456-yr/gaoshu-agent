@@ -240,6 +240,74 @@ def _strip_expression_tail(value: str) -> str:
     return cleaned.rstrip("，,。;；:：")
 
 
+def _looks_like_differential_equation(value: str) -> bool:
+    if "隐函数" in value or "方程组" in value:
+        return False
+    if "微分方程" in value:
+        return True
+    if re.search(
+        r"(?:\bd\s*(?:\^\s*\(?\d+\s*\)?)?\s*y\s*/\s*d\s*[A-Za-z]|"
+        r"\bd\s*/\s*d\s*[A-Za-z]\s*y|"
+        r"\by\s*(?:['′″]+|\^\s*\{?\s*\\prime))",
+        value,
+    ):
+        return True
+    return (
+        "通解" in value
+        and "=" in value
+        and re.search(r"\by\b", value) is not None
+    )
+
+
+def _infer_ode_variable(value: str) -> str:
+    patterns = (
+        r"\bd\s*(?:\^\s*\(?\d+\s*\)?)?\s*y\s*/\s*d\s*([A-Za-z])",
+        r"\bd\s*/\s*d\s*([A-Za-z])\s*y",
+        r"\by\s*(?:['′″]+|\^\{?\s*\\prime)\s*"
+        r"\(\s*([A-Za-z])\s*\)",
+        r"\by\s*\(\s*([A-Za-z])\s*\)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, value)
+        if match:
+            return match.group(1)
+    return "x"
+
+
+def _normalize_differential_equation(value: str) -> str:
+    """Clean OCR question wording around a differential equation."""
+    equation = unicodedata.normalize("NFKC", str(value).strip())
+    equation = re.sub(
+        r"^(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
+        r"(?:(?:求|求解|解|计算)\s*)?"
+        r"(?:(?:这个|该|此)\s*)?(?:微分方程|方程)\s*[:：,，]?\s*",
+        "",
+        equation,
+    )
+    equation = re.sub(
+        r"^(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
+        r"(?:求|求解|解|计算)\s*[:：]?\s*",
+        "",
+        equation,
+    )
+    equation = re.sub(
+        r"\s*(?:求|计算)\s*(?:(?:这个|该|此|其)\s*)?"
+        r"(?:方程\s*)?(?:的\s*)?(?:通解|特解)"
+        r"\s*[_＿?？。！!.,，;；:\s]*$",
+        "",
+        equation,
+    )
+    equation = re.sub(
+        r"\s*(?:的\s*)?(?:通解|特解)\s*(?:为|是)?"
+        r"\s*[_＿?？。！!.,，;；:\s]*$",
+        "",
+        equation,
+    )
+    equation = equation.replace("′", "'").replace("’", "'")
+    equation = re.sub(r"[_＿]+", "", equation)
+    return equation.strip().rstrip("，,。;；:：")
+
+
 def _split_variables(value: str) -> list[str]:
     return [part.strip() for part in re.split(r"[,，、\s]+", value) if part.strip()]
 
@@ -499,23 +567,17 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                 inputs,
             )
 
-    if (
-        "微分方程" in compact
-        or ("=" in compact and re.search(r"\bdy\s*/\s*dx\b", compact))
-        or re.search(r"\by\s*['′]\s*", compact)
-    ):
-        equation = re.sub(
-            r"^(?:请|帮我)?\s*(?:求解|解)?\s*微分方程\s*",
-            "",
-            compact,
-        )
-        equation = re.sub(r"^(?:请|帮我)?\s*(?:求解|解)\s*", "", equation)
-        equation = equation.replace("′", "'").replace("dy/dx", "y'")
+    if _looks_like_differential_equation(compact):
+        equation = _normalize_differential_equation(compact)
         return (
             "differential_equations",
             "dsolve",
-            {"equation": equation, "variable": "x", "function": "y"},
-            )
+            {
+                "equation": equation,
+                "variable": _infer_ode_variable(compact),
+                "function": "y",
+            },
+        )
 
     if "方程组" in compact and (
         "求导" in compact or "偏导" in compact or "∂" in compact
@@ -1088,36 +1150,6 @@ def build_chat_response(
     return math_response
 
 
-def _solve_confirmed_question(
-    question: str,
-    history: list[DemoChatHistoryMessage] | None = None,
-) -> dict[str, Any]:
-    normalized = _normalize_text(question)
-    try:
-        interval_extrema = _build_interval_extrema_response(
-            question
-        ) or _build_interval_extrema_response(normalized)
-    except Exception:
-        interval_extrema = None
-    if interval_extrema is not None:
-        return interval_extrema
-
-    try:
-        math_response = _math_response(normalized)
-    except Exception:
-        math_response = _needs_input("")
-        math_response["intent"] = "unknown"
-    if math_response.get("intent") == "unknown":
-        general_response = _build_general_chat_response(
-            f"待解题目：{question}",
-            None,
-            CONFIRMED_SOLVE_SYSTEM_PROMPT,
-        )
-        if general_response is not None:
-            return general_response
-    return math_response
-
-
 def _math_response(normalized: str) -> dict[str, Any]:
     if not normalized:
         return _needs_input("请先输入一道高等数学题目。")
@@ -1128,6 +1160,10 @@ def _math_response(normalized: str) -> dict[str, Any]:
     arithmetic = _build_arithmetic_response(normalized)
     if arithmetic is not None:
         return arithmetic
+
+    interval_extrema = solve_interval_extrema(normalized)
+    if interval_extrema is not None:
+        return interval_extrema
 
     extended = _resolve_extended_chapter(normalized)
     if extended is not None:
