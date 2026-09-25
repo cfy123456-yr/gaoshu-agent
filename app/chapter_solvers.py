@@ -156,11 +156,12 @@ class _InputView:
             return None
         if not isinstance(value, str):
             raise SolveError(f"{key} 必须是文本")
-        if "__" in value:
+        normalized = re.sub(r"[_＿]{2,}", "", value.strip())
+        if "__" in normalized:
             raise SolveError(f"{key} 包含不支持的标识符")
-        if len(value) > 300:
+        if len(normalized) > 300:
             raise SolveError(f"{key} 过长")
-        return value.strip()
+        return normalized
 
     def integer(
         self,
@@ -247,6 +248,9 @@ def _parse_expression(value: Any, field_name: str) -> sympy.Expr:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return sympify(value)
     if not isinstance(value, str) or not value.strip():
+        raise SolveError(f"{field_name} 必须是非空表达式")
+    value = re.sub(r"[_＿]{2,}", "", value.strip())
+    if not value:
         raise SolveError(f"{field_name} 必须是非空表达式")
     if len(value) > 300:
         raise SolveError(f"{field_name} 过长")
@@ -444,6 +448,47 @@ def _normalize_ode_expression(
     )
     text = unicodedata.normalize("NFKC", text)
     text = text.translate(_ODE_TEXT_REPLACEMENTS)
+    text = re.sub(
+        r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"^\s*(?:(?:第\s*)?[一二三四五六七八九十百\d]+\s*[、.．:：]\s*)?"
+        r"(?:选择题|填空题|判断题|计算题|解答题|证明题|综合题|应用题)"
+        r"\s*(?:[（(][^()（）]{0,40}[)）])?\s*",
+        "",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r"^\s*(?:第\s*)?\d+\s*[题、.．)）:：]\s*",
+        "",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r"^.*?(?:微分方程|常微分方程|方程)\s*[:：,，]?\s*",
+        "",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r"^\s*(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
+        r"(?:求解|求|解|计算)\s*[:：]?\s*",
+        "",
+        text,
+        count=1,
+    )
+    text = re.split(
+        r"\s*(?:求|计算)?\s*(?:(?:这个|该|此|其)\s*)?"
+        r"(?:方程\s*)?(?:的\s*)?(?:通解|特解)"
+        r"\s*(?:为|是)?.*$",
+        text,
+        maxsplit=1,
+    )[0]
+    text = re.sub(r"[_＿]{2,}", "", text)
+    text = text.strip().strip("，,。;；:：_＿")
     text = re.sub(r"\\(?:left|right)\b", "", text)
     text = re.sub(r"\\mathrm\s*\{\s*d\s*\}", "d", text)
     text = re.sub(
@@ -584,6 +629,9 @@ def _parse_equation(
     function: sympy.Function,
     variable: sympy.Symbol,
 ) -> Eq:
+    value = re.sub(r"[_＿]{2,}", "", value.strip())
+    if not value:
+        raise SolveError("equation 不能为空")
     if len(value) > 300:
         raise SolveError("equation 过长")
     if "__" in value:

@@ -125,19 +125,20 @@ class DemoPageTest(unittest.TestCase):
         self.assertNotIn('id="toolsMenuCount"', html)
         self.assertNotIn('class="tools-menu"', html)
 
-    def test_demo_page_exposes_toolbox_and_preview_panel(self):
+    def test_demo_page_exposes_toolbox_without_legacy_preview_panel(self):
         response = self.client.get("/demo")
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
-        for field in (
-            "conversationPanel",
+        for field in ("conversationPanel",):
+            self.assertIn(f'id="{field}"', html)
+        for removed_id in (
             "previewPanel",
             "previewContent",
             "previewToggle",
             "previewClear",
         ):
-            self.assertIn(f'id="{field}"', html)
+            self.assertNotIn(f'id="{removed_id}"', html)
         for removed_id in (
             "quickLimitForm",
             "quickDerivativeForm",
@@ -165,12 +166,18 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('fetch("/demo/api/ocr"', html)
         self.assertIn("function renderQuestionKnowledge(", html)
         self.assertNotIn("function insertIntoChatInput(", html)
-        self.assertIn("composer-image-question-select", html)
-        self.assertIn("function selectRecognizedQuestion(", html)
+        self.assertIn("composer-image-question-picker", html)
+        self.assertIn("function toggleRecognizedQuestion(", html)
+        self.assertIn('"全选",', html)
+        self.assertIn('setAttribute("aria-label", "全选所有识别题目")', html)
         self.assertIn("按当前识别题继续", html)
         self.assertIn("function setConversationPanelCollapsed(", html)
-        self.assertIn("function setPreviewCollapsed(", html)
-        self.assertIn("计算过程总览", html)
+        self.assertNotIn("function setPreviewCollapsed(", html)
+        self.assertNotIn("\u8ba1\u7b97\u8fc7\u7a0b\u603b\u89c8", html)
+        self.assertNotIn(
+            "\u89e3\u9898\u8fc7\u7a0b\u4e0e\u7ed3\u679c\u4f1a\u663e\u793a\u5728\u8fd9\u91cc",
+            html,
+        )
         self.assertNotIn("结果预览", html)
         self.assertIn('toolbox.addEventListener("click"', html)
         self.assertNotIn('data-focus-target="quickLimitExpression"', html)
@@ -199,12 +206,16 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("function enqueueQuestionImageRecognition(item)", html)
         self.assertIn("canvas.toBlob(", html)
         self.assertIn("function addQuestionImages(fileList)", html)
-        self.assertIn("function submitComposer()", html)
+        self.assertIn("async function submitComposer()", html)
         self.assertIn("function syncComposerState()", html)
         self.assertIn("function flushPendingComposerSubmission()", html)
-        self.assertIn("function hasMultipleNumberedQuestions(text)", html)
+        self.assertIn("function selectedBlockIndexes(item)", html)
+        self.assertIn("function setAllRecognizedQuestions(item, picker, selected)", html)
+        self.assertIn("function composeQuestionRequests()", html)
+        self.assertIn('confirmedOcr ? "\\u786e\\u8ba4" : text', html)
+        self.assertIn("await sendMessage(", html)
         self.assertIn(
-            "识别到多道小题，请只保留当前需要计算的一道题后发送。",
+            "attachments: index === 0 ? attachments : []",
             html,
         )
         self.assertIn(
@@ -237,10 +248,6 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
-        self.assertRegex(
-            html,
-            r'id="previewPanel"\s+data-collapsed="true"',
-        )
         self.assertRegex(
             html,
             r'data-toolbox-panel="wrongbook"\s+'
@@ -519,6 +526,28 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("solving", payload["session_state"])
         self.assertEqual("旧题 x^2", payload["history_used"])
 
+    def test_explicit_ocr_selection_overrides_stale_session_question(self):
+        headers = {"X-Demo-Session": "test-explicit-ocr-selection-priority"}
+        self.client.post(
+            "/demo/api/chat",
+            json={"message": "最后一题 x^2", "source": "ocr"},
+            headers=headers,
+        )
+        response = self.client.post(
+            "/demo/api/chat",
+            json={
+                "message": "确认",
+                "source": "ocr",
+                "pending_question": "1+1",
+            },
+            headers=headers,
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solving", payload["session_state"])
+        self.assertEqual("1+1", payload["history_used"])
+
     def test_confirmation_uses_ocr_history_question_when_session_is_missing(self):
         response = self.client.post(
             "/demo/api/chat",
@@ -725,6 +754,55 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("1", blocks[0]["label"])
         self.assertEqual("2", blocks[1]["label"])
         self.assertIn("(2) find y(0)=1", blocks[1]["text"])
+
+    def test_question_block_detector_ignores_scored_section_headings(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "二、填空题（每小题 3 分，共 24 分）.\n"
+            "1. 直线 L1 与 L2 的夹角为____。\n"
+            "2. 微分方程 y' + y = e^(-x)cosx 的通解为____。\n"
+            "3. 函数 z = 1/2(x^2 + y^2) 在点 (1,1) 处减少最快的方向向量为____。\n"
+            "4. 函数 z = ln(1 - x^2 + y^2) 在 x=1, y=2 时的全微分为____。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(["1", "2", "3", "4"], [
+            block["label"] for block in blocks
+        ])
+        self.assertNotIn("填空题", blocks[0]["text"])
+
+    def test_question_block_detector_ignores_other_section_headings(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "一、选择题（每小题 3 分，共 30 分）\n"
+            "1. 下列函数连续的是____。\n"
+            "2. 下列极限存在的是____。\n"
+            "三、计算题（每小题 6 分，共 36 分）\n"
+            "3. 求 lim x->0 sin(x)/x。\n"
+            "4. 求 y' + y = 0 的通解。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(["1", "2", "3", "4"], [
+            block["label"] for block in blocks
+        ])
+        self.assertTrue(all("选择题" not in block["text"] for block in blocks))
+        self.assertTrue(all("计算题" not in block["text"] for block in blocks))
+
+    def test_question_number_prefix_stripper_preserves_math_content(self):
+        cases = {
+            "1. 1+1": "1+1",
+            "第 2 题 求导 x^2": "求导 x^2",
+            "3、积分 x^2": "积分 x^2",
+            "1.5x+2": "1.5x+2",
+            "二、填空题": "二、填空题",
+            "(1) 求导 x^2": "(1) 求导 x^2",
+        }
+
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(
+                    expected,
+                    demo_question_blocks.strip_question_number_prefix(source),
+                )
 
     def test_demo_ocr_uses_vision_and_caches_repeated_image(self):
         image_data = b"\x89PNG\r\n\x1a\nquestion"
@@ -1393,6 +1471,32 @@ class DemoPageTest(unittest.TestCase):
             payload["calculation"]["result"],
         )
 
+    def test_demo_chat_cleans_ocr_heading_and_confirmation_tail(self):
+        for message in (
+            "二、填空题 微分方程 y' + y = e^(-x) cos x 的通解为____。 。",
+            (
+                "y' + y = e^(-x) cos x 的通解为______。 "
+                "确认无误回复“确认”，我将开始计算。"
+            ),
+            "求解：y' + y = e^(-x) cos x",
+        ):
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("solve", payload["intent"])
+                self.assertIn(
+                    "(C1 + sin(x))*exp(-x)",
+                    payload["calculation"]["result"],
+                )
+
+        response = self.chat("解 y'-y=0")
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("solve", payload["intent"])
+        self.assertIn("C1*exp(x)", payload["calculation"]["result"])
+
     def test_demo_chat_normalizes_ocr_differential_equation_variants(self):
         cases = (
             (
@@ -1518,6 +1622,33 @@ class DemoPageTest(unittest.TestCase):
         self.assertIs(True, payload["calculation"]["is_correct"])
         self.assertIn("这个答案是对的", payload["reply"])
 
+    def test_demo_chat_calculates_english_derivative_commands(self):
+        cases = (
+            ("derivative x^3", "x", "3*x**2"),
+            ("differentiate x^3", "x", "3*x**2"),
+            (
+                "find the derivative of t^3 with respect to t",
+                "t",
+                "3*t**2",
+            ),
+        )
+
+        for message, variable, derivative in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("verify", payload["intent"])
+                self.assertEqual(derivative, payload["calculation"]["derivative"])
+                self.assertEqual(variable, payload["calculation"]["variable"])
+                self.assertIsNone(payload["calculation"]["candidate"])
+
+        response = self.chat("is 2*x the derivative of x^2")
+        payload = response.get_json()
+        self.assertEqual("verify", payload["intent"])
+        self.assertIs(True, payload["calculation"]["is_correct"])
+
     def test_demo_chat_calculates_indefinite_integral(self):
         response = self.client.post(
             "/demo/api/chat",
@@ -1542,6 +1673,42 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("1/3", payload["calculation"]["integral"])
         self.assertIn(r"\int_{0}^{1}", payload["formula_latex"])
 
+    def test_demo_chat_calculates_english_integral_commands(self):
+        cases = (
+            ("integral x^2 dx", "x", "x**3/3"),
+            ("integrate x^2", "x", "x**3/3"),
+            ("antiderivative of x^2", "x", "x**3/3"),
+            ("integral of t^2 dt with respect to t", "t", "t**3/3"),
+        )
+
+        for message, variable, integral in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("integrate", payload["intent"])
+                self.assertEqual(integral, payload["calculation"]["integral"])
+                self.assertEqual(variable, payload["calculation"]["variable"])
+                self.assertIsNone(payload["calculation"]["candidate"])
+
+        for message in (
+            "integral of x^2 from 0 to 1",
+            "evaluate the definite integral from 0 to 1 of x^2 dx",
+        ):
+            with self.subTest(message=message):
+                payload = self.chat(message).get_json()
+                self.assertEqual("integrate", payload["intent"])
+                self.assertEqual("1/3", payload["calculation"]["integral"])
+
+    def test_demo_chat_keeps_english_concepts_out_of_solver(self):
+        with patch.object(demo_chat, "GENERAL_CHAT_API_KEY", ""):
+            for message in ("what is a derivative", "what is an integral"):
+                with self.subTest(message=message):
+                    payload = self.chat(message).get_json()
+                    self.assertNotIn(payload["intent"], {"verify", "integrate"})
+                    self.assertIsNone(payload["calculation"])
+
     def test_demo_chat_solves_interval_extrema(self):
         response = self.client.post(
             "/demo/api/chat",
@@ -1555,6 +1722,9 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("[0, 5]", payload["calculation"]["interval"])
         self.assertEqual("2", payload["calculation"]["critical_points"][0])
         self.assertEqual("8", payload["calculation"]["result"])
+        self.assertNotIn("*", payload["reply"])
+        self.assertIn("$f'(x)=", payload["reply"])
+        self.assertIn("$f(x)=-1$", payload["reply"])
 
     def test_demo_chat_calculates_limit(self):
         response = self.client.post(
@@ -1682,7 +1852,7 @@ class DemoPageTest(unittest.TestCase):
             html,
         )
         self.assertIn(
-            'source: recognizedImage ? "ocr" : "text",',
+            'addRequest(text, "ocr", true, `image:${item.id}`);',
             html,
         )
         self.assertIn(

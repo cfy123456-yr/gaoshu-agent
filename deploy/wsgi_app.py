@@ -368,10 +368,17 @@ def demo_chat():
             return jsonify(cached)
 
     if is_confirmation:
-        # The server-side session is the source of truth once OCR has been
-        # confirmed. A stale or wrapped pending_question from the browser must
-        # not overwrite the question that was actually recognized.
+        # Fall back to the server-side OCR session unless the browser is
+        # explicitly confirming one of the selected questions.
         pending_question = confirmation_question
+        if (
+            model.source == "ocr"
+            and raw_message == "确认"
+            and is_valid_ocr_question(carried_question)
+        ):
+            # Multi-question selection sends one explicit question per request.
+            # Prefer that choice over a session left by the last uploaded image.
+            pending_question = carried_question
         if not pending_question:
             return jsonify(_no_pending_question_response())
         demo_sessions.remember_ocr_question(session_id, pending_question)
@@ -622,7 +629,7 @@ def _build_ocr_payload(
     if len(blocks) >= 2:
         warning = _merge_ocr_warning(
             warning,
-            "识别到多道独立题目，请先选择需要计算的一道题。",
+            "识别到多道独立题目，请选择需要计算的题目，可多选或全选。",
         )
     elif audited_count is not None and audited_count > 1:
         review_required = True

@@ -49,7 +49,7 @@ class MathApiSmokeTest(unittest.TestCase):
     def test_health_reports_current_version(self):
         payload = self.request("/health")
         self.assertEqual("ok", payload["status"])
-        self.assertEqual("0.5.0", payload["version"])
+        self.assertEqual("0.6.0", payload["version"])
         self.assertIn("api_key_enabled", payload)
 
     def test_derivative_result_and_candidate_check(self):

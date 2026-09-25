@@ -55,6 +55,20 @@ class RandomizedSolverRegressionTest(unittest.TestCase):
                     (variable,),
                 )
 
+                english_derivative_payload = demo_chat.build_chat_response(
+                    f"find the derivative of {expression_text} "
+                    "with respect to x"
+                )
+                self.assertEqual("verify", english_derivative_payload["intent"])
+                self.assertIsNone(
+                    english_derivative_payload["calculation"]["candidate"]
+                )
+                self.assert_equivalent(
+                    english_derivative_payload["calculation"]["derivative"],
+                    derivative,
+                    (variable,),
+                )
+
                 wrong_payload = solve_chapter(
                     "derivatives",
                     "derivative",
@@ -99,6 +113,24 @@ class RandomizedSolverRegressionTest(unittest.TestCase):
                     sympy.simplify(sympy.diff(result, variable) - expression),
                 )
 
+                english_integral_payload = demo_chat.build_chat_response(
+                    f"integral of {expression_text} dx"
+                )
+                self.assertEqual("integrate", english_integral_payload["intent"])
+                self.assertIsNone(
+                    english_integral_payload["calculation"]["candidate"]
+                )
+                english_integral = sympy.sympify(
+                    english_integral_payload["calculation"]["integral"],
+                    locals={"x": variable},
+                )
+                self.assertEqual(
+                    sympy.Integer(0),
+                    sympy.simplify(
+                        sympy.diff(english_integral, variable) - expression
+                    ),
+                )
+
                 lower = rng.randint(-3, 2)
                 upper = lower + rng.randint(1, 4)
                 definite_value = sympy.integrate(
@@ -119,6 +151,17 @@ class RandomizedSolverRegressionTest(unittest.TestCase):
                 self.assertIs(True, definite_payload["is_correct"])
                 self.assert_equivalent(
                     definite_payload["result"],
+                    definite_value,
+                    (),
+                )
+
+                english_definite_payload = demo_chat.build_chat_response(
+                    f"evaluate the definite integral from {lower} to {upper} "
+                    f"of {expression_text} dx"
+                )
+                self.assertEqual("integrate", english_definite_payload["intent"])
+                self.assert_equivalent(
+                    english_definite_payload["calculation"]["integral"],
                     definite_value,
                     (),
                 )
@@ -186,6 +229,9 @@ class RandomizedSolverRegressionTest(unittest.TestCase):
                         str(expected),
                         payload["calculation"]["result"],
                     )
+                    self.assertNotIn("*", payload["reply"])
+                    self.assertIn("$f'(x)=", payload["reply"])
+                    self.assertIn("$f(x)=", payload["reply"])
 
                     chat_payload = demo_chat.build_chat_response(question)
                     self.assertEqual("solve", chat_payload["intent"])
