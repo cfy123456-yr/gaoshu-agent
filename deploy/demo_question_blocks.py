@@ -6,17 +6,39 @@ import re
 from typing import Any
 
 
-_NUMBER_TOKEN = r"(?:\d{1,2}|[一二三四五六七八九十百]+)"
+_ARABIC_NUMBER_TOKEN = r"\d{1,2}"
+_CHINESE_NUMBER_TOKEN = r"[一二三四五六七八九十百]+"
+_NUMBER_TOKEN = rf"(?:{_ARABIC_NUMBER_TOKEN}|{_CHINESE_NUMBER_TOKEN})"
+_QUESTION_SEPARATOR_PATTERN = r"[、.．,，;；:：)）]"
 _QUESTION_START_RE = re.compile(
     rf"(?m)(?P<prefix>^[ \t]*(?:"
-    rf"第\s*{_NUMBER_TOKEN}\s*题"
-    rf"|{_NUMBER_TOKEN}\s*[、.．)）](?!\d)"
+    rf"第\s*(?P<named_label>{_NUMBER_TOKEN})\s*题"
+    rf"|(?P<bare_number>{_ARABIC_NUMBER_TOKEN})"
+    rf"\s*{_QUESTION_SEPARATOR_PATTERN}(?!\d)"
     rf")\s*)"
 )
-_LABEL_RE = re.compile(
-    rf"(?:第\s*(?P<label>{_NUMBER_TOKEN})\s*题|"
-    rf"(?P<number>{_NUMBER_TOKEN})\s*[、.．)）])"
+_UNPUNCTUATED_QUESTION_START_RE = re.compile(
+    rf"(?m)(?P<prefix>^[ \t]*"
+    rf"(?P<bare_number>{_ARABIC_NUMBER_TOKEN})[ \t]+(?=\S))"
 )
+_SECTION_HEADING_RE = re.compile(
+    r"^(?:"
+    r"选\s*择\s*题|填\s*空\s*题|判\s*断\s*题|"
+    r"计\s*算\s*题|解\s*答\s*题|证\s*明\s*题|"
+    r"应\s*用\s*题|综\s*合\s*题|简\s*答\s*题|"
+    r"单\s*选\s*题|多\s*选\s*题|论\s*述\s*题|作\s*图\s*题"
+    r")"
+    r"(?:\s*[（(][^）)\n]*(?:每小题|共\s*\d+\s*分|满分)"
+    r"[^）)\n]*[）)]?)?"
+    r"\s*[.。]?\s*$"
+)
+_SECTION_LINE_RE = re.compile(
+    rf"^[ \t]*(?:第\s*{_NUMBER_TOKEN}\s*题|"
+    rf"{_NUMBER_TOKEN}\s*{_QUESTION_SEPARATOR_PATTERN})"
+    rf"\s*(?P<remainder>.*)$"
+)
+_SECTION_SEPARATOR_CHARS = "、.．)）:：,，。;；"
+_QUESTION_CONTENT_RE = re.compile(r"[^\W\d_]")
 
 
 def extract_question_blocks(text: str) -> list[dict[str, Any]]:
@@ -31,7 +53,33 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
     if not value:
         return []
 
-    matches = list(_QUESTION_START_RE.finditer(value))
+    punctuated_matches = _question_start_matches(value, _QUESTION_START_RE)
+    unpunctuated_matches = [
+        match
+        for match in _question_start_matches(
+            value,
+            _UNPUNCTUATED_QUESTION_START_RE,
+        )
+        if _looks_like_unpunctuated_question(value, match)
+    ]
+    combined_matches = _collapse_repeated_question_labels(
+        _merge_question_start_matches(
+            punctuated_matches,
+            unpunctuated_matches,
+        )
+    )
+
+    matches = punctuated_matches
+    if (
+        len(combined_matches) > len(punctuated_matches)
+        and _is_consecutive_arabic_sequence(combined_matches)
+    ):
+        matches = combined_matches
+    elif (
+        len(matches) < 2
+        and _is_consecutive_arabic_sequence(unpunctuated_matches)
+    ):
+        matches = unpunctuated_matches
     if len(matches) < 2:
         return []
 
@@ -39,13 +87,11 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
     for index, match in enumerate(matches):
         start = match.start()
         end = matches[index + 1].start() if index + 1 < len(matches) else len(value)
-        block_text = value[start:end].strip()
+        block_text = _trim_trailing_section_headings(value[start:end].strip())
         if not block_text:
             continue
-        label_match = _LABEL_RE.search(match.group("prefix"))
-        label = ""
-        if label_match:
-            label = label_match.group("label") or label_match.group("number") or ""
+        groups = match.groupdict()
+        label = groups.get("named_label") or groups.get("bare_number") or ""
         blocks.append(
             {
                 "index": len(blocks) + 1,
@@ -55,6 +101,134 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
         )
 
     return blocks if len(blocks) >= 2 else []
+
+
+def strip_question_number_prefix(text: str) -> str:
+    """Remove one leading top-level question label from OCR text."""
+
+    value = str(text or "").strip()
+    match = _QUESTION_START_RE.match(value)
+    if match is None:
+        candidate = _UNPUNCTUATED_QUESTION_START_RE.match(value)
+        if candidate is not None and _looks_like_unpunctuated_question(
+            value,
+            candidate,
+        ):
+            match = candidate
+    if match is None or _is_section_heading(value, match):
+        return value
+
+    remainder = value[match.end() :].lstrip()
+    if not remainder or remainder[0] in "+-*/^=),]":
+        return value
+    return remainder
+
+
+def _is_section_heading(value: str, match: re.Match[str]) -> bool:
+    """Return whether a numbered line is a section heading, not a question."""
+
+    line_end = value.find("\n", match.end())
+    if line_end == -1:
+        line_end = len(value)
+    remainder = value[match.end() : line_end].strip().lstrip(
+        _SECTION_SEPARATOR_CHARS
+    )
+    return bool(_SECTION_HEADING_RE.match(remainder))
+
+
+def _question_start_matches(
+    value: str,
+    pattern: re.Pattern[str],
+) -> list[re.Match[str]]:
+    """Return non-heading question starts produced by one start pattern."""
+
+    return [
+        match
+        for match in pattern.finditer(value)
+        if not _is_section_heading(value, match)
+    ]
+
+
+def _looks_like_unpunctuated_question(
+    value: str,
+    match: re.Match[str],
+) -> bool:
+    """Reject arithmetic or fragment lines while accepting OCR question text."""
+
+    line_end = value.find("\n", match.end())
+    if line_end == -1:
+        line_end = len(value)
+    remainder = value[match.end() : line_end].strip()
+    if len(remainder) < 2 or remainder[0] in "+-*/^=),]":
+        return False
+    return bool(_QUESTION_CONTENT_RE.search(remainder))
+
+
+def _is_consecutive_arabic_sequence(matches: list[re.Match[str]]) -> bool:
+    """Require OCR-only bare numbering to form a complete consecutive run."""
+
+    if len(matches) < 2:
+        return False
+    bare_labels = [match.groupdict().get("bare_number") for match in matches]
+    if any(label is None for label in bare_labels):
+        return False
+    labels = [int(label) for label in bare_labels]
+    return all(
+        current - previous == 1
+        for previous, current in zip(labels, labels[1:])
+    )
+
+
+def _merge_question_start_matches(
+    *match_groups: list[re.Match[str]],
+) -> list[re.Match[str]]:
+    """Merge overlapping numbering styles without duplicating one line."""
+
+    ordered = sorted(
+        (match for group in match_groups for match in group),
+        key=lambda match: (match.start(), -(match.end() - match.start())),
+    )
+    merged: list[re.Match[str]] = []
+    for match in ordered:
+        if merged and match.start() < merged[-1].end():
+            continue
+        merged.append(match)
+    return merged
+
+
+def _collapse_repeated_question_labels(
+    matches: list[re.Match[str]],
+) -> list[re.Match[str]]:
+    """Keep the first start when OCR repeats a question number on later lines."""
+
+    collapsed: list[re.Match[str]] = []
+    previous_bare_number: str | None = None
+    for match in matches:
+        bare_number = match.groupdict().get("bare_number")
+        if bare_number is not None and bare_number == previous_bare_number:
+            continue
+        collapsed.append(match)
+        previous_bare_number = bare_number
+    return collapsed
+
+
+def _trim_trailing_section_headings(text: str) -> str:
+    """Keep a following section title out of the preceding question block."""
+
+    lines = text.splitlines(keepends=True)
+    while lines:
+        stripped = lines[-1].strip()
+        if not stripped:
+            lines.pop()
+            continue
+        section_match = _SECTION_LINE_RE.match(lines[-1])
+        if section_match and _SECTION_HEADING_RE.match(
+            section_match.group("remainder").strip()
+        ):
+            lines.pop()
+            continue
+        break
+    return "".join(lines).rstrip()
 
 
 def extract_question_blocks_from_payload(value: Any) -> list[dict[str, Any]]:
