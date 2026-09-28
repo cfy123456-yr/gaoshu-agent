@@ -16,7 +16,7 @@ from verify_deployment import VerificationError, expect, request_json
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-EXPECTED_VERSION = "0.5.0"
+EXPECTED_VERSION = "0.6.6"
 
 LIMIT_CASES = (
     {

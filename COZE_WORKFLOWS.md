@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.5.0`。
+先更新 PythonAnywhere 服务并 Reload，确认 `/health` 返回 `0.6.6`。
 
 公网已启用 API Key。所有计算工作流 HTTP 节点都要增加请求头：
 

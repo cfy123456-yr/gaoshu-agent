@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_URL = "https://cfyyy.pythonanywhere.com"
-DEFAULT_VERSION = "0.5.0"
+DEFAULT_VERSION = "0.6.6"
 
 
 def read_health(url: str, timeout: float) -> dict:
