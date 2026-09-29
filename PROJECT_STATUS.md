@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 19:30（Asia/Shanghai）
+更新时间：2026-09-29 19:43（Asia/Shanghai）
 
 ## 当前事实
 
@@ -9,6 +9,7 @@
 | 服务版本 | `0.6.7` |
 | 固定公网地址 | `https://cfyyy.pythonanywhere.com` |
 | 无需登录演示页 | `https://cfyyy.pythonanywhere.com/demo` |
+| 公网演示页前端 | 已发布移动端视口与 OCR 超时加固版 |
 | `MATH_API_KEY` | 当前未启用 |
 | OCR 主链路 | 阿里云百炼视觉模型 |
 | OCR 备用链路 | 扣子 OCR，当前已配置 |
@@ -53,7 +54,13 @@ OK (skipped=4)
   `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36562144014`。
 - 新增 `scripts/publish-pythonanywhere-file.ps1`，把单文件发布固定为备份、上传、
   远端回读、Reload 和公网标记验证五步；本地 `-ValidateOnly` 与 `-WhatIf` 预演
-  均通过。公网 `/demo` 当前仍缺少移动端加固标记，说明前端尚未上传。
+  均通过。
+- `2026-09-29 19:38:38` 完成移动端加固前端发布：远端文件与本地 `310730` 字节、
+  SHA256 `7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF`
+  完全一致，Reload 返回 HTTP `200`，公网 `/demo` 返回 HTTP `200`，并确认包含
+  `interactive-widget=resizes-content`、`window.visualViewport` 和
+  `OCR_REQUEST_TIMEOUT_MS = 90000`。发布旧文件已备份到
+  `work/pythonanywhere-backup-20260929-193745/`。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。
@@ -72,6 +79,11 @@ PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改�
 - 极限固定回归 `6/6` 通过。
 - 章节统一求解固定回归 `9/9` 通过。
 - 固定种子随机回归全部通过。
+
+新前端发布后再次复跑四组公网回归，结果仍全部通过：部署验收 `9/9`、极限固定回归
+`6/6`、章节统一求解固定回归 `9/9`、固定种子随机回归全部通过。公网 `/demo`
+响应为 `300948` 字节，服务器端模板换行归一化后的页面 SHA256 为
+`C56D86132AC0632C821B17095DBD6E0C1201469AE49BE47C510046C878CC6CDC`。
 
 提交前审计结论：
 
@@ -200,10 +212,10 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 
 ### P0
 
-- [ ] 在设置 `PYTHONANYWHERE_API_TOKEN` 的 PowerShell 7 会话中，运行
-  `scripts/publish-pythonanywhere-file.ps1` 上传 `310730` 字节、SHA256
+- [x] 已在设置 `PYTHONANYWHERE_API_TOKEN` 的 PowerShell 7 会话中运行
+  `scripts/publish-pythonanywhere-file.ps1`，上传 `310730` 字节、SHA256
   `7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF`
-  的 `deploy/templates/demo.html` 并 Reload；这一步需要用户提供平台 Token。
+  的 `deploy/templates/demo.html` 并完成 Reload 与公网标记验证。
 - [x] 已检查 GitHub Actions 的公开状态：工作流 `Public health check` 为 `active`，`main` 当前 SHA 为 `23c483f1ee8d06601747dd4997860528cdb7adcb`，修复已进入默认分支。
 - [x] 已取得修复提交的运行结果：第 `50` 次运行基于 `23c483f1ee8d06601747dd4997860528cdb7adcb`，`2026-09-28T11:49:29Z` 由 `workflow_dispatch` 手工触发，`11:49:37Z` 完成，结论 `success`，其中 `Check public API` 步骤通过，地址为 `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36417964912`。此前第 `49` 次仍是旧提交 `0d10854...` 的失败运行；历史定时运行间隔约 3 至 5 小时，因此改用手工触发，后续定时运行会使用同一份工作流文件。
 - [x] 使用仓库内的 `scripts/check_health.py` 直接复跑公网检查，已通过：`version=0.6.7`。

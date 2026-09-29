@@ -134,8 +134,10 @@ deploy/templates/demo.html
 7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF
 ```
 
-公网页面目前仍是旧前端；执行上述发布并通过 `-RequiredMarker` 验证后，移动端软键盘
-同步、安全区适配和 OCR 90 秒超时才会在生产生效。
+该版本已于 `2026-09-29 19:38:38` 发布。远端回读与本地文件完全一致，Reload 返回
+HTTP `200`，公网 `/demo` 返回 HTTP `200` 且包含全部三个必需标记；发布结果保存在
+`work/pythonanywhere-publish-result.json`。生产环境现已启用移动端软键盘同步、安全区
+适配和 OCR 90 秒超时。
 
 ## 部署验收
 
