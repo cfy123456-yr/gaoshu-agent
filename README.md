@@ -8,6 +8,8 @@
 
 - 通过扣子智能体提供“知微老师”中文对话。
 - 提供无需登录的独立对话演示页，支持在浏览器中连续输入求导、积分、极限和函数图像题目。
+- 演示页支持浏览器原生中文语音输入；转写内容只写入输入框，核对后再由用户手动发送。
+- 助手回答支持浏览器原生中文朗读，可逐条开始或停止。
 - 演示页聊天记录只保存在当前浏览器的 `localStorage`，不读取或展示其他用户的扣子会话记录。
 - 使用 `math_verify` 工作流计算导数并判断学生答案。
 - 使用 `math_integrate` 工作流计算不定积分、定积分并判断学生答案。
@@ -55,6 +57,7 @@ gaoshu-agent/
 │  ├─ verify_limit_regression.py
 │  ├─ verify-solve-regression.cmd
 │  ├─ verify_solve_regression.py
+│  ├─ verify_random_regression.py
 │  └─ verify_deployment.py
 ├─ tests/
 │  ├─ test_math_api.py
@@ -68,6 +71,7 @@ gaoshu-agent/
 ├─ .gitignore
 ├─ DEPLOYMENT.md
 ├─ Dockerfile
+├─ PROJECT_STATUS.md
 ├─ README.md
 ├─ render.yaml
 └─ requirements.txt
@@ -107,6 +111,12 @@ python -m pip install -r requirements.txt
 
 ```powershell
 .\scripts\verify-limit-regression.cmd --base-url https://cfyyy.pythonanywhere.com
+```
+
+固定随机种子的公网随机回归：
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\verify_random_regression.py --base-url https://cfyyy.pythonanywhere.com
 ```
 
 ## 启动服务
@@ -446,7 +456,7 @@ $env:CALCULATION_WORKERS = "4"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-当前公网服务已启用 `MATH_API_KEY`。扣子的 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` HTTP 节点必须增加请求头 `X-API-Key`，其值与 PythonAnywhere 的 `MATH_API_KEY` 一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 仍可直接访问。
+当前公网服务未启用 `MATH_API_KEY`，公开演示接口可以直接调用。若正式启用密钥，扣子的 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` HTTP 节点必须增加请求头 `X-API-Key`，其值与 PythonAnywhere 的 `MATH_API_KEY` 一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 始终不需要 API Key。
 
 普通问答模型使用独立配置，密钥不会返回给浏览器：
 
@@ -455,6 +465,20 @@ $env:GENERAL_CHAT_API_URL = "https://api.deepseek.com/chat/completions"
 $env:GENERAL_CHAT_API_KEY = "替换为你的模型密钥"
 $env:GENERAL_CHAT_MODEL = "deepseek-chat"
 ```
+
+图片识别优先使用 OpenAI 兼容的视觉模型接口；未完整配置时才尝试扣子备用链路。线上公网当前使用视觉模型主链路，扣子工作流作为备用：
+
+```powershell
+$env:VISION_API_BASE = "https://your-vision-endpoint.example/v1"
+$env:VISION_API_KEY = "替换为你的视觉模型密钥"
+$env:VISION_MODEL = "qwen3-vl-plus"
+$env:VISION_TIMEOUT_SECONDS = "30"
+
+$env:COZE_API_TOKEN = ""
+$env:COZE_OCR_WORKFLOW_ID = ""
+```
+
+如果同时配置视觉模型和扣子 OCR，服务按 `vision`、`coze` 的顺序尝试；两套上游都失败时不会用质量不可控的本地 OCR 掩盖故障。只有完全未配置上游服务时，才会尝试可选的 Windows 本地 OCR。
 
 `GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
 
@@ -469,7 +493,7 @@ $env:GENERAL_CHAT_MODEL = "deepseek-chat"
 - 已绑定并测试 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot`、`knowledge_lookup`。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 本地 55 项单元测试通过，公网极限回归 6/6、多章节回归 9/9 通过。
+- 本地完整测试共 143 项，139 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；公网极限固定回归 6/6、统一求解固定回归 9/9、部署验收 9/9、固定种子随机回归全部通过。
 - 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
 - 同济版高等数学第 1—12 章知识文件已经整理完成。
 - 已提供无需登录的独立对话演示页 `/demo`，支持连续输入求导、积分、极限、函数图像和候选答案判断。
@@ -483,4 +507,4 @@ $env:GENERAL_CHAT_MODEL = "deepseek-chat"
 - 已统一更新并发布扣子提示词，完成求导、积分、极限和级数的空答案、正确/错误候选答案及不定积分补 `C` 话术回归。
 - 扣子提示词已允许普通问答；独立演示页也支持通过环境变量接入通用模型，同时保留高数题强制走确定性计算工具的规则。
 
-图片识别已改用 `ocr_question` 插件，调用时只传入图片地址，返回题目文字和用 `$` 包裹的公式。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用计算工作流；识别残缺时要求重新拍照，不猜测公式。图片积分题的两阶段流程已经通过验证。语音和参赛材料仍在后续开发中。
+公网图片识别主链路已切换为视觉模型 OCR，扣子工作流保留为可选备用，本地 Windows OCR 仅作为未配置上游时的降级方案。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用确定性计算；识别残缺或上游失败时要求重新上传，不猜测公式。服务端会话和 OCR 缓存均为进程内存，PythonAnywhere Web 应用 Reload 后会清空。浏览器原生语音输入和回答朗读已接入演示页；语音识别通常依赖浏览器厂商的在线服务，并非完全离线。当前不支持语音 API 的浏览器会隐藏麦克风，文字输入、图片识别和数学求解不受影响。参赛材料仍在后续开发中。
