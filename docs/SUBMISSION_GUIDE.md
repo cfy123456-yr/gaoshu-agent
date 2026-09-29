@@ -178,6 +178,19 @@ Flask WSGI 部署入口
 两张图片已于 2026-09-29 使用公网 `/demo/api/ocr` 实际验证。录制视频时可以直接使用
 仓库内文件，不需要再拍摄纸质题目，也不会带入姓名、学号或课程信息。
 
+## 导出打印稿
+
+在仓库根目录使用 PowerShell 7 运行：
+
+```powershell
+./scripts/export-submission-material.ps1
+```
+
+脚本会把本文件、`docs/AI_USAGE_LOG.md` 和 `PROJECT_STATUS.md` 合并为可打印的
+`outputs/submission/submission-bundle.html`，并调用本机 Microsoft Edge 生成 A4 PDF
+`outputs/submission/submission-bundle.pdf`。导出文件默认不进入 Git，填写赛事信息后
+可随时重新生成。
+
 ## 答辩问答
 
 ### 为什么不能直接让大模型算题？

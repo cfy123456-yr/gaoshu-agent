@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 20:56（Asia/Shanghai）
+更新时间：2026-09-29 21:08（Asia/Shanghai）
 
 ## 当前事实
 
@@ -96,6 +96,13 @@ PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改�
 `3B529BFD43E05251B70EE8F28FD33780855C13DA93CC4748972659530A6BDC05`。
 - `3d181da` 已同步到 Gitee 和 GitHub；GitHub Actions 第 `10` 次 `Test suite` 与
   第 `4` 次 `Public regression` 均基于该提交完成并成功。
+- `5f1bbc3` 的提交材料已同步到 Gitee 和 GitHub；GitHub Actions `Test suite`
+  于 `2026-09-29T13:02:35Z` 基于 `9edc23d` 启动并成功，地址为
+  `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36572249733`。
+- 已新增 `scripts/export-submission-material.ps1`：使用 PowerShell 7 将参赛手册、
+  AI 使用记录和项目状态合并为打印版 HTML，并调用本机 Microsoft Edge 生成 A4
+  PDF。实际导出与文件头校验成功；Edge 实渲染截图确认中文字体、表格与长标题
+  无溢出。
 
 持久化 JSONL 日志在演示阶段继续关闭。当前公网使用 PythonAnywhere 自带的访问与错误
 日志，配合 GitHub Actions 健康检查和四组公网回归已覆盖稳定性观察；开启额外日志会
@@ -280,4 +287,5 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 - `COZE_AGENT_PROMPT.md`：扣子智能体提示词说明。
 - `docs/SUBMISSION_GUIDE.md`：作品说明、演示视频脚本、答辩问答和提交清单。
 - `docs/AI_USAGE_LOG.md`：开发与运行阶段的 AI 工具边界、复核记录和声明模板。
+- `scripts/export-submission-material.ps1`：生成可打印的参赛材料 HTML 与 A4 PDF。
 - `deploy/PYTHONANYWHERE.md`：PythonAnywhere 初始部署步骤。
