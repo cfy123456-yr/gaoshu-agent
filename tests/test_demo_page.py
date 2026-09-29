@@ -867,6 +867,122 @@ class DemoPageTest(unittest.TestCase):
         self.assertTrue(all("选择题" not in block["text"] for block in blocks))
         self.assertTrue(all("计算题" not in block["text"] for block in blocks))
 
+    def test_question_block_detector_splits_unpunctuated_ocr_numbering(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "二、填空题（每小题 3 分，共 24 分）\n"
+            "1 直线 L1 与 L2 的夹角为____。\n"
+            "2 微分方程 dy/dx+y=e^{-x}cosx 的通解为____。\n"
+            "3 函数 z=1/2(x^2+y^2) 在点 (1,1) 处减少最快的方向向量为____。\n"
+            "4 函数 z=ln(1-x^2+y^2) 在 x=1,y=2 时的全微分为____。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(
+            ["1", "2", "3", "4"],
+            [block["label"] for block in blocks],
+        )
+        self.assertTrue(blocks[0]["text"].startswith("1 直线"))
+        self.assertNotIn("填空题", blocks[0]["text"])
+
+    def test_question_block_detector_rejects_unpunctuated_arithmetic_lines(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1 + 2\n"
+            "2 + 3\n"
+            "3 + 4"
+        )
+
+        self.assertEqual([], blocks)
+
+    def test_question_block_detector_requires_consecutive_unpunctuated_numbers(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1 求导 x^2\n"
+            "3 求导 x^3"
+        )
+
+        self.assertEqual([], blocks)
+
+    def test_question_block_detector_merges_mixed_ocr_numbering(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1. 求导 x^2\n"
+            "2 求导 x^3\n"
+            "3. 求导 x^4"
+        )
+
+        self.assertEqual(3, len(blocks))
+        self.assertEqual(["1", "2", "3"], [block["label"] for block in blocks])
+        self.assertTrue(blocks[1]["text"].startswith("2 求导"))
+
+    def test_question_block_detector_supports_ocr_punctuation_variants(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1、直线 L1 与 L2 的夹角为____。\n"
+            "2. 微分方程 y' + y = 0 的通解为____。\n"
+            "3, 函数 z=x^2+y^2 的全微分为____。\n"
+            "4：函数 z=ln(1+x^2+y^2) 的全微分为____。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(["1", "2", "3", "4"], [
+            block["label"] for block in blocks
+        ])
+
+    def test_question_block_detector_merges_unpunctuated_and_ascii_numbering(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1 直线 L1 与 L2 的夹角为____。\n"
+            "2 微分方程 y' + y = 0 的通解为____。\n"
+            "3, 函数 z=x^2+y^2 的全微分为____。\n"
+            "4 函数 z=ln(1+x^2+y^2) 的全微分为____。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(["1", "2", "3", "4"], [
+            block["label"] for block in blocks
+        ])
+        self.assertTrue(blocks[0]["text"].startswith("1 直线"))
+
+    def test_question_block_detector_collapses_repeated_ocr_question_label(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "1 直线号:\n"
+            "1 的夹角为____。\n"
+            "2 ． 微分方程 y' + y = 0 的通解为____。\n"
+            "3, 函数 z=x^2+y^2 的全微分为____。\n"
+            "4 ． 函数 z=ln(1+x^2+y^2) 的全微分为____。"
+        )
+
+        self.assertEqual(4, len(blocks))
+        self.assertEqual(["1", "2", "3", "4"], [
+            block["label"] for block in blocks
+        ])
+        self.assertIn("的夹角", blocks[0]["text"])
+
+    def test_question_block_detector_ignores_numbered_section_aliases(self):
+        blocks = demo_question_blocks.extract_question_blocks(
+            "第二题、填空题\n"
+            "1. 求导 x^2\n"
+            "第三题 计算题\n"
+            "2. 求导 x^3"
+        )
+
+        self.assertEqual(2, len(blocks))
+        self.assertEqual(["1", "2"], [block["label"] for block in blocks])
+        self.assertTrue(
+            all("填空题" not in block["text"] for block in blocks)
+        )
+        self.assertTrue(
+            all("计算题" not in block["text"] for block in blocks)
+        )
+
+    def test_unpunctuated_question_number_prefix_is_removed(self):
+        self.assertEqual(
+            "微分方程 y'+y=0",
+            demo_question_blocks.strip_question_number_prefix(
+                "2 微分方程 y'+y=0"
+            ),
+        )
+        self.assertEqual(
+            "1 + 2",
+            demo_question_blocks.strip_question_number_prefix("1 + 2"),
+        )
+
     def test_question_number_prefix_stripper_preserves_math_content(self):
         cases = {
             "1. 1+1": "1+1",
@@ -874,6 +990,8 @@ class DemoPageTest(unittest.TestCase):
             "3、积分 x^2": "积分 x^2",
             "1.5x+2": "1.5x+2",
             "二、填空题": "二、填空题",
+            "1. 选择题": "1. 选择题",
+            "2、计算题": "2、计算题",
             "(1) 求导 x^2": "(1) 求导 x^2",
         }
 
