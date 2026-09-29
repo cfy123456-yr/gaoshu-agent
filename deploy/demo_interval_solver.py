@@ -166,14 +166,19 @@ def solve_interval_extrema(question: str) -> dict[str, Any] | None:
         f"{upper}{interval_match.group('right')}"
     )
     comparison = "\uff1b".join(
-        f"{label}: f({variable_name})={simplify(value)}"
+        f"{label}\uff1a"
+        f"{_latex_equation(f'f({variable_name})', value)}"
         for label, value in candidates
     )
     critical_text = (
-        ", ".join(str(point) for point in critical_points)
+        "\u3001".join(
+            _latex_equation(variable_name, point)
+            for point in critical_points
+        )
         if critical_points
         else "\u65e0\u5b9e\u6570\u9a7b\u70b9"
     )
+    derivative_latex = _latex_equation(f"f'({variable_name})", derivative)
     formula = (
         rf"\max_{{{variable_name}\in{interval_text}}}"
         rf"\left({latex(expression)}\right)={latex(selected_value)}"
@@ -186,12 +191,13 @@ def solve_interval_extrema(question: str) -> dict[str, Any] | None:
         "intent": "solve",
         "reply": (
             f"\u51fd\u6570\u5728\u533a\u95f4 {interval_text} "
-            f"\u4e0a\u7684{kind_label}\u662f {selected_value}\u3002\n"
-            f"\u6c42\u5bfc\u5f97 f'({variable_name})={derivative}\uff0c"
+            f"\u4e0a\u7684{kind_label}\u662f "
+            f"{_latex_math(selected_value)}\u3002\n"
+            f"\u6c42\u5bfc\u5f97 {derivative_latex}\uff0c"
             f"\u9a7b\u70b9\u4e3a {critical_text}\u3002\n"
             f"\u6bd4\u8f83\u5019\u9009\u503c\uff1a{comparison}\u3002\n"
             f"\u56e0\u6b64\uff0c{selected_label} \u53d6\u5230"
-            f"{kind_label} {selected_value}\u3002"
+            f"{kind_label} {_latex_math(selected_value)}\u3002"
         ),
         "formula_latex": formula,
         "formula_text": f"{kind_label} = {selected_value}",
@@ -210,6 +216,16 @@ def solve_interval_extrema(question: str) -> dict[str, Any] | None:
         },
         "suggestions": _HELP_SUGGESTIONS,
     }
+
+
+def _latex_math(value: Any) -> str:
+    """Wrap one SymPy value in the inline math syntax used by the demo."""
+    return f"${latex(simplify(value))}$"
+
+
+def _latex_equation(left: str, right: Any) -> str:
+    """Render a simple equation without leaking SymPy's ``*`` syntax."""
+    return f"${left}={latex(simplify(right))}$"
 
 
 def _normalize_question(question: str) -> str:

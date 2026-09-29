@@ -27,6 +27,7 @@ from app.main import (
 )
 from deploy.demo_math_text import normalize_math_text
 from deploy.demo_interval_solver import solve_interval_extrema
+from deploy.demo_question_blocks import strip_question_number_prefix
 
 
 class DemoChatHistoryMessage(BaseModel):
@@ -278,34 +279,47 @@ def _normalize_differential_equation(value: str) -> str:
     """Clean OCR question wording around a differential equation."""
     equation = unicodedata.normalize("NFKC", str(value).strip())
     equation = re.sub(
-        r"^(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
-        r"(?:(?:求|求解|解|计算)\s*)?"
-        r"(?:(?:这个|该|此)\s*)?(?:微分方程|方程)\s*[:：,，]?\s*",
+        r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]",
         "",
         equation,
     )
     equation = re.sub(
-        r"^(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
-        r"(?:求|求解|解|计算)\s*[:：]?\s*",
+        r"^\s*(?:(?:第\s*)?[一二三四五六七八九十百\d]+\s*[、.．:：]\s*)?"
+        r"(?:选择题|填空题|判断题|计算题|解答题|证明题|综合题|应用题)"
+        r"\s*(?:[（(][^()（）]{0,40}[)）])?\s*",
         "",
         equation,
+        count=1,
     )
     equation = re.sub(
-        r"\s*(?:求|计算)\s*(?:(?:这个|该|此|其)\s*)?"
+        r"^\s*(?:第\s*)?\d+\s*[题、.．)）:：]\s*",
+        "",
+        equation,
+        count=1,
+    )
+    equation = re.sub(
+        r"^.*?(?:微分方程|常微分方程|方程)\s*[:：,，]?\s*",
+        "",
+        equation,
+        count=1,
+    )
+    equation = re.sub(
+        r"^\s*(?:(?:请|麻烦)\s*)?(?:(?:帮我)\s*)?"
+        r"(?:求解|求|解|计算)\s*[:：]?\s*",
+        "",
+        equation,
+        count=1,
+    )
+    equation = re.split(
+        r"\s*(?:求|计算)?\s*(?:(?:这个|该|此|其)\s*)?"
         r"(?:方程\s*)?(?:的\s*)?(?:通解|特解)"
-        r"\s*[_＿?？。！!.,，;；:\s]*$",
-        "",
+        r"\s*(?:为|是)?.*$",
         equation,
-    )
-    equation = re.sub(
-        r"\s*(?:的\s*)?(?:通解|特解)\s*(?:为|是)?"
-        r"\s*[_＿?？。！!.,，;；:\s]*$",
-        "",
-        equation,
-    )
+        maxsplit=1,
+    )[0]
     equation = equation.replace("′", "'").replace("’", "'")
-    equation = re.sub(r"[_＿]+", "", equation)
-    return equation.strip().rstrip("，,。;；:：")
+    equation = re.sub(r"[_＿]{2,}", "", equation)
+    return equation.strip().rstrip("，,。;；:：_＿")
 
 
 def _split_variables(value: str) -> list[str]:
@@ -1095,6 +1109,13 @@ def build_chat_response(
     normalized = _normalize_text(message)
     ocr_question = _extract_ocr_question(normalized)
     if ocr_question:
+        question_candidate = strip_question_number_prefix(ocr_question)
+        try:
+            solved = _math_response(question_candidate)
+        except Exception:
+            solved = None
+        if solved is not None and solved.get("intent") in {"solve", "calculation"}:
+            return solved
         response = _needs_input(
             f"题目已识别，请核对：{ocr_question}。"
             "确认无误回复“确认”，我将开始计算。"
@@ -1419,6 +1440,7 @@ def _solve_confirmed_question(
         str(question),
         maxsplit=1,
     )[0].strip()
+    cleaned = strip_question_number_prefix(cleaned)
     if not cleaned:
         return _needs_input(
             "\u8bf7\u5148\u4e0a\u4f20\u6216\u8f93\u5165\u9700\u8981\u89e3\u7b54\u7684\u9898\u76ee\u3002"
@@ -1855,9 +1877,16 @@ def _detect_intent(value: str) -> str:
     lowered = value.lower()
     if re.search(r"(?:极限|\blim\b|limit)", lowered):
         return "limit"
-    if "积分" in value or "∫" in value:
+    if (
+        "积分" in value
+        or "∫" in value
+        or _parse_integral(value) is not None
+    ):
         return "integrate"
-    if re.search(r"(?:求导|导数|导函数|微分|d\s*/\s*d)", lowered):
+    if (
+        re.search(r"(?:求导|导数|导函数|微分|d\s*/\s*d)", lowered)
+        or _parse_derivative(value) is not None
+    ):
         return "verify"
     if _PLOT_KEYWORDS.search(value):
         return "plot"
@@ -2210,24 +2239,43 @@ def _parse_derivative(message: str) -> tuple[str, str, str | None] | None:
     expression: str | None = None
 
     relation = re.search(
-        r"(?P<first>.+?)\s*(?:是不是|是否为|是|等于)\s*"
-        r"(?P<second>.+?)\s*的(?:导函数|导数)(?:吗)?$",
+        r"^\s*is\s+(?P<first>.+?)\s+(?:the\s+)?"
+        r"(?:derivative|antiderivative)\s+of\s+"
+        r"(?P<second>.+?)\s*[?？]?\s*$",
         message,
         re.IGNORECASE,
     )
+    if relation is None:
+        relation = re.search(
+            r"^\s*(?P<first>.+?)\s+is\s+(?:the\s+)?"
+            r"(?:derivative|antiderivative)\s+of\s+"
+            r"(?P<second>.+?)\s*[?？]?\s*$",
+            message,
+            re.IGNORECASE,
+        )
     if relation:
         candidate = _clean_math_fragment(relation.group("first"))
         expression = _clean_expression(relation.group("second"))
     else:
         relation = re.search(
-            r"(?P<expr>.+?)\s*的(?:导函数|导数)\s*"
-            r"(?:是不是|是否为|是|等于)\s*(?P<candidate>.+?)(?:吗)?$",
+            r"(?P<first>.+?)\s*(?:是不是|是否为|是|等于)\s*"
+            r"(?P<second>.+?)\s*的(?:导函数|导数)(?:吗)?$",
             message,
             re.IGNORECASE,
         )
         if relation:
-            expression = _clean_expression(relation.group("expr"))
-            candidate = _clean_math_fragment(relation.group("candidate"))
+            candidate = _clean_math_fragment(relation.group("first"))
+            expression = _clean_expression(relation.group("second"))
+        else:
+            relation = re.search(
+                r"(?P<expr>.+?)\s*的(?:导函数|导数)\s*"
+                r"(?:是不是|是否为|是|等于)\s*(?P<candidate>.+?)(?:吗)?$",
+                message,
+                re.IGNORECASE,
+            )
+            if relation:
+                expression = _clean_expression(relation.group("expr"))
+                candidate = _clean_math_fragment(relation.group("candidate"))
 
     if expression is None:
         candidate = _extract_trailing_candidate(message) or candidate
@@ -2236,6 +2284,10 @@ def _parse_derivative(message: str) -> tuple[str, str, str | None] | None:
             r"(?:为|是|:)?\s*(.+)$",
             r"^(?:帮我|请|计算|求)?\s*(?:导数|微分)\s*(?:为|是|:)?\s*(.+)$",
             r"^(.+?)\s*的(?:导函数|导数)(?:是多少)?$",
+            r"^(?:please\s+)?(?:(?:compute|calculate|find|evaluate|"
+            r"determine|take|get|what\s+is)\s+)?"
+            r"(?:the\s+)?(?:derivative|differentiate|differentiation)\s*"
+            r"(?:of|for)?\s*(?:(?:the\s+)?function\s+)?(.+?)\s*$",
             r"^d\s*/\s*d([A-Za-z][A-Za-z0-9_]*)\s*(.+)$",
         )
         for pattern in patterns:
@@ -2265,28 +2317,56 @@ def _parse_integral(
     upper: str | None = None
 
     relation = re.search(
-        r"(?P<first>.+?)\s*(?:是不是|是否为|是|等于)\s*"
-        r"(?P<second>.+?)\s*的(?:不定积分|定积分|积分)(?:吗)?$",
+        r"^\s*is\s+(?P<first>.+?)\s+(?:the\s+)?"
+        r"(?:integral|antiderivative)\s+of\s+"
+        r"(?P<second>.+?)\s*[?？]?\s*$",
         message,
         re.IGNORECASE,
     )
+    if relation is None:
+        relation = re.search(
+            r"^\s*(?P<first>.+?)\s+is\s+(?:the\s+)?"
+            r"(?:integral|antiderivative)\s+of\s+"
+            r"(?P<second>.+?)\s*[?？]?\s*$",
+            message,
+            re.IGNORECASE,
+        )
     if relation:
         candidate = _clean_math_fragment(relation.group("first"))
         expression = _clean_expression(relation.group("second"))
     else:
         relation = re.search(
-            r"(?P<expr>.+?)\s*的(?:不定积分|定积分|积分)\s*"
-            r"(?:是不是|是否为|是|等于)\s*(?P<candidate>.+?)(?:吗)?$",
+            r"(?P<first>.+?)\s*(?:是不是|是否为|是|等于)\s*"
+            r"(?P<second>.+?)\s*的(?:不定积分|定积分|积分)(?:吗)?$",
             message,
             re.IGNORECASE,
         )
         if relation:
-            expression = _clean_expression(relation.group("expr"))
-            candidate = _clean_math_fragment(relation.group("candidate"))
+            candidate = _clean_math_fragment(relation.group("first"))
+            expression = _clean_expression(relation.group("second"))
+        else:
+            relation = re.search(
+                r"(?P<expr>.+?)\s*的(?:不定积分|定积分|积分)\s*"
+                r"(?:是不是|是否为|是|等于)\s*(?P<candidate>.+?)(?:吗)?$",
+                message,
+                re.IGNORECASE,
+            )
+            if relation:
+                expression = _clean_expression(relation.group("expr"))
+                candidate = _clean_math_fragment(relation.group("candidate"))
 
     if expression is None:
         candidate = _extract_trailing_candidate(message) or candidate
         bound_patterns = (
+            r"^(?:please\s+)?(?:(?:compute|calculate|find|evaluate|"
+            r"determine)\s+)?(?:the\s+)?(?:definite\s+)?"
+            r"(?:integral|integrate)\s+from\s+(?P<lower>[^\s,]+)\s+"
+            r"to\s+(?P<upper>[^\s,]+)\s+(?:of\s+)?(?P<expr>.+)$",
+            r"^(?:please\s+)?(?:(?:compute|calculate|find|evaluate|"
+            r"determine)\s+)?(?:the\s+)?(?:definite\s+)?"
+            r"(?:integral|integrate|antiderivative)\s+(?:of\s+)?"
+            r"(?P<expr>.+?)\s+from\s+(?P<lower>[^\s,]+)\s+"
+            r"to\s+(?P<upper>[^\s,]+)\s*$",
             r"(?:积分|∫)\s*(?:从\s*)?(?P<lower>[^\s,]+)\s*"
             r"(?:到|至)\s*(?P<upper>[^\s,]+)\s*(?P<expr>.+)$",
             r"(?P<expr>.+?)\s*(?:从|在)\s*(?P<lower>[^\s,]+)\s*"
@@ -2315,6 +2395,10 @@ def _parse_integral(
                 r"^(?:帮我|请|计算|求)?\s*(?:求积分|积分)\s*"
                 r"(?:为|是|:)?\s*(.+)$",
                 r"^(.+?)\s*的(?:不定积分|积分)$",
+                r"^(?:please\s+)?(?:(?:compute|calculate|find|evaluate|"
+                r"determine|get)\s+)?(?:the\s+)?"
+                r"(?:indefinite\s+)?(?:integral|integrate|antiderivative)"
+                r"\s*(?:of|for)?\s*(?:(?:the\s+)?integrand\s+)?(.+)$",
             )
             for pattern in patterns:
                 match = re.search(pattern, message, re.IGNORECASE)
@@ -2420,7 +2504,19 @@ def _clean_expression(value: str) -> str:
     )
     value = re.sub(r"^[A-Za-z]\s*\([^)]*\)\s*=\s*", "", value)
     value = re.sub(r"^[A-Za-z]\s*=\s*", "", value)
+    value = re.sub(
+        r"^(?:the\s+)?(?:function|expression)\s+",
+        "",
+        value,
+        flags=re.IGNORECASE,
+    )
     value = re.sub(r"\s*d[A-Za-z][A-Za-z0-9_]*\s*$", "", value)
+    value = re.sub(
+        r"\s+(?:with\s+respect\s+to|wrt)\s+[A-Za-z][A-Za-z0-9_]*\s*$",
+        "",
+        value,
+        flags=re.IGNORECASE,
+    )
     value = re.sub(
         r"\s*的?(?:导函数|导数|不定积分|定积分|积分|极限)\s*$",
         "",
@@ -2463,6 +2559,15 @@ def _extract_trailing_candidate(value: str) -> str | None:
 
 
 def _infer_variable(message: str, expression: str) -> str:
+    english = re.search(
+        r"\b(?:with\s+respect\s+to|wrt)\s+"
+        r"([A-Za-z][A-Za-z0-9_]*)",
+        message,
+        re.IGNORECASE,
+    )
+    if english:
+        return english.group(1)
+
     explicit = re.search(
         r"(?:自变量|变量)\s*(?:为|是|:)?\s*([A-Za-z][A-Za-z0-9_]*)",
         message,

@@ -69,6 +69,7 @@ from deploy.demo_vision import (
     SUPPORTED_IMAGE_TYPES,
     VisionConfigurationError,
     VisionUpstreamError,
+    audit_leading_question_number as audit_vision_leading_question_number,
     audit_question_count as audit_vision_question_count,
     image_matches_type,
     transcribe_question_image as transcribe_vision_question_image,
@@ -92,6 +93,9 @@ _chat_response_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
 _OCR_CACHE_TTL_SECONDS = 600
 _OCR_CACHE_MAX_ENTRIES = 128
 _ocr_response_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_SUSPICIOUS_SINGLE_NUMBER_RE = re.compile(
+    r"^\s*1\s*[.、．)]\s+(?P<body>[0-9A-Za-z+\-*/^().,\s]+)\s*$"
+)
 
 
 def is_public_demo_request() -> bool:
@@ -368,10 +372,17 @@ def demo_chat():
             return jsonify(cached)
 
     if is_confirmation:
-        # The server-side session is the source of truth once OCR has been
-        # confirmed. A stale or wrapped pending_question from the browser must
-        # not overwrite the question that was actually recognized.
+        # Fall back to the server-side OCR session unless the browser is
+        # explicitly confirming one of the selected questions.
         pending_question = confirmation_question
+        if (
+            model.source == "ocr"
+            and raw_message == "确认"
+            and is_valid_ocr_question(carried_question)
+        ):
+            # Multi-question selection sends one explicit question per request.
+            # Prefer that choice over a session left by the last uploaded image.
+            pending_question = carried_question
         if not pending_question:
             return jsonify(_no_pending_question_response())
         demo_sessions.remember_ocr_question(session_id, pending_question)
@@ -622,7 +633,7 @@ def _build_ocr_payload(
     if len(blocks) >= 2:
         warning = _merge_ocr_warning(
             warning,
-            "识别到多道独立题目，请先选择需要计算的一道题。",
+            "识别到多道独立题目，请选择需要计算的题目，可多选或全选。",
         )
     elif audited_count is not None and audited_count > 1:
         review_required = True
@@ -718,8 +729,14 @@ def _transcribe_demo_ocr(data: bytes, mime_type: str) -> tuple[str, str, str]:
 
     if vision_ocr_configured():
         try:
+            text = transcribe_vision_question_image(data, mime_type)
+            text = _normalize_vision_leading_number(
+                text,
+                data,
+                mime_type,
+            )
             return (
-                transcribe_vision_question_image(data, mime_type),
+                text,
                 "vision",
                 "",
             )
@@ -765,6 +782,33 @@ def _transcribe_demo_ocr(data: bytes, mime_type: str) -> tuple[str, str, str]:
         status_code=502 if upstream_configured else 503,
         detail=detail,
     )
+
+
+def _normalize_vision_leading_number(
+    text: str,
+    image_data: bytes,
+    mime_type: str,
+) -> str:
+    """Remove a sole leading "1." only when a visual audit says it is absent."""
+
+    value = str(text or "").strip()
+    match = _SUSPICIOUS_SINGLE_NUMBER_RE.match(value)
+    if match is None:
+        return value
+
+    try:
+        has_number = audit_vision_leading_question_number(image_data, mime_type)
+    except (VisionConfigurationError, VisionUpstreamError) as exc:
+        application.logger.warning(
+            "Vision leading-number audit failed: %s",
+            exc,
+            exc_info=True,
+        )
+        return value
+
+    if has_number is False:
+        return match.group("body").strip()
+    return value
 
 
 def _cached_ocr_response(cache_key: str) -> dict[str, Any] | None:

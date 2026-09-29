@@ -244,6 +244,50 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertIn("C1*exp(x)", payload["result"])
 
+    def test_differential_equation_cleans_full_ocr_question(self):
+        cases = (
+            "微分方程 y' + y = e^(-x) cos x 的通解为____。 。",
+            "二、填空题 微分方程 y' + y = e^(-x) cos x 的通解为______。 。",
+            "二、填空题微分方程y'+y=e^(-x)cosx的通解为____。",
+            "微分方程 y′ + y = e^(−x) cos x 的通解为____。",
+            "求解：y' + y = e^(-x) cos x",
+            (
+                "y' + y = e^(-x) cos x 的通解为______。 "
+                "确认无误回复“确认”，我将开始计算。"
+            ),
+        )
+        for equation in cases:
+            with self.subTest(equation=equation):
+                payload = self.solve(
+                    "differential_equations",
+                    "dsolve",
+                    {
+                        "equation": equation,
+                        "variable": "x",
+                        "function": "y",
+                    },
+                )
+                self.assertIn("exp(-x)", payload["result"])
+                self.assertIn("sin(x)", payload["result"])
+
+        payload = self.solve(
+            "differential_equations",
+            "dsolve",
+            {"equation": "解 y'-y=0", "variable": "x", "function": "y"},
+        )
+        self.assertIn("C1*exp(x)", payload["result"])
+
+        with self.assertRaises(SolveError):
+            self.solve(
+                "differential_equations",
+                "dsolve",
+                {
+                    "equation": "y' + y = e^(-x) cos x @",
+                    "variable": "x",
+                    "function": "y",
+                },
+            )
+
     def test_differential_equation_notation_and_families(self):
         cases = (
             ("y'(x)+y(x)=1", "x", "C1*exp(-x)+1"),

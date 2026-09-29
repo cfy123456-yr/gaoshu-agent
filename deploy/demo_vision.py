@@ -36,16 +36,23 @@ VISION_TIMEOUT_SECONDS = max(
 )
 
 VISION_PROMPT = """
-你是高等数学题目转写助手。只识别用户提供的图片，不计算、不讲解、不补充图中没有的条件。
+你是数学题目转写助手。题目范围包括高等数学、基础算术、代数、几何等所有可计算的数学题，
+不要因为题目简单或不属于高等数学而拒绝识别。
+只识别用户提供的图片，不计算、不讲解、不补充图中没有的条件。
 请按画面顺序逐题、逐行识别题号、已知条件、选项和问题。
 如果图片包含多道题，必须保留原题号和换行，分别完整转写，不得合并、遗漏或串题。
+题号只照抄图中真实存在的编号。图中没有题号时，必须从图中实际可见的第一个字符开始输出，
+禁止自行添加任何编号、序号或前缀。
+仅当图中确实印有题号时才保留，且题号必须与后面的算式或文字用空格隔开，
+例如图中是「10. 2 + 2」时写作「10. 2 + 2」，不得写成「10.2 + 2」，
+也不要把题号或小问编号并入算式。
 数学表达式使用纯文本：乘方用 ^，除法用 /，平方根用 sqrt(...)，圆周率用 pi，
 无穷用 oo，极限写成 lim x->0 sin(x)/x 这种形式。
 必须区分容易混淆的符号：数字 0 与字母 O/o、数字 1 与字母 l/I、字母 x 与乘号 ×、
 负号与减号、导数撇号与指数、积分上下限、上下标、绝对值以及向量箭头。
 看不清的符号先结合上下文写最可能的读法，并紧跟在括号中标注“疑似”，例如 0（疑似 O）。
 不要擅自改正疑似符号，不要遗漏题目中的条件。只有题目主体严重模糊、关键区域被遮挡
-或图片不是数学题目时，才回复：无法识别为高等数学题目。
+或图片不是数学题目时，才回复：无法识别为数学题目。
 不要使用 Markdown、代码块、LaTeX 定界符或 $ 符号。
 """.strip()
 
@@ -55,6 +62,14 @@ VISION_LAYOUT_PROMPT = """
 不要计算或解题。同一道题内部的小问 (1)(2)、(1)、a)、b) 只算一道题。
 只输出一个 JSON，例如：{"question_count": 4}。
 如果只有一道题，输出 {"question_count": 1}。
+""".strip()
+
+
+VISION_LEADING_NUMBER_PROMPT = """
+请只判断图片中第一个算式或文字的最左侧，是否真实印有题号“1.”、“1、”或“1．”。
+只依据画面中实际可见的像素判断，不得根据常见排版习惯推测题号。
+如果算式直接从数字、符号、字母或中文文字开始，则返回 false。
+只输出一个 JSON，例如：{"has_leading_number": false}。
 """.strip()
 
 
@@ -242,6 +257,126 @@ def audit_question_count(
     except (KeyError, IndexError, TypeError, ValueError, UnicodeDecodeError) as exc:
         raise VisionUpstreamError("Vision layout response is invalid") from exc
     return _parse_question_count(_content_as_text(content))
+
+
+def audit_leading_question_number(
+    data: bytes,
+    mime_type: str,
+    *,
+    timeout_seconds: float | None = None,
+) -> bool | None:
+    """Check whether the first visible item actually has a leading question number."""
+
+    if not vision_ocr_configured():
+        raise VisionConfigurationError("Vision OCR is not configured")
+
+    request_timeout = VISION_TIMEOUT_SECONDS
+    if timeout_seconds is not None:
+        request_timeout = max(0.1, min(VISION_TIMEOUT_SECONDS, timeout_seconds))
+
+    encoded = base64.b64encode(data).decode("ascii")
+    payload = {
+        "model": VISION_MODEL,
+        "temperature": 0,
+        "max_tokens": 48,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": VISION_LEADING_NUMBER_PROMPT},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{encoded}",
+                        },
+                    },
+                ],
+            }
+        ],
+    }
+    if VISION_MODEL.lower().startswith("qwen3"):
+        payload["enable_thinking"] = False
+    request = Request(
+        _vision_chat_endpoint(),
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {VISION_API_KEY}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=request_timeout) as response:
+            raw_response = response.read(MAX_VISION_RESPONSE_BYTES + 1)
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        raise VisionUpstreamError("Vision leading-number audit failed") from exc
+
+    if len(raw_response) > MAX_VISION_RESPONSE_BYTES:
+        raise VisionUpstreamError("Vision leading-number response is too large")
+    try:
+        result = json.loads(raw_response.decode("utf-8"))
+        content = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError, ValueError, UnicodeDecodeError) as exc:
+        raise VisionUpstreamError(
+            "Vision leading-number response is invalid"
+        ) from exc
+    return _parse_leading_question_number(_content_as_text(content))
+
+
+def _parse_leading_question_number(text: str) -> bool | None:
+    cleaned = str(text or "").strip()
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        lines = cleaned.splitlines()
+        if len(lines) >= 2:
+            cleaned = "\n".join(lines[1:-1]).strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        parsed = None
+
+    if isinstance(parsed, dict):
+        for key in (
+            "has_leading_number",
+            "has_question_number",
+            "question_number_present",
+        ):
+            if key not in parsed:
+                continue
+            value = parsed[key]
+            if isinstance(value, bool):
+                return value
+            lowered = str(value or "").strip().lower()
+            if lowered in {"true", "yes", "1", "是", "有"}:
+                return True
+            if lowered in {"false", "no", "0", "否", "无"}:
+                return False
+            return None
+
+        if "question_number" not in parsed:
+            return None
+        number = parsed["question_number"]
+        if number is None:
+            return False
+        if isinstance(number, bool):
+            return None
+        if isinstance(number, (int, float)):
+            return int(number) == 1
+        return str(number).strip() in {"1", "1.", "1、", "1．"}
+
+    match = re.search(
+        r'"(?:has_leading_number|has_question_number)"\s*:\s*(true|false)',
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    if match is not None:
+        return match.group(1).lower() == "true"
+    if re.fullmatch(r"true\s*[。.]?", cleaned, flags=re.IGNORECASE):
+        return True
+    if re.fullmatch(r"false\s*[。.]?", cleaned, flags=re.IGNORECASE):
+        return False
+    return None
 
 
 def _parse_question_count(text: str) -> int | None:

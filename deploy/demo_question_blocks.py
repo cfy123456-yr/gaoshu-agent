@@ -6,16 +6,29 @@ import re
 from typing import Any
 
 
-_NUMBER_TOKEN = r"(?:\d{1,2}|[一二三四五六七八九十百]+)"
+_ARABIC_NUMBER_TOKEN = r"\d{1,2}"
+_CHINESE_NUMBER_TOKEN = r"[一二三四五六七八九十百]+"
+_NUMBER_TOKEN = rf"(?:{_ARABIC_NUMBER_TOKEN}|{_CHINESE_NUMBER_TOKEN})"
 _QUESTION_START_RE = re.compile(
     rf"(?m)(?P<prefix>^[ \t]*(?:"
-    rf"第\s*{_NUMBER_TOKEN}\s*题"
-    rf"|{_NUMBER_TOKEN}\s*[、.．)）](?!\d)"
+    rf"第\s*(?P<named_label>{_NUMBER_TOKEN})\s*题"
+    rf"|(?P<bare_number>{_ARABIC_NUMBER_TOKEN})\s*[、.．)）](?!\d)"
     rf")\s*)"
 )
-_LABEL_RE = re.compile(
-    rf"(?:第\s*(?P<label>{_NUMBER_TOKEN})\s*题|"
-    rf"(?P<number>{_NUMBER_TOKEN})\s*[、.．)）])"
+_SECTION_HEADING_RE = re.compile(
+    r"^(?:"
+    r"选\s*择\s*题|填\s*空\s*题|判\s*断\s*题|"
+    r"计\s*算\s*题|解\s*答\s*题|证\s*明\s*题|"
+    r"应\s*用\s*题|综\s*合\s*题|简\s*答\s*题|"
+    r"单\s*选\s*题|多\s*选\s*题|论\s*述\s*题|作\s*图\s*题"
+    r")"
+    r"(?:\s*[（(][^）)\n]*(?:每小题|共\s*\d+\s*分|满分)"
+    r"[^）)\n]*[）)]?)?"
+    r"\s*[.。]?\s*$"
+)
+_SECTION_LINE_RE = re.compile(
+    rf"^[ \t]*(?:第\s*{_NUMBER_TOKEN}\s*题|"
+    rf"{_NUMBER_TOKEN}\s*[、.．)）])\s*(?P<remainder>.*)$"
 )
 
 
@@ -31,7 +44,11 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
     if not value:
         return []
 
-    matches = list(_QUESTION_START_RE.finditer(value))
+    matches = [
+        match
+        for match in _QUESTION_START_RE.finditer(value)
+        if not _is_section_heading(value, match)
+    ]
     if len(matches) < 2:
         return []
 
@@ -39,13 +56,14 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
     for index, match in enumerate(matches):
         start = match.start()
         end = matches[index + 1].start() if index + 1 < len(matches) else len(value)
-        block_text = value[start:end].strip()
+        block_text = _trim_trailing_section_headings(value[start:end].strip())
         if not block_text:
             continue
-        label_match = _LABEL_RE.search(match.group("prefix"))
-        label = ""
-        if label_match:
-            label = label_match.group("label") or label_match.group("number") or ""
+        label = (
+            match.group("named_label")
+            or match.group("bare_number")
+            or ""
+        )
         blocks.append(
             {
                 "index": len(blocks) + 1,
@@ -55,6 +73,49 @@ def extract_question_blocks(text: str) -> list[dict[str, Any]]:
         )
 
     return blocks if len(blocks) >= 2 else []
+
+
+def strip_question_number_prefix(text: str) -> str:
+    """Remove one leading top-level question label from OCR text."""
+
+    value = str(text or "").strip()
+    match = _QUESTION_START_RE.match(value)
+    if match is None or _is_section_heading(value, match):
+        return value
+
+    remainder = value[match.end() :].lstrip()
+    if not remainder or remainder[0] in "+-*/^=),]":
+        return value
+    return remainder
+
+
+def _is_section_heading(value: str, match: re.Match[str]) -> bool:
+    """Return whether a numbered line is a section heading, not a question."""
+
+    line_end = value.find("\n", match.end())
+    if line_end == -1:
+        line_end = len(value)
+    remainder = value[match.end() : line_end].strip()
+    return bool(_SECTION_HEADING_RE.match(remainder))
+
+
+def _trim_trailing_section_headings(text: str) -> str:
+    """Keep a following section title out of the preceding question block."""
+
+    lines = text.splitlines(keepends=True)
+    while lines:
+        stripped = lines[-1].strip()
+        if not stripped:
+            lines.pop()
+            continue
+        section_match = _SECTION_LINE_RE.match(lines[-1])
+        if section_match and _SECTION_HEADING_RE.match(
+            section_match.group("remainder").strip()
+        ):
+            lines.pop()
+            continue
+        break
+    return "".join(lines).rstrip()
 
 
 def extract_question_blocks_from_payload(value: Any) -> list[dict[str, Any]]:
