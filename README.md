@@ -66,9 +66,12 @@ gaoshu-agent/
 │  ├─ test_math_api.py
 │  ├─ test_security_api.py
 │  ├─ test_demo_page.py
+│  ├─ test_launchers.py
 │  ├─ test_plotting.py
 │  ├─ test_service_components.py
-│  └─ test_chapter_solvers.py
+│  ├─ test_chapter_solvers.py
+│  ├─ test_random_regression.py
+│  └─ test_verify_deployment.py
 ├─ .dockerignore
 ├─ .env.example
 ├─ .gitignore
@@ -134,20 +137,22 @@ python -m pip install -r requirements.txt
 
 ## 启动服务
 
+本地演示推荐直接运行与 PythonAnywhere 相同的 Flask WSGI 入口：
+
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -c "from deploy.wsgi_app import application; application.run(host='127.0.0.1', port=8000, use_reloader=False, threaded=True)"
 ```
 
 演示时可以直接双击 `scripts\start-demo.cmd`，脚本会自动完成：
 
-1. 检查并启动本地数学服务。
+1. 优先使用 Uvicorn；本机 `a2wsgi` 或 `uvicorn` 不可用时自动降级到 Flask WSGI。
 2. 核对本地 `/health` 版本，发现旧进程时先重启。
-3. 检查公网隧道健康状态，隧道失效时自动重建。
-4. 输出智能体页面以及求导、积分、极限、统一求解和函数图像接口地址。
+3. 输出本地演示页、固定公网演示页、健康检查和智能体地址。
 
-演示结束后双击 `scripts\stop-demo.cmd` 即可停止本脚本启动的隧道和数学服务。更完整的部署与验收说明见 `DEPLOYMENT.md`。
+演示结束后双击 `scripts\stop-demo.cmd` 即可停止本地数学服务。公网服务固定运行在
+PythonAnywhere，不依赖本机隧道。更完整的部署与验收说明见 `DEPLOYMENT.md`。
 
-数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、统一章节求解、函数图像、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置和独立对话演示页。
+数学服务启动后，可以双击 `scripts\test-api.cmd` 运行自动回归测试。测试覆盖健康检查、导数判题、不定积分、定积分、双侧与左右极限、统一章节求解、函数图像、非法表达式拦截、API Key、限流、计算超时、日志隐私、日志轮转配置、独立对话演示页和本地启动脚本。
 
 也可以直接使用 Python 命令运行：
 
@@ -157,17 +162,20 @@ python -m pip install -r requirements.txt
 
 如果测试服务不在默认地址，可先设置 `TEST_BASE_URL`。
 
-开发时可增加自动重载：
+需要 FastAPI OpenAPI 文档或自动重载时，可以使用 Uvicorn：
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
+如果该命令提示无法导入 `a2wsgi`，说明本地虚拟环境损坏；删除 `.venv` 后按本文的
+安装依赖步骤重建即可。日常演示不需要 Uvicorn。
+
 服务启动后可访问：
 
 - 健康检查：`http://127.0.0.1:8000/health`
-- OpenAPI 文档：`http://127.0.0.1:8000/docs`
-- 独立对话演示：`http://127.0.0.1:5000/demo`
+- 独立对话演示：`http://127.0.0.1:8000/demo`
+- OpenAPI 文档（仅使用 Uvicorn 启动时）：`http://127.0.0.1:8000/docs`
 
 ## 接口说明
 
@@ -506,9 +514,10 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 - 已绑定并测试 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot`、`knowledge_lookup`。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 本地完整测试共 160 项，156 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；
+- 本地完整测试共 164 项，160 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；
   GitHub Actions 会在推送 `main` 和提交拉取请求时自动复跑整套测试；公网极限固定
   回归 6/6、统一求解固定回归 9/9、部署验收 10/10、固定种子随机回归全部通过。
+  本地启动脚本也已纳入回归，覆盖 PowerShell 7 调用、工作目录和 Flask 降级路径。
 - 已加入计算超时保护、JSONL 轮转日志和增强健康检查。
 - 同济版高等数学第 1—12 章知识文件已经整理完成。
 - 已提供无需登录的独立对话演示页 `/demo`，支持连续输入求导、积分、极限、函数图像和候选答案判断。
@@ -522,4 +531,4 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 - 已统一更新并发布扣子提示词，完成求导、积分、极限和级数的空答案、正确/错误候选答案及不定积分补 `C` 话术回归。
 - 扣子提示词已允许普通问答；独立演示页也支持通过环境变量接入通用模型，同时保留高数题强制走确定性计算工具的规则。
 
-公网图片识别主链路已切换为视觉模型 OCR，扣子工作流保留为可选备用，本地 Windows OCR 仅作为未配置上游时的降级方案。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用确定性计算；识别残缺或上游失败时要求重新上传，不猜测公式。服务端会话和 OCR 缓存均为进程内存，PythonAnywhere Web 应用 Reload 后会清空。浏览器原生语音输入和回答朗读已接入演示页；语音识别通常依赖浏览器厂商的在线服务，并非完全离线。当前不支持语音 API 的浏览器会隐藏麦克风，文字输入、图片识别和数学求解不受影响。参赛材料在本地独立维护，不纳入代码仓库。
+公网图片识别主链路已切换为视觉模型 OCR，扣子工作流保留为可选备用，本地 Windows OCR 仅作为未配置上游时的降级方案。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用确定性计算；识别残缺或上游失败时要求重新上传，不猜测公式。服务端会话和 OCR 缓存均为进程内存，PythonAnywhere Web 应用 Reload 后会清空。浏览器原生语音输入和回答朗读已接入演示页；语音识别通常依赖浏览器厂商的在线服务，并非完全离线。当前不支持语音 API 的浏览器会隐藏麦克风，文字输入、图片识别和数学求解不受影响。

@@ -22,6 +22,19 @@ https://cfyyy.pythonanywhere.com
 
 不要将 `.env`、令牌、API 密钥或学生个人数据提交到 Git 仓库。
 
+## 当前验收基线
+
+更新时间：2026-09-29。
+
+- 服务版本为 `0.6.7`，公网入口固定为 `https://cfyyy.pythonanywhere.com`。
+- 完整测试为 `164` 项，`160` 项通过，`4` 项可选旧版显式曲线/曲面积分测试跳过。
+- 本地 `scripts/start-demo.cmd` 使用 PowerShell 7，优先启动 Uvicorn；本机
+  `a2wsgi` 或 Uvicorn 不可用时自动降级到与 PythonAnywhere 相同的 Flask WSGI 入口。
+- `scripts/stop-demo.cmd` 只停止本地 `127.0.0.1:8000` 数学服务，不再管理隧道。
+
+本文后续带日期的发布章节保留为历史快照，其中出现的 `141`、`143` 等测试数对应当次
+发布时结果，不代表当前完整测试数。
+
 ## 公网接口
 
 | 接口 | 地址 |
@@ -406,7 +419,7 @@ deploy/wsgi_app.py
 
 交付包按上述三个服务端文件生成；上线时已确认 PythonAnywhere 的文件大小与表中的字节数一致。
 
-本地已通过提示词断言、服务端复核测试和完整回归：`141` 项测试，`137` 项通过，`4` 项跳过。第四轮已上传并 Reload，使用以下夹具完成公网验证：
+本次历史快照中，本地已通过提示词断言、服务端复核测试和完整回归：`141` 项测试，`137` 项通过，`4` 项跳过。第四轮已上传并 Reload，使用以下夹具完成公网验证：
 
 ```text
 C:\Users\24557\Documents\Codex\2026-09-28\ni-ha\work\ocr-fixtures\probe-short-2plus2.png
@@ -579,7 +592,7 @@ C:\Users\24557\Documents\Codex\gaoshu-agent-v2\gaoshu-agent\work\pythonanywhere-
 - “求导 x^2”返回 `2*x`，结构化分段、分步卡片、加入错题本和朗读按钮均正常。
 - 截图保存在 `C:\Users\24557\Documents\Codex\2026-09-28\ni-ha\work\ui-public-audit-v5`。
 
-发布后的完整回归为 `143` 项，`139` 项通过，`4` 项跳过。Impeccable 检测只报告整页壳层与原生对话框的 padding 误报，以及用户明确指定的纸张底色提示，不构成本轮缺陷。
+本次历史快照发布后的完整回归为 `143` 项，`139` 项通过，`4` 项跳过。Impeccable 检测只报告整页壳层与原生对话框的 padding 误报，以及用户明确指定的纸张底色提示，不构成本轮缺陷。
 
 ## 移除服务状态胶囊上线（2026-09-28 22:42 +08:00）
 
@@ -611,4 +624,4 @@ C:\Users\24557\Documents\Codex\gaoshu-agent-v2\gaoshu-agent\work\pythonanywhere-
 
 备份文件为 `304636` 字节，SHA256 为 `BFF5CE7D4624BFB99E3CC63C24690E9A4AD346DE2EBF4F45087BAB541FBED34F`。
 
-发布后的完整回归为 `143` 项，`139` 项通过，`4` 项按既有条件跳过。Impeccable 对 `1440x900` 和 `390x844` 公网页面复检，未新增与本次改动相关的发现。
+本次历史快照发布后的完整回归为 `143` 项，`139` 项通过，`4` 项按既有条件跳过。Impeccable 对 `1440x900` 和 `390x844` 公网页面复检，未新增与本次改动相关的发现。
