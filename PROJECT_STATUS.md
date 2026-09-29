@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 21:15（Asia/Shanghai）
+更新时间：2026-09-29 21:22（Asia/Shanghai）
 
 ## 当前事实
 
@@ -120,7 +120,7 @@ PythonAnywhere 环境中设置 `LOG_ENABLED=true`，确认日志轮转和 `/heal
 
 提交前审计结论：
 
-- 当前工作区改动集中在 Windows 离线 OCR 的 PowerShell 7 优先调用、测试以及当前
+- 本轮提交内容集中在 Windows 离线 OCR 的 PowerShell 7 优先调用、测试以及当前
   状态和部署基线说明。
 - 未在高置信度密钥模式下发现待提交跟踪文件包含 Token、API Key 或私钥。
 - `.gitignore` 已补充忽略 `.test-*`、`.tmp-*` 和 `work/`，避免测试安装器、临时输出、发布产物和浏览器会话探测目录进入版本库。

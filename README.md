@@ -97,7 +97,7 @@ gaoshu-agent/
 
 ## 安装依赖
 
-Windows PowerShell：
+PowerShell 7（推荐）：
 
 ```powershell
 python -m venv .venv
