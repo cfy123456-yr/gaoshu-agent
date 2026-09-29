@@ -69,6 +69,12 @@ gaoshu-agent/
 │  ├─ test_plotting.py
 │  ├─ test_service_components.py
 │  └─ test_chapter_solvers.py
+├─ docs/
+│  ├─ SUBMISSION_GUIDE.md
+│  ├─ AI_USAGE_LOG.md
+│  └─ demo-assets/
+│     ├─ demo-single-limit.png
+│     └─ demo-multi-questions.png
 ├─ .dockerignore
 ├─ .env.example
 ├─ .gitignore

@@ -265,6 +265,8 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
   `docs/SUBMISSION_GUIDE.md`。
 - [x] 已整理开发阶段 AI 工具用途、运行阶段模型边界、数据密钥规则和提交声明模板，
   见 `docs/AI_USAGE_LOG.md`；演示视频仍待录制。
+- [x] 已把单题和多题演示图片整理到 `docs/demo-assets/`，并通过公网 OCR 验证；
+  单题进入确认状态，多题正确拆分为 3 项选择题号。
 - [x] 已保存 OCR 固定矩阵报告；固定种子随机回归已由单元测试和公网脚本覆盖。
 - [x] 已由 GitHub Actions 提供外部健康监控：定时检查公网版本和状态，相关文件
   `push` 时立即检查，并通过 GitHub Actions 失败通知告警；短信、电话等独立告警
