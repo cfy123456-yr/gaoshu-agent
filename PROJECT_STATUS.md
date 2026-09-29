@@ -114,6 +114,10 @@ OK (skipped=4)
   耗时约 `4.756s`，两项均返回 `intent=general`、`status=ok`。
 - 模型发布后的公网回归继续全部通过：极限固定回归 `6/6`、章节统一求解固定回归
   `9/9`、固定种子随机回归全部通过。
+- 模型健康改动提交 `35bd3d7` 已同步到 Gitee 与 GitHub，两个远端 `main` SHA
+  完全一致；GitHub Actions 三个推送工作流全部成功：
+  `Test suite` 运行 `36575895778`、`Public regression` 运行 `36575895754`、
+  `Public health check` 运行 `36575895815`。
 
 当前 `.venv` 中 `a2wsgi` 文件仍被 Windows 旧 ACL 拒绝读取，`uvicorn` 因此无法导入。
 本地启动脚本现已自动检测并改用与 PythonAnywhere 部署相同的 Flask WSGI 入口，不再
