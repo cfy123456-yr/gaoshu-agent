@@ -3,6 +3,7 @@ import itertools
 import json
 import struct
 import unittest
+from urllib.error import HTTPError
 from unittest.mock import patch
 
 from deploy import (
@@ -1506,6 +1507,42 @@ class DemoPageTest(unittest.TestCase):
         )
         self.assertNotIn("1. 2 + 2", demo_coze_ocr.COZE_OCR_PROMPT)
 
+    def test_direct_vision_adapter_distinguishes_http_failures(self):
+        cases = (
+            (401, "鉴权失败"),
+            (403, "免费额度"),
+            (429, "请求过于频繁"),
+        )
+
+        for status_code, expected_message in cases:
+            with self.subTest(status_code=status_code):
+                error = HTTPError(
+                    "https://vision.test/chat",
+                    status_code,
+                    "vision failure",
+                    {},
+                    None,
+                )
+                with (
+                    patch.object(
+                        demo_vision,
+                        "VISION_API_URL",
+                        "https://vision.test/chat",
+                    ),
+                    patch.object(demo_vision, "VISION_API_KEY", "vision-token"),
+                    patch.object(demo_vision, "VISION_MODEL", "vision-model"),
+                    patch.object(demo_vision, "urlopen", side_effect=error),
+                ):
+                    with self.assertRaises(
+                        demo_vision.VisionUpstreamError
+                    ) as raised:
+                        demo_vision.transcribe_question_image(
+                            b"\x89PNG\r\n\x1a\nquestion",
+                            "image/png",
+                        )
+
+                self.assertIn(expected_message, str(raised.exception))
+
     def test_direct_vision_adapter_builds_chat_endpoint_from_base_url(self):
         with (
             patch.object(demo_vision, "VISION_API_URL", ""),
@@ -2121,6 +2158,41 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual("verify", response.get_json()["intent"])
         mocked_urlopen.assert_not_called()
+
+    def test_demo_chat_distinguishes_http_failures(self):
+        cases = (
+            (401, "鉴权失败"),
+            (403, "免费额度"),
+            (429, "请求过于频繁"),
+            (503, "临时错误"),
+        )
+
+        for status_code, expected_message in cases:
+            with self.subTest(status_code=status_code):
+                error = HTTPError(
+                    "https://chat.test/chat",
+                    status_code,
+                    "chat failure",
+                    {},
+                    None,
+                )
+                with (
+                    patch.object(demo_chat, "GENERAL_CHAT_API_KEY", "test-key"),
+                    patch.object(
+                        demo_chat,
+                        "GENERAL_CHAT_API_URL",
+                        "https://chat.test/chat",
+                    ),
+                    patch.object(demo_chat, "urlopen", side_effect=error),
+                ):
+                    payload = demo_chat._build_general_chat_response(
+                        "帮我制定一份复习计划",
+                        None,
+                    )
+
+                self.assertEqual("error", payload["status"])
+                self.assertIn(expected_message, payload["reply"])
+                self.assertIn("高数计算仍可继续使用", payload["reply"])
 
     def test_demo_chat_reuses_the_previous_question(self):
         response = self.client.post(

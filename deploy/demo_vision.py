@@ -183,8 +183,13 @@ def transcribe_question_image(
         with urlopen(request, timeout=request_timeout) as response:
             raw_response = response.read(MAX_VISION_RESPONSE_BYTES + 1)
     except HTTPError as exc:
-        if exc.code in {401, 403}:
+        if exc.code == 401:
             message = "图片识别服务鉴权失败，请检查 VISION_API_KEY。"
+        elif exc.code == 403:
+            message = (
+                "图片识别免费额度已用尽、已暂停或当前密钥无权限，"
+                "请检查百炼额度与停止策略。"
+            )
         elif exc.code == 429:
             message = "图片识别请求过于频繁，请稍后重试。"
         else:

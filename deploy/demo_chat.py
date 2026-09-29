@@ -8,6 +8,7 @@ import re
 import secrets
 import unicodedata
 from typing import Any, Literal
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
@@ -1632,6 +1633,18 @@ def _build_general_chat_response(
         with urlopen(request, timeout=GENERAL_CHAT_TIMEOUT_SECONDS) as response:
             data = json.loads(response.read().decode("utf-8"))
         reply = data["choices"][0]["message"]["content"].strip()
+    except HTTPError as exc:
+        print(
+            f"general_chat_request_failed: HTTPError: {exc.code}",
+            flush=True,
+        )
+        return _general_chat_error(_general_chat_http_error_message(exc.code))
+    except (URLError, TimeoutError, OSError) as exc:
+        print(
+            f"general_chat_request_failed: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return _general_chat_error()
     except Exception as exc:
         print(
             f"general_chat_request_failed: {type(exc).__name__}: {exc}",
@@ -1652,11 +1665,27 @@ def _build_general_chat_response(
     }
 
 
-def _general_chat_error() -> dict[str, Any]:
+def _general_chat_http_error_message(status_code: int) -> str:
+    suffix = "高数计算仍可继续使用。"
+    if status_code == 401:
+        return f"普通问答服务鉴权失败，请联系管理员检查 API Key；{suffix}"
+    if status_code == 403:
+        return (
+            "普通问答免费额度已用尽或服务已暂停，"
+            f"请在百炼控制台检查额度与停止策略；{suffix}"
+        )
+    if status_code == 429:
+        return f"普通问答请求过于频繁，请稍后重试；{suffix}"
+    if status_code >= 500:
+        return f"普通问答服务返回临时错误，请稍后重试；{suffix}"
+    return f"普通问答服务暂时不可用，请稍后再试；{suffix}"
+
+
+def _general_chat_error(reply: str = "") -> dict[str, Any]:
     return {
         "status": "error",
         "intent": "general",
-        "reply": "普通问答服务暂时不可用，请稍后再试；高数计算仍可继续使用。",
+        "reply": reply or "普通问答服务暂时不可用，请稍后再试；高数计算仍可继续使用。",
         "formula_latex": "",
         "formula_text": "",
         "calculation": None,
