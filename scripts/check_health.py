@@ -58,9 +58,21 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("EXPECTED_VERSION", DEFAULT_VERSION),
         help=f"expected service version, default: {DEFAULT_VERSION}",
     )
-    parser.add_argument("--timeout", type=float, default=15.0)
-    parser.add_argument("--attempts", type=int, default=3)
-    parser.add_argument("--delay", type=float, default=5.0)
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=float(os.getenv("HEALTH_CHECK_TIMEOUT", "20")),
+    )
+    parser.add_argument(
+        "--attempts",
+        type=int,
+        default=int(os.getenv("HEALTH_CHECK_ATTEMPTS", "5")),
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=float(os.getenv("HEALTH_CHECK_DELAY", "10")),
+    )
     return parser.parse_args()
 
 

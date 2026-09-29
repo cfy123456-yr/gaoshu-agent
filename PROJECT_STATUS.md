@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 19:28（Asia/Shanghai）
+更新时间：2026-09-29 19:30（Asia/Shanghai）
 
 ## 当前事实
 
@@ -24,7 +24,7 @@
 启动本地后端后复跑完整回归，合并 Gitee 新增题号测试并补入移动端加固测试后的结果：
 
 ```text
-Ran 153 tests in 6.885s
+Ran 155 tests in 7.036s
 OK (skipped=4)
 ```
 
@@ -39,6 +39,8 @@ OK (skipped=4)
 - 新增 `test_demo_page_handles_mobile_viewport_and_ocr_timeout` 固定上述行为。
 - Edge 实渲染检查通过：桌面 `1440 px` 与小屏断点均完整显示输入区和发送按钮；
   页面内联脚本通过 Node 语法解析。
+- 公网健康检查从约 `45` 秒的短重试改为可配置的长重试：默认最多 `5` 次、每次
+  超时 `20` 秒、失败间隔 `10` 秒，并新增两项单元测试覆盖恢复和最终失败路径。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。
@@ -50,6 +52,13 @@ PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改�
 - 极限固定回归 `6/6` 通过。
 - 章节统一求解固定回归 `9/9` 通过。
 - 固定种子随机回归通过：随机多项式、区间最值、有理算术和章节主题均正常。
+
+2026-09-29 本轮再次复跑上述四组公网回归，结果保持不变：
+
+- 部署验收 `9/9` 通过，仍跳过尚未启用的 API Key 鉴权。
+- 极限固定回归 `6/6` 通过。
+- 章节统一求解固定回归 `9/9` 通过。
+- 固定种子随机回归全部通过。
 
 提交前审计结论：
 
@@ -180,7 +189,10 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 
 - [x] 已检查 GitHub Actions 的公开状态：工作流 `Public health check` 为 `active`，`main` 当前 SHA 为 `23c483f1ee8d06601747dd4997860528cdb7adcb`，修复已进入默认分支。
 - [x] 已取得修复提交的运行结果：第 `50` 次运行基于 `23c483f1ee8d06601747dd4997860528cdb7adcb`，`2026-09-28T11:49:29Z` 由 `workflow_dispatch` 手工触发，`11:49:37Z` 完成，结论 `success`，其中 `Check public API` 步骤通过，地址为 `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36417964912`。此前第 `49` 次仍是旧提交 `0d10854...` 的失败运行；历史定时运行间隔约 3 至 5 小时，因此改用手工触发，后续定时运行会使用同一份工作流文件。
-- [x] 使用仓库内的 `scripts/check_health.py` 直接复跑公网检查，已通过：`version=0.6.6`。
+- [x] 使用仓库内的 `scripts/check_health.py` 直接复跑公网检查，已通过：`version=0.6.7`。
+- [x] 已复核定时检查的后续红色记录：公开 API 只能确认 `Check public API` 以退出码
+  `1` 结束，无法读取失败日志正文；同一公网端点在本轮手动检查中返回 `version=0.6.7`。
+  健康检查现已延长重试窗口，减少 PythonAnywhere 短暂重启造成的误报。
 - [x] 已上传 `deploy/demo_vision.py` 和 `deploy/demo_coze_ocr.py` 到 PythonAnywhere 并 Reload；三张短算式图片复测全部返回 HTTP `200` 且 `state=awaiting_ocr_confirmation`，不含题号的干净图识别为 `2 + 2`。
 - [x] `MATH_API_KEY` 决策：演示阶段继续关闭，保持扣子工作流和公开计算接口可直接验证；正式发布前再启用，并同步更新扣子的 5 个 HTTP 节点请求头。
 

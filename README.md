@@ -50,6 +50,7 @@ gaoshu-agent/
 │  ├─ start-demo.cmd
 │  ├─ start-demo.ps1
 │  ├─ test-api.cmd
+│  ├─ check_health.py
 │  ├─ stop-demo.cmd
 │  ├─ stop-demo.ps1
 │  ├─ verify-deployment.cmd
@@ -60,6 +61,7 @@ gaoshu-agent/
 │  ├─ verify_random_regression.py
 │  └─ verify_deployment.py
 ├─ tests/
+│  ├─ test_health_check.py
 │  ├─ test_math_api.py
 │  ├─ test_security_api.py
 │  ├─ test_demo_page.py
@@ -118,6 +120,16 @@ python -m pip install -r requirements.txt
 ```powershell
 .\.venv\Scripts\python.exe .\scripts\verify_random_regression.py --base-url https://cfyyy.pythonanywhere.com
 ```
+
+公网健康检查默认会等待 PythonAnywhere 冷启动或短暂重启，最多重试 `5` 次：
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\check_health.py
+```
+
+可通过 `--attempts`、`--delay` 和 `--timeout`，或对应的
+`HEALTH_CHECK_ATTEMPTS`、`HEALTH_CHECK_DELAY`、`HEALTH_CHECK_TIMEOUT`
+环境变量调整监控等待时间。
 
 ## 启动服务
 
