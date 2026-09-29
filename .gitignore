@@ -21,4 +21,4 @@ Thumbs.db
 .tmp-*
 .test-*
 work/
-outputs/submission/
+outputs/

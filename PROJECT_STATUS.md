@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 21:08（Asia/Shanghai）
+更新时间：2026-09-29 21:18（Asia/Shanghai）
 
 ## 当前事实
 
@@ -99,10 +99,8 @@ PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改�
 - `5f1bbc3` 的提交材料已同步到 Gitee 和 GitHub；GitHub Actions `Test suite`
   于 `2026-09-29T13:02:35Z` 基于 `9edc23d` 启动并成功，地址为
   `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36572249733`。
-- 已新增 `scripts/export-submission-material.ps1`：使用 PowerShell 7 将参赛手册、
-  AI 使用记录和项目状态合并为打印版 HTML，并调用本机 Microsoft Edge 生成 A4
-  PDF。实际导出与文件头校验成功；Edge 实渲染截图确认中文字体、表格与长标题
-  无溢出。
+- 参赛手册、AI 使用记录、演示图片和打印材料已改为在桌面独立维护，并从仓库
+  当前版本撤出。题型数量修正继续保留。
 
 持久化 JSONL 日志在演示阶段继续关闭。当前公网使用 PythonAnywhere 自带的访问与错误
 日志，配合 GitHub Actions 健康检查和四组公网回归已覆盖稳定性观察；开启额外日志会
@@ -268,12 +266,8 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 - [x] 扣子 OCR 备用链路决策：暂时保留，待短算式修复上线并稳定运行后再评估下线；阿里云视觉模型仍为主链路。
 - [x] 已同步扣子“知微老师”提示词的服务范围：`COZE_AGENT_PROMPT.md` 原先只声明“大学高等数学”，与已修复的 OCR 范围冲突；现改为高等数学加基础算术、代数、几何等一切可计算数学题，并明确“题目简单不构成拒绝理由”。该文件仍需手工粘贴回扣子平台后生效。
 - [ ] 收集移动端真实使用反馈，继续优化长题干、键盘弹出和慢网络反馈。
-- [x] 已整理作品说明、五至八分钟演示脚本、答辩问答与提交前检查，见
-  `docs/SUBMISSION_GUIDE.md`。
-- [x] 已整理开发阶段 AI 工具用途、运行阶段模型边界、数据密钥规则和提交声明模板，
-  见 `docs/AI_USAGE_LOG.md`；演示视频仍待录制。
-- [x] 已把单题和多题演示图片整理到 `docs/demo-assets/`，并通过公网 OCR 验证；
-  单题进入确认状态，多题正确拆分为 3 项选择题号。
+- [x] 参赛手册、AI 使用记录、单题与多题演示图片已整理到本地独立文件夹，
+  并通过公网 OCR 验证；演示视频仍待录制。
 - [x] 已保存 OCR 固定矩阵报告；固定种子随机回归已由单元测试和公网脚本覆盖。
 - [x] 已由 GitHub Actions 提供外部健康监控：定时检查公网版本和状态，相关文件
   `push` 时立即检查，并通过 GitHub Actions 失败通知告警；短信、电话等独立告警
@@ -285,7 +279,4 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 - `DEPLOYMENT.md`：PythonAnywhere 部署、验收和 Reload 行为。
 - `COZE_WORKFLOWS.md`：扣子工作流接入说明。
 - `COZE_AGENT_PROMPT.md`：扣子智能体提示词说明。
-- `docs/SUBMISSION_GUIDE.md`：作品说明、演示视频脚本、答辩问答和提交清单。
-- `docs/AI_USAGE_LOG.md`：开发与运行阶段的 AI 工具边界、复核记录和声明模板。
-- `scripts/export-submission-material.ps1`：生成可打印的参赛材料 HTML 与 A4 PDF。
 - `deploy/PYTHONANYWHERE.md`：PythonAnywhere 初始部署步骤。
