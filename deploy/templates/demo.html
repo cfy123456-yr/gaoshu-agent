@@ -3944,6 +3944,8 @@
       const MAX_WRONG_BOOK_ITEMS = 100;
       const RESPONSE_CACHE_LIMIT = 20;
       const REQUEST_TIMEOUT_MS = 45000;
+      const SLOW_REQUEST_NOTICE_MS = 8000;
+      const VERY_SLOW_REQUEST_NOTICE_MS = 22000;
       const OCR_REQUEST_TIMEOUT_MS = 90000;
       const MAX_QUESTION_IMAGE_COUNT = 4;
       const MAX_QUESTION_IMAGE_BYTES = 6 * 1024 * 1024;
@@ -6891,7 +6893,11 @@
           const copy = element("div", "teacher-thinking-copy");
           copy.append(
             element("strong", "", "老师正在推演这道题..."),
-            element("span", "", "正在整理结果与关键步骤"),
+            element(
+              "span",
+              "",
+              message.loadingDetail || "正在整理结果与关键步骤",
+            ),
           );
           thinking.append(
             element("span", "teacher-thinking-mark", "π"),
@@ -7064,6 +7070,17 @@
         );
         syncSpeechButtons();
         scrollToLatest();
+      }
+
+      function updateLoadingDetail(loadingId, detail) {
+        const loadingMessage = messages.find(
+          (message) => message.id === loadingId && message.loading,
+        );
+        if (!loadingMessage) {
+          return;
+        }
+        loadingMessage.loadingDetail = detail;
+        renderMessages();
       }
 
       function normalizeSuggestion(item) {
@@ -8848,6 +8865,20 @@
           () => controller.abort(),
           REQUEST_TIMEOUT_MS,
         );
+        const slowNoticeId = window.setTimeout(
+          () => updateLoadingDetail(
+            loadingId,
+            "网络较慢，仍在处理，请稍候。",
+          ),
+          SLOW_REQUEST_NOTICE_MS,
+        );
+        const verySlowNoticeId = window.setTimeout(
+          () => updateLoadingDetail(
+            loadingId,
+            "仍在等待计算服务，最长大约 45 秒；完成前请不要重复发送。",
+          ),
+          VERY_SLOW_REQUEST_NOTICE_MS,
+        );
         try {
           const response = await fetch("/demo/api/solve", {
             method: "POST",
@@ -9105,6 +9136,9 @@
           }
           renderSuggestions(DEFAULT_SUGGESTIONS);
         } finally {
+          window.clearTimeout(timeoutId);
+          window.clearTimeout(slowNoticeId);
+          window.clearTimeout(verySlowNoticeId);
           setRequestState(false);
           renderMessages();
           saveMessages();

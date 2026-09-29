@@ -20,7 +20,7 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         assert_demo_page_markers(page)
 
-    def test_reports_missing_mobile_marker(self) -> None:
+    def test_reports_missing_required_marker(self) -> None:
         missing_marker = DEMO_REQUIRED_MARKERS[-1]
         page = "\n".join(
             (
@@ -31,7 +31,7 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             VerificationError,
-            f"演示页缺少移动端加固标记：{missing_marker}",
+            f"演示页缺少必需标记：{missing_marker}",
         ):
             assert_demo_page_markers(page)
 

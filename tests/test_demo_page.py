@@ -2155,6 +2155,22 @@ class DemoPageTest(unittest.TestCase):
         )
         self.assertIn("window.clearTimeout(ocrTimeoutId)", html)
 
+    def test_demo_page_reports_slow_request_progress(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn("SLOW_REQUEST_NOTICE_MS = 8000", html)
+        self.assertIn("VERY_SLOW_REQUEST_NOTICE_MS = 22000", html)
+        self.assertIn("function updateLoadingDetail(loadingId, detail)", html)
+        self.assertIn('"网络较慢，仍在处理，请稍候。"', html)
+        self.assertIn(
+            '"仍在等待计算服务，最长大约 45 秒；完成前请不要重复发送。"',
+            html,
+        )
+        self.assertIn("window.clearTimeout(slowNoticeId)", html)
+        self.assertIn("window.clearTimeout(verySlowNoticeId)", html)
+
     def test_demo_chat_solves_basic_arithmetic(self):
         cases = (
             ("1+1", "2"),
