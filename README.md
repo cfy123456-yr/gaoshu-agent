@@ -51,6 +51,7 @@ gaoshu-agent/
 │  ├─ start-demo.ps1
 │  ├─ test-api.cmd
 │  ├─ check_health.py
+│  ├─ publish-pythonanywhere-file.ps1
 │  ├─ stop-demo.cmd
 │  ├─ stop-demo.ps1
 │  ├─ verify-deployment.cmd

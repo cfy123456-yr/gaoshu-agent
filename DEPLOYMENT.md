@@ -92,6 +92,51 @@ cp deploy/pythonanywhere_wsgi.py /var/www/cfyyy_pythonanywhere_com_wsgi.py
 
 Reload 会重启 Web 进程，因此内存中的演示会话状态和 OCR 结果缓存会被清空。浏览器 `localStorage` 中的聊天记录仍保留；用户在 Reload 后再次上传图片即可重新建立会话。
 
+## 发布单个文件
+
+`scripts/publish-pythonanywhere-file.ps1` 用于上传单个文件，并自动完成旧文件备份、
+远端回读校验、Reload 和公网标记验证。先在当前 PowerShell 会话设置 PythonAnywhere
+API Token，Token 不写入仓库或命令历史中的持久配置：
+
+```powershell
+$env:PYTHONANYWHERE_API_TOKEN = "<在 PythonAnywhere Account 页面生成的 Token>"
+```
+
+可以先做本地校验和 `-WhatIf` 预演：
+
+```powershell
+& .\scripts\publish-pythonanywhere-file.ps1 `
+  -LocalPath .\deploy\templates\demo.html `
+  -RemotePath /home/cfyyy/gaoshu-agent/deploy/templates/demo.html `
+  -ExpectedHash 7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF `
+  -PublicUrl /demo `
+  -RequiredMarker @(
+    "interactive-widget=resizes-content",
+    "window.visualViewport",
+    "OCR_REQUEST_TIMEOUT_MS = 90000"
+  ) `
+  -ValidateOnly
+```
+
+确认输出中的字节数和 SHA256 后，去掉 `-ValidateOnly` 执行发布。脚本会把线上旧文件
+保存到 `work/pythonanywhere-backup-<时间>/`，并将回读、Reload 和公网验收结果写入
+`work/pythonanywhere-publish-result.json`。发布结束后清除当前会话中的 Token：
+
+```powershell
+Remove-Item Env:PYTHONANYWHERE_API_TOKEN
+```
+
+该脚本当前针对 `2026-09-29 19:21` 的移动端加固前端：
+
+```text
+deploy/templates/demo.html
+310730 bytes
+7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF
+```
+
+公网页面目前仍是旧前端；执行上述发布并通过 `-RequiredMarker` 验证后，移动端软键盘
+同步、安全区适配和 OCR 90 秒超时才会在生产生效。
+
 ## 部署验收
 
 健康检查：

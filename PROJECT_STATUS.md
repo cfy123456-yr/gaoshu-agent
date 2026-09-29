@@ -51,6 +51,9 @@ OK (skipped=4)
 - 第 `1` 次 `Test suite` 基于 `4970cb0d5b9041b559687b453246a4a8e995acd4`
   于 `2026-09-29T11:30:15Z` 启动、`11:30:49Z` 成功，运行地址为
   `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36562144014`。
+- 新增 `scripts/publish-pythonanywhere-file.ps1`，把单文件发布固定为备份、上传、
+  远端回读、Reload 和公网标记验证五步；本地 `-ValidateOnly` 与 `-WhatIf` 预演
+  均通过。公网 `/demo` 当前仍缺少移动端加固标记，说明前端尚未上传。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。
@@ -197,6 +200,10 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 
 ### P0
 
+- [ ] 在设置 `PYTHONANYWHERE_API_TOKEN` 的 PowerShell 7 会话中，运行
+  `scripts/publish-pythonanywhere-file.ps1` 上传 `310730` 字节、SHA256
+  `7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF`
+  的 `deploy/templates/demo.html` 并 Reload；这一步需要用户提供平台 Token。
 - [x] 已检查 GitHub Actions 的公开状态：工作流 `Public health check` 为 `active`，`main` 当前 SHA 为 `23c483f1ee8d06601747dd4997860528cdb7adcb`，修复已进入默认分支。
 - [x] 已取得修复提交的运行结果：第 `50` 次运行基于 `23c483f1ee8d06601747dd4997860528cdb7adcb`，`2026-09-28T11:49:29Z` 由 `workflow_dispatch` 手工触发，`11:49:37Z` 完成，结论 `success`，其中 `Check public API` 步骤通过，地址为 `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36417964912`。此前第 `49` 次仍是旧提交 `0d10854...` 的失败运行；历史定时运行间隔约 3 至 5 小时，因此改用手工触发，后续定时运行会使用同一份工作流文件。
 - [x] 使用仓库内的 `scripts/check_health.py` 直接复跑公网检查，已通过：`version=0.6.7`。
