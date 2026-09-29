@@ -15,6 +15,11 @@ from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 EXPECTED_VERSION = "0.6.7"
+DEMO_REQUIRED_MARKERS = (
+    "interactive-widget=resizes-content",
+    "window.visualViewport",
+    "OCR_REQUEST_TIMEOUT_MS = 90000",
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -83,6 +88,48 @@ def expect(condition: bool, message: str) -> None:
         raise VerificationError(message)
 
 
+def request_text(
+    base_url: str,
+    path: str,
+    *,
+    timeout: float = 20.0,
+) -> str:
+    url = f"{base_url.rstrip('/')}{path}"
+    headers: dict[str, str] = {}
+    if "loca.lt" in base_url:
+        headers["bypass-tunnel-reminder"] = "true"
+
+    request = Request(url, headers=headers, method="GET")
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            status = response.status
+            raw_body = response.read()
+    except HTTPError as exc:
+        status = exc.code
+        raw_body = exc.read()
+    except (URLError, TimeoutError, OSError) as exc:
+        raise VerificationError(f"无法连接 {url}: {exc}") from exc
+
+    if status != 200:
+        raise VerificationError(f"{path} 预期 HTTP 200，实际为 {status}")
+    try:
+        return raw_body.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise VerificationError(f"{path} 返回了非 UTF-8 页面") from exc
+
+
+def assert_demo_page_markers(text: str) -> None:
+    missing = [marker for marker in DEMO_REQUIRED_MARKERS if marker not in text]
+    expect(
+        not missing,
+        f"演示页缺少移动端加固标记：{', '.join(missing)}",
+    )
+    expect(
+        'fetch("/demo/api/chat"' in text,
+        "演示页缺少聊天接口调用，可能不是当前前端",
+    )
+
+
 def verify_deployment(
     base_url: str,
     api_key: str | None,
@@ -90,7 +137,7 @@ def verify_deployment(
     skip_version_check: bool,
     timeout: float,
 ) -> None:
-    print(f"[1/9] 健康检查: {base_url}/health")
+    print(f"[1/10] 健康检查: {base_url}/health")
     health = request_json(base_url, "/health", timeout=timeout)
     expect(health.get("status") == "ok", f"健康检查失败：{health}")
     if not skip_version_check:
@@ -114,7 +161,7 @@ def verify_deployment(
             "云端已启用 MATH_API_KEY，请通过 --api-key 或环境变量 MATH_API_KEY 提供密钥"
         )
 
-    print("[2/9] 求导与候选答案判定")
+    print("[2/10] 求导与候选答案判定")
     derivative = request_json(
         base_url,
         "/verify-query",
@@ -126,7 +173,7 @@ def verify_deployment(
     expect(derivative.get("derivative") == "2*x", f"求导结果错误：{derivative}")
     expect(derivative.get("is_correct") is True, f"求导判题错误：{derivative}")
 
-    print("[3/9] 不定积分与候选答案判定")
+    print("[3/10] 不定积分与候选答案判定")
     indefinite = request_json(
         base_url,
         "/integrate-query",
@@ -142,7 +189,7 @@ def verify_deployment(
     expect(indefinite.get("integral") == "x**3/3", f"不定积分结果错误：{indefinite}")
     expect(indefinite.get("is_correct") is True, f"不定积分判题错误：{indefinite}")
 
-    print("[4/9] 定积分与候选答案判定")
+    print("[4/10] 定积分与候选答案判定")
     definite = request_json(
         base_url,
         "/integrate-query",
@@ -160,7 +207,7 @@ def verify_deployment(
     expect(definite.get("integral") == "1/3", f"定积分结果错误：{definite}")
     expect(definite.get("is_correct") is True, f"定积分判题错误：{definite}")
 
-    print("[5/9] 极限与候选答案判定")
+    print("[5/10] 极限与候选答案判定")
     limit = request_json(
         base_url,
         "/limit-query",
@@ -177,7 +224,7 @@ def verify_deployment(
     expect(limit.get("limit") == "1", f"极限结果错误：{limit}")
     expect(limit.get("is_correct") is True, f"极限判题错误：{limit}")
 
-    print("[6/9] 章节统一求解接口")
+    print("[6/10] 章节统一求解接口")
     solve = request_json(
         base_url,
         "/solve",
@@ -196,7 +243,7 @@ def verify_deployment(
     )
     expect(solve.get("result") == "6*x", f"统一求解结果错误：{solve}")
 
-    print("[7/9] 函数图像生成")
+    print("[7/10] 函数图像生成")
     plot = request_json(
         base_url,
         "/plot-query",
@@ -208,7 +255,7 @@ def verify_deployment(
     expect(plot.get("expression") == "sin(x)", f"函数图像表达式错误：{plot}")
     expect("<svg" in plot.get("svg", ""), f"函数图像内容错误：{plot}")
 
-    print("[8/9] 非法表达式拦截")
+    print("[8/10] 非法表达式拦截")
     invalid = request_json(
         base_url,
         "/verify-query",
@@ -220,7 +267,7 @@ def verify_deployment(
     )
     expect("unsupported identifier" in invalid.get("detail", ""), f"安全拦截异常：{invalid}")
 
-    print("[9/9] API Key 鉴权")
+    print("[9/10] API Key 鉴权")
     if api_key_enabled:
         unauthorized = request_json(
             base_url,
@@ -237,6 +284,11 @@ def verify_deployment(
         print("      无密钥请求已返回 401")
     else:
         print("      当前未启用密钥，跳过；固定公网部署后必须启用")
+
+    print("[10/10] 演示页移动端加固")
+    demo_page = request_text(base_url, "/demo", timeout=timeout)
+    assert_demo_page_markers(demo_page)
+    print(f"      页面 {len(demo_page.encode('utf-8'))} 字节，所需标记完整")
 
     print("\n部署验收通过。")
 
