@@ -2133,6 +2133,28 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("REQUEST_TIMEOUT_MS = 45000", html)
         self.assertIn("X-Demo-Session", html)
 
+    def test_demo_page_handles_mobile_viewport_and_ocr_timeout(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn("interactive-widget=resizes-content", html)
+        self.assertIn("padding-left: env(safe-area-inset-left)", html)
+        self.assertIn("padding-right: env(safe-area-inset-right)", html)
+        self.assertIn("height: var(--app-height, 100dvh)", html)
+        self.assertIn("max-height: min(292px, 42dvh)", html)
+        self.assertIn("OCR_REQUEST_TIMEOUT_MS = 90000", html)
+        self.assertIn("function syncAppViewportHeight()", html)
+        self.assertIn(
+            'window.visualViewport.addEventListener("resize", syncAppViewportHeight)',
+            html,
+        )
+        self.assertIn(
+            '"图片识别超时，请检查网络后重试，或改用文字输入。"',
+            html,
+        )
+        self.assertIn("window.clearTimeout(ocrTimeoutId)", html)
+
     def test_demo_chat_solves_basic_arithmetic(self):
         cases = (
             ("1+1", "2"),

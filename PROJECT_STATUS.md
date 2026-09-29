@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-09-29 19:15（Asia/Shanghai）
+更新时间：2026-09-29 19:28（Asia/Shanghai）
 
 ## 当前事实
 
@@ -21,12 +21,24 @@
 
 ## 2026-09-29 核查与推进
 
-启动本地后端后复跑完整回归，合并 Gitee 新增题号测试后的结果：
+启动本地后端后复跑完整回归，合并 Gitee 新增题号测试并补入移动端加固测试后的结果：
 
 ```text
-Ran 152 tests in 7.022s
+Ran 153 tests in 6.885s
 OK (skipped=4)
 ```
+
+本轮完成移动端与图片识别稳定性加固：
+
+- 演示页声明 `interactive-widget=resizes-content`，并在小屏下监听
+  `visualViewport`，让应用高度跟随软键盘和可视视口变化。
+- 应用外壳补充左右安全区，图片预览区限制为相对视口的最大高度，避免横屏刘海遮挡
+  和键盘弹出后底部操作区被覆盖。
+- 图片 OCR 增加 `90` 秒客户端超时，超时后显示明确恢复提示；正常完成、手动取消和
+  超时三条路径都会清理计时器。
+- 新增 `test_demo_page_handles_mobile_viewport_and_ocr_timeout` 固定上述行为。
+- Edge 实渲染检查通过：桌面 `1440 px` 与小屏断点均完整显示输入区和发送按钮；
+  页面内联脚本通过 Node 语法解析。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。

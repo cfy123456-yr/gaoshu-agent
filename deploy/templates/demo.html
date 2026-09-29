@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
   >
   <meta name="theme-color" content="#f3eee5">
   <meta
@@ -168,9 +168,11 @@
       width: 100%;
       max-width: 1440px;
       height: 100vh;
-      height: 100dvh;
+      height: var(--app-height, 100dvh);
       min-height: 540px;
       margin: 0 auto;
+      padding-right: env(safe-area-inset-right);
+      padding-left: env(safe-area-inset-left);
       overflow: hidden;
       border: 0;
       background: var(--surface);
@@ -1592,7 +1594,7 @@
     .composer-image-list {
       display: flex;
       min-width: 0;
-      max-height: 292px;
+      max-height: min(292px, 42dvh);
       flex-wrap: wrap;
       gap: 8px;
       overflow-y: auto;
@@ -3942,6 +3944,7 @@
       const MAX_WRONG_BOOK_ITEMS = 100;
       const RESPONSE_CACHE_LIMIT = 20;
       const REQUEST_TIMEOUT_MS = 45000;
+      const OCR_REQUEST_TIMEOUT_MS = 90000;
       const MAX_QUESTION_IMAGE_COUNT = 4;
       const MAX_QUESTION_IMAGE_BYTES = 6 * 1024 * 1024;
       const MAX_QUESTION_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
@@ -4933,6 +4936,7 @@
       const toolbox = document.querySelector(".toolbox-scroll");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
       const compactComposerMedia = window.matchMedia("(max-width: 640px)");
+      let appViewportFrame = 0;
       const BrowserSpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
       const speechSynthesisApi = window.speechSynthesis || null;
@@ -8198,6 +8202,11 @@
         item.state = "loading";
         item.statusText = `正在优化图片（${imageSizeLabel(item.size)}）...`;
         renderComposerImages();
+        let timedOut = false;
+        const ocrTimeoutId = window.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, OCR_REQUEST_TIMEOUT_MS);
 
         try {
           const prepared = await prepareQuestionImage(item.file);
@@ -8296,12 +8305,18 @@
           }
         } catch (error) {
           if (error.name === "AbortError") {
+            if (timedOut) {
+              item.state = "error";
+              item.statusText =
+                "图片识别超时，请检查网络后重试，或改用文字输入。";
+            }
             return;
           }
           item.state = "error";
           item.statusText =
             error.message || "图片识别失败，请稍后重试。";
         } finally {
+          window.clearTimeout(ocrTimeoutId);
           if (item.controller === controller) {
             item.controller = null;
           }
@@ -9557,6 +9572,7 @@
       });
 
       const handleSidebarMediaChange = (event) => {
+        syncAppViewportHeight();
         if (event.matches) {
           setSidebarCollapsed(true, false);
           return;
@@ -9576,6 +9592,33 @@
       } else {
         sidebarMedia.addListener(handleSidebarMediaChange);
       }
+
+      function syncAppViewportHeight() {
+        if (appViewportFrame) {
+          return;
+        }
+        appViewportFrame = window.requestAnimationFrame(() => {
+          appViewportFrame = 0;
+          const visualViewport = window.visualViewport;
+          if (!visualViewport || !sidebarMedia.matches) {
+            document.documentElement.style.removeProperty("--app-height");
+            return;
+          }
+          const viewportHeight = Math.round(visualViewport.height);
+          if (viewportHeight > 0) {
+            document.documentElement.style.setProperty(
+              "--app-height",
+              `${viewportHeight}px`,
+            );
+          }
+        });
+      }
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", syncAppViewportHeight);
+        window.visualViewport.addEventListener("scroll", syncAppViewportHeight);
+      }
+      window.addEventListener("orientationchange", syncAppViewportHeight);
 
       chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -9771,6 +9814,7 @@
       renderMessages();
       resizeInput();
       syncComposerState();
+      syncAppViewportHeight();
       chatForm.dataset.voiceAvailable = String(Boolean(BrowserSpeechRecognition));
       voiceInputButton.hidden = !BrowserSpeechRecognition;
       syncSpeechButtons();
