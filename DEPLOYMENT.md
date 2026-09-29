@@ -108,12 +108,14 @@ $env:PYTHONANYWHERE_API_TOKEN = "<在 PythonAnywhere Account 页面生成的 Tok
 & .\scripts\publish-pythonanywhere-file.ps1 `
   -LocalPath .\deploy\templates\demo.html `
   -RemotePath /home/cfyyy/gaoshu-agent/deploy/templates/demo.html `
-  -ExpectedHash 7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF `
+  -ExpectedHash 4D6CA7FAAB283EEA8C66ACBE9BA245140C56EA9CE588C71F9895E8D4271B8EFD `
   -PublicUrl /demo `
   -RequiredMarker @(
     "interactive-widget=resizes-content",
     "window.visualViewport",
-    "OCR_REQUEST_TIMEOUT_MS = 90000"
+    "OCR_REQUEST_TIMEOUT_MS = 90000",
+    "SLOW_REQUEST_NOTICE_MS = 8000",
+    "VERY_SLOW_REQUEST_NOTICE_MS = 22000"
   ) `
   -ValidateOnly
 ```
@@ -126,18 +128,23 @@ $env:PYTHONANYWHERE_API_TOKEN = "<在 PythonAnywhere Account 页面生成的 Tok
 Remove-Item Env:PYTHONANYWHERE_API_TOKEN
 ```
 
-该脚本当前针对 `2026-09-29 19:21` 的移动端加固前端：
+该脚本当前针对 `2026-09-29 20:51` 的移动端加固与慢请求进度提示前端：
 
 ```text
 deploy/templates/demo.html
-310730 bytes
-7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF
+311840 bytes
+4D6CA7FAAB283EEA8C66ACBE9BA245140C56EA9CE588C71F9895E8D4271B8EFD
 ```
 
-该版本已于 `2026-09-29 19:38:38` 发布。远端回读与本地文件完全一致，Reload 返回
-HTTP `200`，公网 `/demo` 返回 HTTP `200` 且包含全部三个必需标记；发布结果保存在
-`work/pythonanywhere-publish-result.json`。生产环境现已启用移动端软键盘同步、安全区
-适配和 OCR 90 秒超时。
+该版本已于 `2026-09-29 20:51:37` 发布。远端回读与本地文件完全一致，Reload 返回
+HTTP `200`，公网 `/demo` 返回 HTTP `200` 且包含全部五个必需标记；发布结果保存在
+`work/pythonanywhere-publish-result.json`。发布前旧文件已备份到
+`work/pythonanywhere-backup-20260929-205027/demo.html`，其大小为 `310730` 字节，
+SHA256 为 `7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF`。
+公网响应归一化后为 `302077` 字节，SHA256 为
+`3B529BFD43E05251B70EE8F28FD33780855C13DA93CC4748972659530A6BDC05`。生产环境
+现已启用移动端软键盘同步、安全区适配、OCR 90 秒超时，以及 8 秒和 22 秒两档慢请求
+进度提示。
 
 ## 部署验收
 

@@ -19,6 +19,8 @@ DEMO_REQUIRED_MARKERS = (
     "interactive-widget=resizes-content",
     "window.visualViewport",
     "OCR_REQUEST_TIMEOUT_MS = 90000",
+    "SLOW_REQUEST_NOTICE_MS = 8000",
+    "VERY_SLOW_REQUEST_NOTICE_MS = 22000",
 )
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -122,7 +124,7 @@ def assert_demo_page_markers(text: str) -> None:
     missing = [marker for marker in DEMO_REQUIRED_MARKERS if marker not in text]
     expect(
         not missing,
-        f"演示页缺少移动端加固标记：{', '.join(missing)}",
+        f"演示页缺少必需标记：{', '.join(missing)}",
     )
     expect(
         'fetch("/demo/api/chat"' in text,
@@ -285,7 +287,7 @@ def verify_deployment(
     else:
         print("      当前未启用密钥，跳过；固定公网部署后必须启用")
 
-    print("[10/10] 演示页移动端加固")
+    print("[10/10] 演示页前端标记")
     demo_page = request_text(base_url, "/demo", timeout=timeout)
     assert_demo_page_markers(demo_page)
     print(f"      页面 {len(demo_page.encode('utf-8'))} 字节，所需标记完整")
