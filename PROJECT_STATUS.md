@@ -43,6 +43,9 @@ OK (skipped=4)
   超时 `20` 秒、失败间隔 `10` 秒；健康检查工作流、检查脚本或部署代码变更时会
   立即触发，不再只依赖最长达数小时的稀疏定时任务。新增两项单元测试覆盖恢复和
   最终失败路径。
+- 双远端同步 `908b51a` 后，`push` 触发的第 `55` 次 `Public health check`
+  于 `2026-09-29T11:28:41Z` 启动、`11:28:47Z` 成功，运行地址为
+  `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36561980402`。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。
@@ -195,6 +198,8 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 - [x] 已复核定时检查的后续红色记录：公开 API 只能确认 `Check public API` 以退出码
   `1` 结束，无法读取失败日志正文；同一公网端点在本轮手动检查中返回 `version=0.6.7`。
   健康检查现已延长重试窗口，减少 PythonAnywhere 短暂重启造成的误报。
+- [x] 已增加健康检查相关文件变更时的 `push` 触发，并确认第 `55` 次运行基于
+  `908b51ae48f01f90db64fe30dd1ac5e3ca29fd98`，`event=push`，结论 `success`。
 - [x] 已上传 `deploy/demo_vision.py` 和 `deploy/demo_coze_ocr.py` 到 PythonAnywhere 并 Reload；三张短算式图片复测全部返回 HTTP `200` 且 `state=awaiting_ocr_confirmation`，不含题号的干净图识别为 `2 + 2`。
 - [x] `MATH_API_KEY` 决策：演示阶段继续关闭，保持扣子工作流和公开计算接口可直接验证；正式发布前再启用，并同步更新扣子的 5 个 HTTP 节点请求头。
 
