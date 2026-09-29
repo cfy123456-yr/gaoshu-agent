@@ -1,0 +1,48 @@
+name: Test suite
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Start local API
+        run: |
+          python -c "from deploy.wsgi_app import application; application.run(host='127.0.0.1', port=8000, use_reloader=False, threaded=True)" > /tmp/gaoshu-api.log 2>&1 &
+          echo $! > /tmp/gaoshu-api.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/gaoshu-api.log
+          exit 1
+      - name: Run test suite
+        run: python -m unittest discover -s tests -v
+      - name: Show API log
+        if: failure()
+        run: cat /tmp/gaoshu-api.log
+      - name: Stop local API
+        if: always()
+        run: |
+          if [ -f /tmp/gaoshu-api.pid ]; then
+            kill "$(cat /tmp/gaoshu-api.pid)" || true
+          fi

@@ -46,6 +46,8 @@ OK (skipped=4)
 - 双远端同步 `908b51a` 后，`push` 触发的第 `55` 次 `Public health check`
   于 `2026-09-29T11:28:41Z` 启动、`11:28:47Z` 成功，运行地址为
   `https://github.com/cfy123456-yr/gaoshu-agent/actions/runs/36561980402`。
+- 新增 GitHub Actions `Test suite`：推送 `main` 或提交拉取请求时，在干净的
+  Python 3.13 环境启动 Flask WSGI 服务并复跑完整单元测试。
 
 当前 `.venv` 中 `a2wsgi` 文件被 Windows 拒绝读取，`uvicorn` 因此无法导入；本轮改用与
 PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改项目代码或运行环境。
