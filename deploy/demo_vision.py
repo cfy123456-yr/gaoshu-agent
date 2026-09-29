@@ -8,6 +8,7 @@ import os
 import re
 from pathlib import Path
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
@@ -97,6 +98,16 @@ def _vision_chat_endpoint() -> str:
 def vision_ocr_configured() -> bool:
     """Return whether the direct vision route has all required credentials."""
     return bool(_vision_chat_endpoint() and VISION_API_KEY and VISION_MODEL)
+
+
+def vision_provider() -> str:
+    """Return a non-sensitive provider label for the configured vision endpoint."""
+    host = (urlsplit(_vision_chat_endpoint()).hostname or "").lower()
+    if host == "dashscope.aliyuncs.com":
+        return "dashscope"
+    if host == "api.deepseek.com":
+        return "deepseek"
+    return "openai-compatible" if host else ""
 
 
 def image_matches_type(data: bytes, mime_type: str) -> bool:

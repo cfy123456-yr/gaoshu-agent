@@ -479,6 +479,55 @@ class DemoPageTest(unittest.TestCase):
             {"workflow", "bot", "unconfigured"},
         )
 
+    def test_demo_health_reports_model_configuration_without_leaking_keys(self):
+        with (
+            patch.object(demo_chat, "_GENERAL_CHAT_API_KEY", "general-secret"),
+            patch.object(demo_chat, "_VISION_API_KEY", ""),
+            patch.object(demo_chat, "GENERAL_CHAT_API_KEY", "general-secret"),
+            patch.object(
+                demo_chat,
+                "GENERAL_CHAT_API_URL",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+            ),
+            patch.object(demo_chat, "GENERAL_CHAT_MODEL", "qwen-plus"),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(wsgi_app, "vision_provider", return_value="dashscope"),
+            patch.object(wsgi_app, "VISION_MODEL", "qwen3-vl-plus"),
+        ):
+            response = self.client.get("/demo/api/health")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("dashscope", payload["ocr"]["vision_provider"])
+        self.assertEqual("qwen3-vl-plus", payload["ocr"]["vision_model"])
+        general_chat = payload["general_chat"]
+        self.assertTrue(general_chat["configured"])
+        self.assertEqual("dashscope", general_chat["provider"])
+        self.assertEqual("qwen-plus", general_chat["model"])
+        self.assertEqual("dedicated", general_chat["key_source"])
+        self.assertEqual(30.0, general_chat["timeout_seconds"])
+        self.assertNotIn("general-secret", response.get_data(as_text=True))
+
+    def test_demo_health_reports_vision_key_fallback_for_general_chat(self):
+        with (
+            patch.object(demo_chat, "_GENERAL_CHAT_API_KEY", ""),
+            patch.object(demo_chat, "_VISION_API_KEY", "vision-secret"),
+            patch.object(demo_chat, "GENERAL_CHAT_API_KEY", "vision-secret"),
+            patch.object(
+                demo_chat,
+                "GENERAL_CHAT_API_URL",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+            ),
+            patch.object(demo_chat, "GENERAL_CHAT_MODEL", "qwen-plus"),
+        ):
+            response = self.client.get("/demo/api/health")
+
+        self.assertEqual(200, response.status_code)
+        general_chat = response.get_json()["general_chat"]
+        self.assertTrue(general_chat["configured"])
+        self.assertEqual("vision_fallback", general_chat["key_source"])
+        self.assertNotIn("vision-secret", response.get_data(as_text=True))
+
     def test_demo_health_reports_ocr_configuration_without_leaking_token(self):
         with (
             patch.object(demo_coze_ocr, "COZE_API_TOKEN", "secret-token"),

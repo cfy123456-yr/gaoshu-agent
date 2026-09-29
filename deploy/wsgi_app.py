@@ -31,12 +31,17 @@ from app.main import (
 )
 from deploy.demo_chat import (
     DemoChatRequest,
+    GENERAL_CHAT_MODEL,
+    GENERAL_CHAT_TIMEOUT_SECONDS,
     _is_confirmation,
     _is_rejection,
     _normalize_text,
     _pending_ocr_question,
     _solve_confirmed_question,
     build_chat_response,
+    general_chat_configured,
+    general_chat_key_source,
+    general_chat_provider,
 )
 from deploy.demo_interval_solver import solve_interval_extrema
 from deploy.demo_coze_ocr import (
@@ -67,6 +72,7 @@ from deploy.demo_session import (
 from deploy.demo_vision import (
     MAX_IMAGE_BYTES,
     SUPPORTED_IMAGE_TYPES,
+    VISION_MODEL,
     VisionConfigurationError,
     VisionUpstreamError,
     audit_leading_question_number as audit_vision_leading_question_number,
@@ -74,6 +80,7 @@ from deploy.demo_vision import (
     image_matches_type,
     transcribe_question_image as transcribe_vision_question_image,
     vision_ocr_configured,
+    vision_provider,
 )
 from deploy.demo_windows_ocr import (
     WindowsOcrError,
@@ -209,13 +216,23 @@ def demo_health():
     }
     vision_configured = vision_ocr_configured()
     coze_configured = coze_ocr_configured()
+    general_chat_enabled = general_chat_configured()
     payload["ocr"] = {
         "provider": "vision" if vision_configured else "coze",
         "configured": vision_configured or coze_configured,
         "vision_configured": vision_configured,
+        "vision_provider": vision_provider() if vision_configured else "",
+        "vision_model": VISION_MODEL if vision_configured else "",
         "coze_configured": coze_configured,
         "coze_mode": coze_ocr_mode(),
         "fallback": "windows" if windows_ocr_available() else "",
+    }
+    payload["general_chat"] = {
+        "configured": general_chat_enabled,
+        "provider": general_chat_provider() if general_chat_enabled else "",
+        "model": GENERAL_CHAT_MODEL if general_chat_enabled else "",
+        "key_source": general_chat_key_source() if general_chat_enabled else "missing",
+        "timeout_seconds": GENERAL_CHAT_TIMEOUT_SECONDS,
     }
     return jsonify(payload)
 

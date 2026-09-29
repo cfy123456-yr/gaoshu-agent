@@ -8,7 +8,7 @@ import re
 import secrets
 import unicodedata
 from typing import Any, Literal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
@@ -53,6 +53,30 @@ GENERAL_CHAT_MODEL = (
     os.getenv("GENERAL_CHAT_MODEL") or "qwen-plus"
 ).strip()
 GENERAL_CHAT_TIMEOUT_SECONDS = 30.0
+
+
+def general_chat_configured() -> bool:
+    """Return whether the general chat route has all required credentials."""
+    return bool(GENERAL_CHAT_API_KEY and GENERAL_CHAT_API_URL and GENERAL_CHAT_MODEL)
+
+
+def general_chat_provider() -> str:
+    """Return a non-sensitive provider label for the configured endpoint."""
+    host = (urlsplit(GENERAL_CHAT_API_URL).hostname or "").lower()
+    if host == "dashscope.aliyuncs.com":
+        return "dashscope"
+    if host == "api.deepseek.com":
+        return "deepseek"
+    return "openai-compatible" if host else ""
+
+
+def general_chat_key_source() -> str:
+    """Describe whether general chat uses its own key or the vision key fallback."""
+    if _GENERAL_CHAT_API_KEY:
+        return "dedicated"
+    if _VISION_API_KEY and GENERAL_CHAT_API_KEY:
+        return "vision_fallback"
+    return "missing"
 
 GENERAL_CHAT_SYSTEM_PROMPT = """
 你是“知微老师”，中文回答，核心专长是高等数学，也可以回答学习方法、

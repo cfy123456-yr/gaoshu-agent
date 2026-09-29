@@ -194,7 +194,7 @@ Content-Type: application/json
 
 该接口把自然语言中的求导、积分或极限请求转换为确定性数学计算，返回适合对话页展示的意图、公式和计算结果。它是无需登录的公开演示接口，不使用或返回扣子的会话记录。
 
-普通问题默认不处理。配置 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL` 后，非数学问题会交给所配置的模型回答；普通问题内容会发送给该模型服务。数学计算始终使用本项目的 SymPy 工具，不交给通用模型猜测。
+普通问答默认使用阿里云百炼的 OpenAI 兼容接口和 `qwen-plus`；未单独配置 `GENERAL_CHAT_API_KEY` 时，会复用 `VISION_API_KEY`。也可以用 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL` 显式覆盖。普通问题内容会发送给该模型服务；数学计算始终使用本项目的 SymPy 工具，不交给通用模型猜测。
 
 ### 健康检查
 
@@ -483,12 +483,12 @@ $env:CALCULATION_WORKERS = "4"
 
 当前公网服务未启用 `MATH_API_KEY`，公开演示接口可以直接调用。若正式启用密钥，扣子的 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` HTTP 节点必须增加请求头 `X-API-Key`，其值与 PythonAnywhere 的 `MATH_API_KEY` 一致。`/demo`、`/demo/api/*`、`/health` 和浏览器显示图片用的 `/plot.svg` 始终不需要 API Key。
 
-普通问答模型使用独立配置，密钥不会返回给浏览器：
+普通问答模型可以显式使用百炼配置，密钥不会返回给浏览器：
 
 ```powershell
-$env:GENERAL_CHAT_API_URL = "https://api.deepseek.com/chat/completions"
+$env:GENERAL_CHAT_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 $env:GENERAL_CHAT_API_KEY = "替换为你的模型密钥"
-$env:GENERAL_CHAT_MODEL = "deepseek-chat"
+$env:GENERAL_CHAT_MODEL = "qwen-plus"
 ```
 
 图片识别优先使用 OpenAI 兼容的视觉模型接口；未完整配置时才尝试扣子备用链路。线上公网当前使用视觉模型主链路，扣子工作流作为备用：
@@ -505,7 +505,7 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 
 如果同时配置视觉模型和扣子 OCR，服务按 `vision`、`coze` 的顺序尝试；两套上游都失败时不会用质量不可控的本地 OCR 掩盖故障。只有完全未配置上游服务时，才会尝试可选的 Windows 本地 OCR。
 
-`GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`logs/` 已加入 `.gitignore`。
+`GET /health` 会返回服务版本、启动时间、运行时长、计算超时、工作线程数、限流、API 密钥开关、日志状态和输入限制，但不会返回 API 密钥。`GET /demo/api/health` 额外返回视觉模型和普通问答模型的提供商、模型名、密钥来源和超时配置，同样不会返回密钥内容。`logs/` 已加入 `.gitignore`。
 
 公网服务已部署到 PythonAnywhere，固定地址为 `https://cfyyy.pythonanywhere.com`。无需登录的对话演示页位于 `https://cfyyy.pythonanywhere.com/demo`，可连续体验求导、积分和极限计算。KaTeX 公式资源随项目一起部署，不依赖外部 CDN；聊天历史只保存在访问者自己的浏览器中。`.github/workflows/health-check.yml` 每 15 分钟检查一次公网健康状态和版本号，健康检查工作流、检查脚本或部署代码变更时也会立即检查，失败时 GitHub Actions 会发送失败通知。不要将 `.env`、令牌、API 密钥或个人学生数据提交到 Git 仓库。部署和更新步骤见 `DEPLOYMENT.md`。
 

@@ -22,6 +22,8 @@ DEMO_REQUIRED_MARKERS = (
     "SLOW_REQUEST_NOTICE_MS = 8000",
     "VERY_SLOW_REQUEST_NOTICE_MS = 22000",
 )
+MODEL_PROVIDERS = {"dashscope", "deepseek", "openai-compatible"}
+MODEL_KEY_SOURCES = {"dedicated", "vision_fallback"}
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -132,6 +134,56 @@ def assert_demo_page_markers(text: str) -> None:
     )
 
 
+def assert_model_health(health: dict[str, Any]) -> None:
+    ocr = health.get("ocr")
+    expect(isinstance(ocr, dict), "健康检查缺少 ocr 配置")
+    if not isinstance(ocr, dict):
+        return
+
+    expect(ocr.get("configured") is True, f"OCR 未配置：{ocr}")
+    expect(ocr.get("provider") == "vision", f"OCR 主链路不是视觉模型：{ocr}")
+    expect(ocr.get("vision_configured") is True, f"视觉模型未配置：{ocr}")
+    expect(
+        ocr.get("vision_provider") in MODEL_PROVIDERS,
+        f"视觉模型提供商无效：{ocr.get('vision_provider')}",
+    )
+    expect(
+        isinstance(ocr.get("vision_model"), str)
+        and bool(ocr.get("vision_model", "").strip()),
+        "视觉模型名称缺失",
+    )
+
+    general_chat = health.get("general_chat")
+    expect(isinstance(general_chat, dict), "健康检查缺少 general_chat 配置")
+    if not isinstance(general_chat, dict):
+        return
+
+    expect(
+        general_chat.get("configured") is True,
+        f"普通问答模型未配置：{general_chat}",
+    )
+    expect(
+        general_chat.get("provider") in MODEL_PROVIDERS,
+        f"普通问答模型提供商无效：{general_chat.get('provider')}",
+    )
+    expect(
+        isinstance(general_chat.get("model"), str)
+        and bool(general_chat.get("model", "").strip()),
+        "普通问答模型名称缺失",
+    )
+    expect(
+        general_chat.get("key_source") in MODEL_KEY_SOURCES,
+        f"普通问答密钥来源无效：{general_chat.get('key_source')}",
+    )
+    timeout_seconds = general_chat.get("timeout_seconds")
+    expect(
+        isinstance(timeout_seconds, (int, float))
+        and not isinstance(timeout_seconds, bool)
+        and timeout_seconds > 0,
+        f"普通问答超时配置无效：{timeout_seconds}",
+    )
+
+
 def verify_deployment(
     base_url: str,
     api_key: str | None,
@@ -154,6 +206,19 @@ def verify_deployment(
             logging_state=(
                 "已启用" if health.get("persistent_logging_enabled") else "未启用"
             ),
+        )
+    )
+    demo_health = request_json(base_url, "/demo/api/health", timeout=timeout)
+    expect(demo_health.get("status") == "ok", f"演示健康检查失败：{demo_health}")
+    assert_model_health(demo_health)
+    print(
+        "      视觉模型 {vision_provider}/{vision_model}，普通问答模型 "
+        "{chat_provider}/{chat_model}，密钥来源 {key_source}".format(
+            vision_provider=demo_health["ocr"]["vision_provider"],
+            vision_model=demo_health["ocr"]["vision_model"],
+            chat_provider=demo_health["general_chat"]["provider"],
+            chat_model=demo_health["general_chat"]["model"],
+            key_source=demo_health["general_chat"]["key_source"],
         )
     )
 
