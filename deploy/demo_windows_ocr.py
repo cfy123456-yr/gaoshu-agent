@@ -49,8 +49,18 @@ def windows_ocr_available() -> bool:
         WINDOWS_OCR_FALLBACK
         and sys.platform == "win32"
         and _HELPER_PATH.is_file()
-        and shutil.which("powershell.exe") is not None
+        and bool(_powershell_candidates())
     )
+
+
+def _powershell_candidates() -> tuple[str, ...]:
+    """Return supported PowerShell executables, preferring PowerShell 7."""
+    candidates: list[str] = []
+    for executable_name in ("pwsh", "powershell.exe"):
+        executable = shutil.which(executable_name)
+        if executable and executable not in candidates:
+            candidates.append(executable)
+    return tuple(candidates)
 
 
 def transcribe_question_image(data: bytes, mime_type: str) -> str:
@@ -67,47 +77,58 @@ def transcribe_question_image(data: bytes, mime_type: str) -> str:
 
     try:
         Path(image_path).write_bytes(data)
-        completed = subprocess.run(
-            [
-                "powershell.exe",
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(_HELPER_PATH),
-                "-ImagePath",
-                image_path,
-            ],
-            check=False,
-            capture_output=True,
-            timeout=WINDOWS_OCR_TIMEOUT_SECONDS,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        last_error: WindowsOcrError | None = None
+        for executable in _powershell_candidates():
+            try:
+                completed = subprocess.run(
+                    [
+                        executable,
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        str(_HELPER_PATH),
+                        "-ImagePath",
+                        image_path,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    timeout=WINDOWS_OCR_TIMEOUT_SECONDS,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            except OSError:
+                last_error = WindowsOcrError("无法启动本机离线识别服务。")
+                continue
+
+            stdout = completed.stdout.decode("utf-8", errors="replace").strip()
+            stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+            if stdout == "__NO_OCR_ENGINE__":
+                raise WindowsOcrUnavailable("系统未安装可用的 OCR 语言组件。")
+            if completed.returncode != 0:
+                detail = re.sub(r"\s+", " ", stderr).strip()[:200]
+                message = "本机离线识别失败"
+                if detail:
+                    message = f"{message}：{detail}"
+                last_error = WindowsOcrError(message)
+                continue
+
+            text = _normalize_ocr_text(stdout)
+            if text:
+                return text[:2000]
+            last_error = WindowsOcrError("本机离线识别没有提取到可用文字。")
+
+        if last_error is not None:
+            raise last_error
+        raise WindowsOcrUnavailable("本机未安装可用的 PowerShell。")
     except subprocess.TimeoutExpired as exc:
         raise WindowsOcrError("本机离线识别超时，请压缩图片后重试。") from exc
-    except OSError as exc:
-        raise WindowsOcrError("无法启动本机离线识别服务。") from exc
     finally:
         try:
             Path(image_path).unlink(missing_ok=True)
         except OSError:
             pass
-
-    stdout = completed.stdout.decode("utf-8", errors="replace").strip()
-    stderr = completed.stderr.decode("utf-8", errors="replace").strip()
-    if stdout == "__NO_OCR_ENGINE__":
-        raise WindowsOcrUnavailable("系统未安装可用的 OCR 语言组件。")
-    if completed.returncode != 0:
-        detail = re.sub(r"\s+", " ", stderr).strip()[:200]
-        suffix = f"：{detail}" if detail else ""
-        raise WindowsOcrError(f"本机离线识别失败{suffix}")
-
-    text = _normalize_ocr_text(stdout)
-    if not text:
-        raise WindowsOcrError("本机离线识别没有提取到可用文字。")
-    return text[:2000]
 
 
 def _normalize_ocr_text(value: str) -> str:

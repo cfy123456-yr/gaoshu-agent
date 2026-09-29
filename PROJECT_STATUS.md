@@ -13,13 +13,13 @@
 | `MATH_API_KEY` | 当前未启用 |
 | OCR 主链路 | 阿里云百炼视觉模型 |
 | OCR 备用链路 | 扣子 OCR，当前已配置 |
-| Windows 离线 OCR | 公网未启用，仅作为未配置任何上游时的本地降级 |
+| Windows 离线 OCR | 公网未启用，仅作为未配置任何上游时的本地降级；调用时优先 PowerShell 7，必要时回退 Windows PowerShell 5.1 |
 | 持久化日志 | 公网当前未启用 |
 | 服务端会话 | 进程内存，30 分钟过期，最多 500 个 |
 | OCR 结果缓存 | 进程内存，10 分钟过期 |
 | 浏览器语音 | Web Speech API，中文识别加回答朗读 |
 | 本地启动方式 | `scripts/start-demo.cmd` 使用 PowerShell 7；优先 Uvicorn，不可用时自动降级到 Flask WSGI |
-| 最近完整测试 | `164` 项，`160` 项通过，`4` 项可选测试跳过 |
+| 最近完整测试 | `166` 项，`162` 项通过，`4` 项可选测试跳过 |
 | 版本入库状态 | `0.6.7` 与 Gitee OCR 编号整合已提交；本地 `main` 同时包含 GitHub 与 Gitee 远端历史 |
 
 ## 2026-09-29 核查与推进
@@ -28,7 +28,7 @@
 部署标记测试后的结果：
 
 ```text
-Ran 164 tests in 6.730s
+Ran 166 tests in 6.717s
 OK (skipped=4)
 ```
 
@@ -66,6 +66,10 @@ OK (skipped=4)
   入口；`stop-demo.ps1` 只停止本地 `127.0.0.1:8000` 数学服务。
 - 新增 `tests/test_launchers.py`，固定 PowerShell 7、仓库内 `work` 目录、Flask
   降级入口和停止脚本边界；完整测试因此从 `160` 项增加到 `164` 项。
+- Windows 离线 OCR 改为优先调用 PowerShell 7；只有 PowerShell 7 无法加载 WinRT
+  `Windows.Media.Ocr.OcrEngine` 并返回失败时，才回退 Windows PowerShell 5.1。
+  新增两项单元测试，固定候选顺序、仅在 7 失败后回退，以及 7 成功时不启动 5.1；
+  完整测试因此从 `164` 项增加到 `166` 项。
 - `2026-09-29 19:38:38` 完成移动端加固前端发布：远端文件与本地 `310730` 字节、
   SHA256 `7C106596B33FE5F7E8743AC683383507B5A8A2658DA8B2C8846D9359A03FB0DF`
   完全一致，Reload 返回 HTTP `200`，公网 `/demo` 返回 HTTP `200`，并确认包含
@@ -116,7 +120,8 @@ PythonAnywhere 环境中设置 `LOG_ENABLED=true`，确认日志轮转和 `/heal
 
 提交前审计结论：
 
-- 当前工作区改动集中在本地启动脚本、启动脚本文档和启动脚本回归测试。
+- 当前工作区改动集中在 Windows 离线 OCR 的 PowerShell 7 优先调用、测试以及当前
+  状态和部署基线说明。
 - 未在高置信度密钥模式下发现待提交跟踪文件包含 Token、API Key 或私钥。
 - `.gitignore` 已补充忽略 `.test-*`、`.tmp-*` 和 `work/`，避免测试安装器、临时输出、发布产物和浏览器会话探测目录进入版本库。
 - 推送前已确认两个远端都包含此前整合历史；本轮提交后再同步 GitHub 与 Gitee，

@@ -90,6 +90,10 @@ gaoshu-agent/
 - Python 3.13
 - pip
 - Git
+- 本地演示启动脚本使用 PowerShell 7（`pwsh`）
+
+可选的 Windows 离线 OCR 会先尝试 PowerShell 7；当前系统只有在 PowerShell 7
+无法加载 WinRT OCR 类型时，才回退到 Windows PowerShell 5.1。
 
 ## 安装依赖
 
@@ -514,7 +518,7 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 - 已绑定并测试 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot`、`knowledge_lookup`。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 本地完整测试共 164 项，160 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；
+- 本地完整测试共 166 项，162 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；
   GitHub Actions 会在推送 `main` 和提交拉取请求时自动复跑整套测试；公网极限固定
   回归 6/6、统一求解固定回归 9/9、部署验收 10/10、固定种子随机回归全部通过。
   本地启动脚本也已纳入回归，覆盖 PowerShell 7 调用、工作目录和 Flask 降级路径。

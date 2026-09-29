@@ -27,9 +27,11 @@ https://cfyyy.pythonanywhere.com
 更新时间：2026-09-29。
 
 - 服务版本为 `0.6.7`，公网入口固定为 `https://cfyyy.pythonanywhere.com`。
-- 完整测试为 `164` 项，`160` 项通过，`4` 项可选旧版显式曲线/曲面积分测试跳过。
+- 完整测试为 `166` 项，`162` 项通过，`4` 项可选旧版显式曲线/曲面积分测试跳过。
 - 本地 `scripts/start-demo.cmd` 使用 PowerShell 7，优先启动 Uvicorn；本机
   `a2wsgi` 或 Uvicorn 不可用时自动降级到与 PythonAnywhere 相同的 Flask WSGI 入口。
+- 可选 Windows 离线 OCR 会优先使用 PowerShell 7；仅当 PowerShell 7 无法加载
+  WinRT OCR 类型时，才回退到 Windows PowerShell 5.1。
 - `scripts/stop-demo.cmd` 只停止本地 `127.0.0.1:8000` 数学服务，不再管理隧道。
 
 本文后续带日期的发布章节保留为历史快照，其中出现的 `141`、`143` 等测试数对应当次
