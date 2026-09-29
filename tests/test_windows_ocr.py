@@ -37,6 +37,7 @@ class WindowsOcrPowerShellTests(unittest.TestCase):
 
         with (
             patch.object(demo_windows_ocr, "WINDOWS_OCR_FALLBACK", True),
+            patch.object(demo_windows_ocr.sys, "platform", "win32"),
             patch.object(
                 demo_windows_ocr,
                 "_powershell_candidates",
@@ -76,6 +77,7 @@ class WindowsOcrPowerShellTests(unittest.TestCase):
 
         with (
             patch.object(demo_windows_ocr, "WINDOWS_OCR_FALLBACK", True),
+            patch.object(demo_windows_ocr.sys, "platform", "win32"),
             patch.object(
                 demo_windows_ocr,
                 "_powershell_candidates",
