@@ -17,5 +17,5 @@ jobs:
       - name: Check public API
         env:
           HEALTH_CHECK_URL: https://cfyyy.pythonanywhere.com
-          EXPECTED_VERSION: "0.5.0"
+          EXPECTED_VERSION: "0.6.7"
         run: python scripts/check_health.py
