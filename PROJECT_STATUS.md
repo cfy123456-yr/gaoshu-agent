@@ -85,6 +85,11 @@ PythonAnywhere 部署相同的 Flask WSGI 入口启动本地服务，未修改�
 响应为 `300948` 字节，服务器端模板换行归一化后的页面 SHA256 为
 `C56D86132AC0632C821B17095DBD6E0C1201469AE49BE47C510046C878CC6CDC`。
 
+持久化 JSONL 日志在演示阶段继续关闭。当前公网使用 PythonAnywhere 自带的访问与错误
+日志，配合 GitHub Actions 健康检查和四组公网回归已覆盖稳定性观察；开启额外日志会
+引入重复记录和长期磁盘占用，收益不足。正式发布前如需审计请求耗时和错误类型，再在
+PythonAnywhere 环境中设置 `LOG_ENABLED=true`，确认日志轮转和 `/health` 状态后启用。
+
 提交前审计结论：
 
 - 工作区改动集中在 `0.6.7`、OCR 第四轮修复、学习空间和语音、随机回归及部署文档。
@@ -235,7 +240,8 @@ PythonAnywhere 文件页截图已经确认：线上 `demo_vision.py` 为 `11275`
 - [x] 已将题号间距修复上传 PythonAnywhere 并 Reload；`probe-short-2plus2.png` 生产复测返回 `10. 2 + 2`，不再被并入为 `10.2 + 2`。
 - [x] 已上传第四轮的 `demo_vision.py`、`demo_coze_ocr.py` 和 `wsgi_app.py` 并 Reload；缓存旁路生产复测确认空题号图返回 `2 + 2`，真实题号图保留 `10. 2 + 2`，该展示层问题已关闭。
 - [ ] 通过云平台控制台确认视觉模型与普通问答模型的限流、额度和余额；仅凭 `/health` 无法判断。
-- [ ] 如需长期运行持久日志，在 PythonAnywhere 环境启用并验证日志轮转。
+- [x] 持久日志决策：演示阶段继续关闭，依赖 PythonAnywhere 平台日志、GitHub Actions
+  健康检查和公网回归；正式发布前再启用 JSONL 日志并验证轮转。
 - [x] 已把 PythonAnywhere 的备份、上传、Reload、短算式验真和回滚整理为固定发布清单，见 `DEPLOYMENT.md`。
 
 ### P2

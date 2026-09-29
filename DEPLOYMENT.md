@@ -516,6 +516,21 @@ curl.exe -fsS -X POST `
 
 浏览器原生语音输入和回答朗读随 `0.6.7` 发布。语音识别使用 Web Speech API，通常依赖 Chrome、Edge、Safari 等浏览器厂商的在线服务，并非完全离线；不支持语音 API 的浏览器会隐藏麦克风按钮，文字与图片功能保持可用。GitHub Actions `Public health check` 提供公网定时健康检查、相关文件推送触发和失败通知；短信、电话等独立告警渠道不在当前演示范围。
 
+PythonAnywhere 的演示环境默认通过 `deploy/pythonanywhere_wsgi.py` 设置
+`LOG_ENABLED=false`，保留平台访问日志和错误日志，不额外写 JSONL 文件。正式发布前如需
+持久化请求审计，可在线上 `.env` 中设置：
+
+```text
+LOG_ENABLED=true
+LOG_FILE=/home/cfyyy/gaoshu-agent/logs/math-service.jsonl
+LOG_MAX_BYTES=5242880
+LOG_BACKUP_COUNT=3
+```
+
+设置后 Reload，并确认 `/health` 返回 `"persistent_logging_enabled": true`。日志达到
+`5 MiB` 后应轮转为 `.1`、`.2`、`.3`；若文件未创建、权限错误或轮转异常，应恢复
+`LOG_ENABLED=false`，避免请求链路受日志问题影响。
+
 ## 学习空间 UI 精修上线（2026-09-28 22:36 +08:00）
 
 本轮继续收敛主聊天区的模板感，并把解答区改成高数专用学习卡片。只发布前端模板：
