@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from scripts.verify_deployment import (
     DEMO_REQUIRED_MARKERS,
+    DEFAULT_NON_IMAGE_URL,
     DEFAULT_OCR_IMAGE_URL,
     VerificationError,
     assert_demo_page_markers,
@@ -30,6 +31,13 @@ class VerifyDeploymentTests(unittest.TestCase):
             (
                 "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/"
                 "main/tests/fixtures/ocr-deployment-regression.png"
+            ),
+        )
+        self.assertEqual(
+            DEFAULT_NON_IMAGE_URL,
+            (
+                "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/"
+                "main/README.md"
             ),
         )
 
@@ -156,8 +164,43 @@ class VerifyDeploymentTests(unittest.TestCase):
             )
 
         self.assertEqual(5, request_json.call_count)
+        non_image_call = request_json.call_args_list[3]
+        self.assertEqual(
+            {"image_url": DEFAULT_NON_IMAGE_URL},
+            non_image_call.kwargs["json_body"],
+        )
         recognized_call = request_json.call_args_list[-1]
         self.assertEqual(70.0, recognized_call.kwargs["timeout"])
+
+    def test_uses_explicit_non_image_url(self) -> None:
+        responses = (
+            {"detail": "缺少 image_url 参数。"},
+            {"detail": "图片链接不能指向本机地址。"},
+            {"detail": "图片链接不能指向本机、内网或保留地址。"},
+            {"detail": "图片链接返回的内容不是图片。"},
+            {
+                "provider": "vision",
+                "requires_confirmation": True,
+                "text": "∫ x^2 dx",
+            },
+        )
+
+        with patch(
+            "scripts.verify_deployment.request_json",
+            side_effect=responses,
+        ) as request_json:
+            verify_ocr_url_api(
+                "https://example.test",
+                "https://images.example/question.png",
+                timeout=20.0,
+                non_image_url="https://example.test/README.txt",
+            )
+
+        non_image_call = request_json.call_args_list[3]
+        self.assertEqual(
+            {"image_url": "https://example.test/README.txt"},
+            non_image_call.kwargs["json_body"],
+        )
 
     def test_rejects_remote_image_ocr_without_dx(self) -> None:
         responses = (

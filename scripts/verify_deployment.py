@@ -19,6 +19,9 @@ DEFAULT_OCR_IMAGE_URL = (
     "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/main/"
     "tests/fixtures/ocr-deployment-regression.png"
 )
+DEFAULT_NON_IMAGE_URL = (
+    "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/main/README.md"
+)
 DEMO_REQUIRED_MARKERS = (
     "interactive-widget=resizes-content",
     "window.visualViewport",
@@ -200,6 +203,7 @@ def verify_ocr_url_api(
     image_url: str,
     *,
     timeout: float,
+    non_image_url: str = DEFAULT_NON_IMAGE_URL,
 ) -> None:
     missing = request_json(
         base_url,
@@ -244,7 +248,7 @@ def verify_ocr_url_api(
         base_url,
         "/demo/api/ocr-url",
         method="POST",
-        json_body={"image_url": "https://example.com/"},
+        json_body={"image_url": non_image_url},
         expected_status=400,
         timeout=timeout,
     )
@@ -286,6 +290,7 @@ def verify_deployment(
     skip_version_check: bool,
     timeout: float,
     ocr_image_url: str,
+    non_image_url: str,
 ) -> None:
     print(f"[1/11] 健康检查: {base_url}/health")
     health = request_json(base_url, "/health", timeout=timeout)
@@ -454,7 +459,12 @@ def verify_deployment(
     print(f"      页面 {len(demo_page.encode('utf-8'))} 字节，所需标记完整")
 
     print("[11/11] 远程图片 OCR 与 SSRF 防护")
-    verify_ocr_url_api(base_url, ocr_image_url, timeout=timeout)
+    verify_ocr_url_api(
+        base_url,
+        ocr_image_url,
+        timeout=timeout,
+        non_image_url=non_image_url,
+    )
 
     print("\n部署验收通过。")
 
@@ -487,6 +497,11 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("OCR_TEST_IMAGE_URL", DEFAULT_OCR_IMAGE_URL),
         help="用于公网 OCR 验收的公开公式图片 URL",
     )
+    parser.add_argument(
+        "--non-image-url",
+        default=os.getenv("OCR_NON_IMAGE_TEST_URL", DEFAULT_NON_IMAGE_URL),
+        help="用于内容类型拦截验收的公开文本 URL",
+    )
     return parser.parse_args()
 
 
@@ -499,6 +514,7 @@ def main() -> int:
             skip_version_check=args.skip_version_check,
             timeout=args.timeout,
             ocr_image_url=args.ocr_image_url,
+            non_image_url=args.non_image_url,
         )
     except VerificationError as exc:
         print(f"\n部署验收失败：{exc}", file=sys.stderr)

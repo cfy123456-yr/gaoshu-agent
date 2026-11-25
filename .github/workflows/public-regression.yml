@@ -37,7 +37,8 @@ jobs:
       - name: Verify deployment
         env:
           OCR_TEST_IMAGE_URL: https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/${{ github.sha }}/tests/fixtures/ocr-deployment-regression.png
-        run: python scripts/verify_deployment.py --base-url https://cfyyy.pythonanywhere.com
+          OCR_NON_IMAGE_TEST_URL: https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/${{ github.sha }}/README.md
+        run: python scripts/verify_deployment.py --base-url https://cfyyy.pythonanywhere.com --timeout 60
       - name: Verify limit regression
         run: python scripts/verify_limit_regression.py --base-url https://cfyyy.pythonanywhere.com
       - name: Verify solve regression
