@@ -82,6 +82,10 @@ class VisionUpstreamError(RuntimeError):
     """Raised when the vision service cannot return a usable transcription."""
 
 
+class VisionInputError(VisionUpstreamError):
+    """Raised when a remote image URL is unusable for the vision service."""
+
+
 def _vision_chat_endpoint() -> str:
     """Return the explicit chat URL, or build one from an API base URL."""
     if VISION_API_URL:
@@ -169,6 +173,58 @@ def transcribe_question_image(
     }
     if VISION_MODEL.lower().startswith("qwen3"):
         payload["enable_thinking"] = False
+    return _request_vision_transcription(payload, request_timeout)
+
+
+def transcribe_question_image_url(
+    image_url: str,
+    *,
+    timeout_seconds: float | None = None,
+) -> str:
+    """Transcribe an already validated public image URL without a server fetch."""
+    if not vision_ocr_configured():
+        raise VisionConfigurationError(
+            "图片识别服务未配置，请设置 VISION_API_BASE（或 VISION_API_URL）、"
+            "VISION_API_KEY 和 VISION_MODEL。"
+        )
+
+    request_timeout = VISION_TIMEOUT_SECONDS
+    if timeout_seconds is not None:
+        request_timeout = max(0.1, min(VISION_TIMEOUT_SECONDS, timeout_seconds))
+
+    payload = {
+        "model": VISION_MODEL,
+        "temperature": 0,
+        "max_tokens": 2048,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": VISION_PROMPT},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url},
+                    },
+                ],
+            }
+        ],
+    }
+    if VISION_MODEL.lower().startswith("qwen3"):
+        payload["enable_thinking"] = False
+    return _request_vision_transcription(
+        payload,
+        request_timeout,
+        remote_url=True,
+    )
+
+
+def _request_vision_transcription(
+    payload: dict[str, object],
+    request_timeout: float,
+    *,
+    remote_url: bool = False,
+) -> str:
+    """Send one transcription request and normalize provider failures."""
     request = Request(
         _vision_chat_endpoint(),
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -192,6 +248,12 @@ def transcribe_question_image(
             )
         elif exc.code == 429:
             message = "图片识别请求过于频繁，请稍后重试。"
+        elif exc.code == 400 and remote_url:
+            raise VisionInputError(
+                "图片链接不是图片或暂时不可读取，请确认链接可公开访问且指向图片文件。"
+            ) from exc
+        elif exc.code == 400:
+            message = "图片识别请求参数无效，请重新选择图片后重试。"
         else:
             message = f"图片识别服务返回错误（{exc.code}），请稍后重试。"
         raise VisionUpstreamError(message) from exc

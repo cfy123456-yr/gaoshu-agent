@@ -18,6 +18,7 @@ from sympy import (
     Sum,
     acos,
     diff,
+    expand,
     integrate,
     latex,
     simplify,
@@ -29,6 +30,12 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
     parse_expr,
     standard_transformations,
+)
+
+from app.solution_gate import (
+    verification_check,
+    verification_result,
+    verify_calculation,
 )
 
 
@@ -51,9 +58,19 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "taylor",
             "curvature",
             "parametric_derivative",
+            "parametric_tangent_normal",
         }
     ),
-    "integrals": frozenset({"indefinite", "definite", "improper"}),
+    "integrals": frozenset(
+        {
+            "indefinite",
+            "definite",
+            "improper",
+            "area_between",
+            "volume_revolution",
+            "arc_length",
+        }
+    ),
     "differential_equations": frozenset({"dsolve"}),
     "vectors": frozenset(
         {"dot", "cross", "norm", "angle", "distance", "projection"}
@@ -81,7 +98,16 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
         }
     ),
     "line_surface_integrals": frozenset(
-        {"line_scalar", "line_vector", "surface_scalar", "flux"}
+        {
+            "line_scalar",
+            "line_vector",
+            "surface_scalar",
+            "flux",
+            "line_scalar_explicit",
+            "line_vector_explicit",
+            "surface_scalar_explicit",
+            "flux_explicit",
+        }
     ),
     "series": frozenset({"sum", "convergence", "power_radius"}),
 }
@@ -89,6 +115,19 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
 
 class SolveError(ValueError):
     """Raised when a chapter request cannot be solved deterministically."""
+
+
+class MissingInputError(SolveError):
+    """Raised when a deterministic solver needs a specific missing input."""
+
+    def __init__(self, field: str, message: str | None = None) -> None:
+        self.field = str(field)
+        self.detail = (
+            f"{message}（缺少输入项：{self.field}）"
+            if message
+            else f"缺少输入项：{self.field}"
+        )
+        super().__init__(self.detail)
 
 
 def solve_chapter(
@@ -126,7 +165,7 @@ def solve_chapter(
         candidate_value = _parse_expression(candidate_text, "candidate")
         is_correct = _expressions_equal(comparison_value, candidate_value)
 
-    return {
+    response = {
         "chapter": chapter,
         "topic": topic,
         "method": outcome["method"],
@@ -135,7 +174,38 @@ def solve_chapter(
         "candidate": candidate_text or None,
         "is_correct": is_correct,
         "notes": outcome.get("notes", []),
+        "verification_context": {
+            "chapter": chapter,
+            "topic": topic,
+            "inputs": dict(inputs),
+        },
     }
+    if "details" in outcome:
+        response["details"] = outcome["details"]
+
+    verification = verify_calculation(
+        "solve",
+        response,
+        context=response["verification_context"],
+    )
+    if verification.get("passed") is not True:
+        failed_checks = [
+            str(check.get("detail") or check.get("name") or "")
+            for check in verification.get("checks", [])
+            if not check.get("passed")
+        ]
+        reason = "；".join(filter(None, failed_checks)) or "结果未通过独立验算"
+        raise SolveError(f"求解结果未通过验证：{reason}")
+
+    response.update(
+        {
+            "status": "ok",
+            "intent": "solve",
+            "verified": True,
+            "verification": verification,
+        }
+    )
+    return response
 
 
 class _InputView:
@@ -152,7 +222,7 @@ class _InputView:
         value = self.values.get(key, default)
         if value is None or (isinstance(value, str) and not value.strip()):
             if required:
-                raise SolveError(f"缺少输入项：{key}")
+                raise MissingInputError(key)
             return None
         if not isinstance(value, str):
             raise SolveError(f"{key} 必须是文本")
@@ -173,7 +243,7 @@ class _InputView:
         value = self.values.get(key, default)
         if value is None:
             if required:
-                raise SolveError(f"缺少输入项：{key}")
+                raise MissingInputError(key)
             return None
         try:
             if isinstance(value, bool):
@@ -191,13 +261,13 @@ class _InputView:
         value = self.values.get(key)
         if value is None:
             if required:
-                raise SolveError(f"缺少输入项：{key}")
+                raise MissingInputError(key)
             return None
         if isinstance(value, str):
             normalized = value.strip()
             if not normalized:
                 if required:
-                    raise SolveError(f"缺少输入项：{key}")
+                    raise MissingInputError(key)
                 return None
             value = [part.strip() for part in normalized.split(",") if part.strip()]
         if not isinstance(value, list):
@@ -217,7 +287,7 @@ class _InputView:
         value = self.values.get(key)
         if value is None:
             if required:
-                raise SolveError(f"缺少输入项：{key}")
+                raise MissingInputError(key)
             return None
         if not isinstance(value, Mapping):
             raise SolveError(f"{key} 必须是对象")
@@ -697,6 +767,30 @@ def _expressions_equal(left: Any, right: Any) -> bool:
         return False
 
 
+def _verification_zero(value: Any) -> bool:
+    try:
+        return simplify(value) == 0
+    except Exception:
+        return False
+
+
+def _parametric_line_residual(
+    line_kind: str,
+    slope: sympy.Expr | None,
+    point_x: sympy.Expr,
+    point_y: sympy.Expr,
+    x_value: sympy.Expr,
+    y_value: sympy.Expr,
+) -> sympy.Expr:
+    if line_kind == "vertical":
+        return x_value - point_x
+    if line_kind == "horizontal":
+        return y_value - point_y
+    if slope is None:
+        raise SolveError("斜线方程缺少有效斜率")
+    return y_value - (slope * (x_value - point_x) + point_y)
+
+
 def _stringify(value: Any) -> str:
     return str(value)
 
@@ -817,13 +911,31 @@ def _tangent(view: _InputView) -> dict[str, Any]:
         "variable",
     )
     point = _parse_expression(view.text("point"), "point")
-    slope = diff(expression, variable).subs(variable, point)
-    y_value = expression.subs(variable, point)
+    derivative = simplify(diff(expression, variable))
+    slope = simplify(derivative.subs(variable, point))
+    y_value = simplify(expression.subs(variable, point))
     equation = Eq(
         sympy.Symbol("y"),
         slope * (variable - point) + y_value,
     )
-    return {"result": equation, "comparison_value": equation.rhs}
+    return {
+        "result": equation,
+        "comparison_value": equation.rhs,
+        "notes": [
+            (
+                f"原函数 f({variable})={expression}，"
+                f"一阶导数 f'({variable})={derivative}"
+            ),
+            (
+                f"在 {variable}={point} 处，切线斜率 "
+                f"k=f'({point})={slope}，切点纵坐标 y={y_value}"
+            ),
+            (
+                f"由点斜式得到 y-({y_value})={slope}"
+                f"({variable}-({point}))，化简后与最终切线方程一致"
+            ),
+        ],
+    }
 
 
 @_solver(method="法线方程")
@@ -834,17 +946,40 @@ def _normal(view: _InputView) -> dict[str, Any]:
         "variable",
     )
     point = _parse_expression(view.text("point"), "point")
-    slope = simplify(diff(expression, variable).subs(variable, point))
-    y_value = expression.subs(variable, point)
-    if slope == 0:
-        equation = Eq(sympy.Symbol("y"), y_value)
+    derivative = simplify(diff(expression, variable))
+    tangent_slope = simplify(derivative.subs(variable, point))
+    y_value = simplify(expression.subs(variable, point))
+    if tangent_slope == 0:
+        equation = Eq(variable, point)
+        slope_note = (
+            f"在 {variable}={point} 处切线斜率为 0，"
+            f"法线竖直，因此法线方程为 {variable}={point}"
+        )
     else:
-        normal_slope = -1 / slope
+        normal_slope = simplify(-1 / tangent_slope)
         equation = Eq(
             sympy.Symbol("y"),
             normal_slope * (variable - point) + y_value,
         )
-    return {"result": equation, "comparison_value": equation.rhs}
+        slope_note = (
+            f"在 {variable}={point} 处切线斜率为 {tangent_slope}，"
+            f"法线斜率 k_N=-1/k_T={normal_slope}"
+        )
+    return {
+        "result": equation,
+        "comparison_value": equation.rhs,
+        "notes": [
+            (
+                f"原函数 f({variable})={expression}，"
+                f"一阶导数 f'({variable})={derivative}"
+            ),
+            slope_note,
+            (
+                f"由法线的点斜式方程代入选定点与法线斜率，"
+                f"化简后与最终法线方程一致"
+            ),
+        ],
+    }
 
 
 @_solver(method="拉格朗日中值定理")
@@ -991,6 +1126,243 @@ def _parametric_derivative(view: _InputView) -> dict[str, Any]:
     }
 
 
+@_solver(method="参数方程切线与法线")
+def _parametric_tangent_normal(view: _InputView) -> dict[str, Any]:
+    x_expression = _parse_expression(view.text("x_expression"), "x_expression")
+    y_expression = _parse_expression(view.text("y_expression"), "y_expression")
+    parameter = _parse_symbol(
+        view.text("parameter", required=False, default="t"),
+        "parameter",
+    )
+    point_text = view.text("parameter_value", required=False)
+    if point_text is None:
+        point_text = view.text("point", required=False)
+    if point_text is None:
+        raise MissingInputError(
+            "parameter_value",
+            "这道参数方程切线/法线题缺少参数点；请补充参数值，例如 t=pi/4",
+        )
+    parameter_value = _parse_expression(point_text, "parameter_value")
+
+    dx_dt = simplify(diff(x_expression, parameter))
+    dy_dt = simplify(diff(y_expression, parameter))
+    dx_value = simplify(dx_dt.subs(parameter, parameter_value))
+    dy_value = simplify(dy_dt.subs(parameter, parameter_value))
+    point_x = simplify(x_expression.subs(parameter, parameter_value))
+    point_y = simplify(y_expression.subs(parameter, parameter_value))
+
+    if dx_value == 0 and dy_value == 0:
+        raise SolveError(
+            "在给定参数点处 dx/dt 与 dy/dt 同时为 0，切向量退化，"
+            "无法唯一确定切线"
+        )
+
+    x_symbol = sympy.Symbol("x")
+    tangent_slope: sympy.Expr | None
+    normal_slope: sympy.Expr | None
+    if dx_value == 0:
+        tangent_kind = "vertical"
+        tangent_slope = None
+        normal_slope = sympy.Integer(0)
+        tangent_equation = f"x = {point_x}"
+        normal_equation = f"y = {point_y}"
+        tangent_rhs = None
+        normal_rhs = point_y
+    elif dy_value == 0:
+        tangent_kind = "horizontal"
+        tangent_slope = sympy.Integer(0)
+        normal_slope = None
+        tangent_equation = f"y = {point_y}"
+        normal_equation = f"x = {point_x}"
+        tangent_rhs = point_y
+        normal_rhs = None
+    else:
+        tangent_kind = "slope"
+        tangent_slope = simplify(dy_value / dx_value)
+        normal_slope = simplify(-dx_value / dy_value)
+        tangent_rhs = expand(tangent_slope * (x_symbol - point_x) + point_y)
+        normal_rhs = expand(normal_slope * (x_symbol - point_x) + point_y)
+        tangent_equation = f"y = {tangent_rhs}"
+        normal_equation = f"y = {normal_rhs}"
+
+    y_symbol = sympy.Symbol("y")
+    tangent_latex = (
+        rf"x={latex(point_x)}"
+        if tangent_rhs is None
+        else latex(Eq(y_symbol, tangent_rhs))
+    )
+    normal_latex = (
+        rf"x={latex(point_x)}"
+        if normal_rhs is None
+        else latex(Eq(y_symbol, normal_rhs))
+    )
+    tangent_line_kind = "vertical" if tangent_kind == "vertical" else (
+        "horizontal" if tangent_kind == "horizontal" else "slope"
+    )
+    normal_line_kind = "horizontal" if tangent_kind == "vertical" else (
+        "vertical" if tangent_kind == "horizontal" else "slope"
+    )
+    tangent_at_point = _verification_zero(
+        _parametric_line_residual(
+            tangent_line_kind,
+            tangent_slope,
+            point_x,
+            point_y,
+            point_x,
+            point_y,
+        )
+    )
+    normal_at_point = _verification_zero(
+        _parametric_line_residual(
+            normal_line_kind,
+            normal_slope,
+            point_x,
+            point_y,
+            point_x,
+            point_y,
+        )
+    )
+    if tangent_kind == "vertical":
+        tangent_direction_passed = _verification_zero(dx_value)
+        normal_slope_passed = (
+            normal_slope is not None
+            and _verification_zero(normal_slope)
+        )
+        normal_direction_passed = _verification_zero(dx_value)
+    elif tangent_kind == "horizontal":
+        tangent_direction_passed = _verification_zero(dy_value)
+        normal_slope_passed = normal_slope is None
+        normal_direction_passed = _verification_zero(dy_value)
+    else:
+        tangent_direction_passed = _verification_zero(
+            dy_value - tangent_slope * dx_value
+        )
+        normal_slope_passed = (
+            tangent_slope is not None
+            and normal_slope is not None
+            and _verification_zero(tangent_slope * normal_slope + 1)
+        )
+        normal_direction_passed = _verification_zero(
+            dx_value + normal_slope * dy_value
+        )
+    verification = verification_result(
+        "parametric_tangent_normal",
+        [
+            verification_check(
+                "parameter_point",
+                _verification_zero(
+                    point_x - x_expression.subs(parameter, parameter_value)
+                )
+                and _verification_zero(
+                    point_y - y_expression.subs(parameter, parameter_value)
+                ),
+                "重新把参数值代入参数方程核对切点",
+            ),
+            verification_check(
+                "tangent_point",
+                tangent_at_point and normal_at_point,
+                "切线和法线都必须经过同一参数点",
+            ),
+            verification_check(
+                "tangent_direction",
+                tangent_direction_passed,
+                "切线方向必须与参数导数向量 (dx/dt, dy/dt) 平行",
+            ),
+            verification_check(
+                "normal_slope_relation",
+                normal_slope_passed,
+                "法线斜率必须是切线斜率的负倒数，水平与竖直情形单独核对",
+            ),
+            verification_check(
+                "normal_direction",
+                normal_direction_passed,
+                "法线方向必须与切线方向垂直",
+            ),
+        ],
+    )
+    result_latex = (
+        rf"\begin{{aligned}}"
+        rf"x'({parameter})&={latex(dx_dt)},\quad "
+        rf"y'({parameter})&={latex(dy_dt)}\\"
+        rf"x({latex(parameter_value)})&={latex(point_x)},\quad "
+        rf"y({latex(parameter_value)})&={latex(point_y)}\\"
+        rf"L_T&:{tangent_latex}\\"
+        rf"L_N&:{normal_latex}"
+        rf"\end{{aligned}}"
+    )
+    result = "\n".join(
+        (
+            f"切点：({point_x}, {point_y})",
+            f"切线方程：{tangent_equation}",
+            f"法线方程：{normal_equation}",
+        )
+    )
+    tangent_slope_text = "不存在" if tangent_slope is None else str(tangent_slope)
+    normal_slope_text = "不存在" if normal_slope is None else str(normal_slope)
+    knowledge_points = [
+        {
+            "title": "参数方程求导",
+            "points": [
+                "先分别求 dx/dt 和 dy/dt。",
+                "曲线上某点切线的方向由参数导数向量 (dx/dt, dy/dt) 决定。",
+            ],
+        },
+        {
+            "title": "切线斜率与切线方程",
+            "points": [
+                "当 dx/dt 不为零时，切线斜率为 (dy/dt)/(dx/dt)。",
+                "再用切点和点斜式写出切线方程。",
+            ],
+        },
+        {
+            "title": "法线斜率与法线方程",
+            "points": [
+                "法线斜率是切线斜率的负倒数。",
+                "若切线水平，则法线竖直；若切线竖直，则法线水平。",
+            ],
+        },
+        {
+            "title": "切点坐标与直线方程",
+            "points": [
+                f"把参数 {parameter}={parameter_value} 代入参数方程得到切点。",
+                "最后检查直线是否同时经过切点，并核对斜率关系。",
+            ],
+        },
+    ]
+    details = {
+        "x_expression": str(x_expression),
+        "y_expression": str(y_expression),
+        "parameter": str(parameter),
+        "parameter_value": str(parameter_value),
+        "point_x": str(point_x),
+        "point_y": str(point_y),
+        "dx_dt": str(dx_dt),
+        "dy_dt": str(dy_dt),
+        "dx_value": str(dx_value),
+        "dy_value": str(dy_value),
+        "tangent_kind": tangent_kind,
+        "tangent_slope": tangent_slope_text,
+        "normal_slope": normal_slope_text,
+        "tangent_result": tangent_equation,
+        "normal_result": normal_equation,
+        "tangent_latex": tangent_latex,
+        "normal_latex": normal_latex,
+        "knowledge_points": knowledge_points,
+    }
+    return {
+        "result": result,
+        "latex": result_latex,
+        "notes": [
+            f"先求参数导数：dx/d{parameter}={dx_dt}，dy/d{parameter}={dy_dt}",
+            f"代入 {parameter}={parameter_value}，得到切点 ({point_x}, {point_y})",
+            f"切线斜率：{tangent_slope_text}；法线斜率：{normal_slope_text}",
+            f"切线方程：{tangent_equation}；法线方程：{normal_equation}",
+        ],
+        "details": details,
+        "verification": verification,
+    }
+
+
 # Integrals
 
 
@@ -1027,6 +1399,77 @@ def _improper_integral(view: _InputView) -> dict[str, Any]:
     result = _definite_integral(view)
     result["notes"] = ["已按广义积分计算；若发散，结果会显示发散值或未求值形式"]
     return result
+
+
+@_solver(method="平面图形面积")
+def _area_between(view: _InputView) -> dict[str, Any]:
+    upper_expression = _parse_expression(
+        view.text("upper_expression"),
+        "upper_expression",
+    )
+    lower_expression = _parse_expression(
+        view.text("lower_expression"),
+        "lower_expression",
+    )
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    lower = _parse_expression(view.text("lower"), "lower")
+    upper = _parse_expression(view.text("upper"), "upper")
+    integrand = simplify(upper_expression - lower_expression)
+    result = simplify(integrate(integrand, (variable, lower, upper)))
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"面积微元为 (y_上-y_下) dx={latex(integrand)} dx",
+            "在给定区间上对上下曲线之差作定积分",
+        ],
+    }
+
+
+@_solver(method="旋转体体积（绕x轴）")
+def _volume_revolution(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    lower = _parse_expression(view.text("lower"), "lower")
+    upper = _parse_expression(view.text("upper"), "upper")
+    integrand = simplify(sympy.pi * expression**2)
+    result = simplify(integrate(integrand, (variable, lower, upper)))
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"绕 x 轴旋转时截面面积为 pi*y^2={latex(integrand)}",
+            "再用圆盘法在给定区间上积分求体积",
+        ],
+    }
+
+
+@_solver(method="平面曲线弧长")
+def _arc_length(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    lower = _parse_expression(view.text("lower"), "lower")
+    upper = _parse_expression(view.text("upper"), "upper")
+    derivative = simplify(diff(expression, variable))
+    integrand = simplify(sqrt(1 + derivative**2))
+    result = simplify(integrate(integrand, (variable, lower, upper)))
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"先求 y'={latex(derivative)}",
+            f"弧长微元为 ds=sqrt(1+(y')^2) dx={latex(integrand)} dx",
+        ],
+    }
 
 
 # Differential equations
@@ -1120,6 +1563,27 @@ def _partial(view: _InputView) -> dict[str, Any]:
     if order is None or order < 1 or order > 20:
         raise SolveError("order 必须在 1 到 20 之间")
     result = diff(expression, variable, order)
+    point = view.mapping("point", required=False)
+    if point is not None:
+        substitutions = {
+            _parse_symbol(name, f"point.{name}"): _parse_expression(
+                value,
+                f"point.{name}",
+            )
+            for name, value in point.items()
+        }
+        missing_symbols = {
+            str(symbol)
+            for symbol in expression.free_symbols
+            if symbol not in substitutions
+        }
+        if missing_symbols:
+            missing_text = "、".join(sorted(missing_symbols))
+            raise SolveError(f"取值点缺少变量：{missing_text}")
+        result = _evaluate_at(result, substitutions)
+        if result.free_symbols:
+            free_text = "、".join(sorted(str(symbol) for symbol in result.free_symbols))
+            raise SolveError(f"代入取值点后偏导数仍含自由变量：{free_text}")
     return {"result": result, "comparison_value": result}
 
 
@@ -1708,6 +2172,95 @@ def _line_vector(view: _InputView) -> dict[str, Any]:
     return {"result": result, "comparison_value": result}
 
 
+def _explicit_curve(
+    view: _InputView,
+) -> tuple[
+    sympy.Symbol,
+    sympy.Symbol,
+    sympy.Expr,
+    sympy.Expr,
+    sympy.Expr,
+    sympy.Expr,
+]:
+    variables = _parse_symbol_list(
+        view.items("variables", required=False) or ["x", "y"],
+        "variables",
+    )
+    if len(variables) != 2:
+        raise SolveError("显式曲线需要 x、y 两个变量")
+    independent, dependent = variables
+    y_expression = _parse_expression(
+        view.text("y_expression"),
+        "y_expression",
+    )
+    if dependent in y_expression.free_symbols:
+        raise SolveError("y_expression 不能包含因变量本身")
+    y_prime = simplify(diff(y_expression, independent))
+    lower = _parse_expression(view.text("lower"), "lower")
+    upper = _parse_expression(view.text("upper"), "upper")
+    return independent, dependent, y_expression, y_prime, lower, upper
+
+
+@_solver(method="第一类曲线积分（显式曲线）")
+def _line_scalar_explicit(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    (
+        independent,
+        dependent,
+        y_expression,
+        y_prime,
+        lower,
+        upper,
+    ) = _explicit_curve(view)
+    substituted = simplify(expression.subs(dependent, y_expression))
+    arc_factor = simplify(sqrt(1 + y_prime**2))
+    integrand = simplify(substituted * arc_factor)
+    result = simplify(
+        integrate(integrand, (independent, lower, upper))
+    )
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"曲线取 y={latex(y_expression)}，因此 dy/dx={latex(y_prime)}",
+            f"弧长微元 ds={latex(arc_factor)} dx",
+            f"代入后计算 {latex(integrand)} 在给定区间上的定积分",
+        ],
+    }
+
+
+@_solver(method="第二类曲线积分（显式曲线）")
+def _line_vector_explicit(view: _InputView) -> dict[str, Any]:
+    vector_values = view.items("vector_field")
+    if len(vector_values) != 2:
+        raise SolveError("显式曲线上的向量场必须是二维向量")
+    (
+        independent,
+        dependent,
+        y_expression,
+        y_prime,
+        lower,
+        upper,
+    ) = _explicit_curve(view)
+    p_component = _parse_expression(vector_values[0], "vector_field[0]")
+    q_component = _parse_expression(vector_values[1], "vector_field[1]")
+    p_on_curve = simplify(p_component.subs(dependent, y_expression))
+    q_on_curve = simplify(q_component.subs(dependent, y_expression))
+    integrand = simplify(p_on_curve + q_on_curve * y_prime)
+    result = simplify(
+        integrate(integrand, (independent, lower, upper))
+    )
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"曲线取 y={latex(y_expression)}，切向量为 (1, {latex(y_prime)})",
+            f"将 P、Q 代入后得到被积式 P+Q·dy/dx={latex(integrand)}",
+            "再按参数 x 的给定区间计算定积分",
+        ],
+    }
+
+
 def _parameterized_surface(
     view: _InputView,
 ) -> tuple[
@@ -1792,6 +2345,139 @@ def _flux(view: _InputView) -> dict[str, Any]:
     )
     result = simplify(result)
     return {"result": result, "comparison_value": result}
+
+
+def _explicit_surface(
+    view: _InputView,
+) -> tuple[
+    sympy.Symbol,
+    sympy.Symbol,
+    sympy.Expr,
+    sympy.Expr,
+    sympy.Expr,
+    tuple[sympy.Expr, sympy.Expr, sympy.Expr, sympy.Expr],
+]:
+    variables = _parse_symbol_list(
+        view.items("variables", required=False) or ["x", "y"],
+        "variables",
+    )
+    if len(variables) != 2:
+        raise SolveError("显式曲面需要 x、y 两个自变量")
+    first, second = variables
+    z_symbol = sympy.Symbol("z")
+    z_expression = _parse_expression(
+        view.text("z_expression"),
+        "z_expression",
+    )
+    if z_symbol in z_expression.free_symbols:
+        raise SolveError("z_expression 不能包含因变量 z 本身")
+    first_partial = simplify(diff(z_expression, first))
+    second_partial = simplify(diff(z_expression, second))
+    bounds = (
+        _parse_expression(view.text("x_lower"), "x_lower"),
+        _parse_expression(view.text("x_upper"), "x_upper"),
+        _parse_expression(view.text("y_lower"), "y_lower"),
+        _parse_expression(view.text("y_upper"), "y_upper"),
+    )
+    return first, second, z_expression, first_partial, second_partial, bounds
+
+
+@_solver(method="第一类曲面积分（显式曲面）")
+def _surface_scalar_explicit(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    (
+        first,
+        second,
+        z_expression,
+        first_partial,
+        second_partial,
+        bounds,
+    ) = _explicit_surface(view)
+    z_symbol = sympy.Symbol("z")
+    substituted = simplify(expression.subs(z_symbol, z_expression))
+    area_factor = simplify(
+        sqrt(1 + first_partial**2 + second_partial**2)
+    )
+    integrand = simplify(substituted * area_factor)
+    first_lower, first_upper, second_lower, second_upper = bounds
+    result = simplify(
+        integrate(
+            integrate(
+                integrand,
+                (second, second_lower, second_upper),
+            ),
+            (first, first_lower, first_upper),
+        )
+    )
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"曲面取 z={latex(z_expression)}，"
+            f"两个偏导数为 z_x={latex(first_partial)}、"
+            f"z_y={latex(second_partial)}",
+            f"曲面面积微元 dS={latex(area_factor)} dxdy",
+            f"代入后计算累次积分 {latex(integrand)}",
+        ],
+    }
+
+
+@_solver(method="第二类曲面积分（显式曲面）")
+def _flux_explicit(view: _InputView) -> dict[str, Any]:
+    vector_values = view.items("vector_field")
+    if len(vector_values) != 3:
+        raise SolveError("显式曲面上的向量场必须是三维向量")
+    (
+        first,
+        second,
+        z_expression,
+        first_partial,
+        second_partial,
+        bounds,
+    ) = _explicit_surface(view)
+    p_component = _parse_expression(vector_values[0], "vector_field[0]")
+    q_component = _parse_expression(vector_values[1], "vector_field[1]")
+    r_component = _parse_expression(vector_values[2], "vector_field[2]")
+    z_symbol = sympy.Symbol("z")
+    p_on_surface = simplify(p_component.subs(z_symbol, z_expression))
+    q_on_surface = simplify(q_component.subs(z_symbol, z_expression))
+    r_on_surface = simplify(r_component.subs(z_symbol, z_expression))
+    integrand = simplify(
+        -p_on_surface * first_partial
+        - q_on_surface * second_partial
+        + r_on_surface
+    )
+    orientation = (view.text("orientation", required=False, default="up") or "up")
+    orientation = orientation.strip().lower()
+    if orientation in {"down", "negative", "向下", "负向"}:
+        orientation_label = "向下"
+        integrand = simplify(-integrand)
+    elif orientation in {"up", "positive", "向上", "正向"}:
+        orientation_label = "向上"
+    else:
+        raise SolveError("orientation 必须表示向上或向下")
+    first_lower, first_upper, second_lower, second_upper = bounds
+    result = simplify(
+        integrate(
+            integrate(
+                integrand,
+                (second, second_lower, second_upper),
+            ),
+            (first, first_lower, first_upper),
+        )
+    )
+    return {
+        "result": result,
+        "comparison_value": result,
+        "notes": [
+            f"曲面取 z={latex(z_expression)}，"
+            f"向上法向量的面积为分量为 "
+            f"(-z_x,-z_y,1)=({latex(-first_partial)},"
+            f"{latex(-second_partial)},1)",
+            f"通量被积式为 -P z_x-Q z_y+R={latex(integrand)}",
+            f"曲面取向为{orientation_label}，按给定矩形区域计算累次积分",
+        ],
+    }
 
 
 # Series
@@ -2031,9 +2717,16 @@ _SOLVERS = {
     ("derivatives", "taylor"): _taylor,
     ("derivatives", "curvature"): _curvature,
     ("derivatives", "parametric_derivative"): _parametric_derivative,
+    (
+        "derivatives",
+        "parametric_tangent_normal",
+    ): _parametric_tangent_normal,
     ("integrals", "indefinite"): _indefinite_integral,
     ("integrals", "definite"): _definite_integral,
     ("integrals", "improper"): _improper_integral,
+    ("integrals", "area_between"): _area_between,
+    ("integrals", "volume_revolution"): _volume_revolution,
+    ("integrals", "arc_length"): _arc_length,
     ("differential_equations", "dsolve"): _dsolve,
     ("vectors", "dot"): _dot,
     ("vectors", "cross"): _cross,
@@ -2068,6 +2761,19 @@ _SOLVERS = {
     ("line_surface_integrals", "line_vector"): _line_vector,
     ("line_surface_integrals", "surface_scalar"): _surface_scalar,
     ("line_surface_integrals", "flux"): _flux,
+    (
+        "line_surface_integrals",
+        "line_scalar_explicit",
+    ): _line_scalar_explicit,
+    (
+        "line_surface_integrals",
+        "line_vector_explicit",
+    ): _line_vector_explicit,
+    (
+        "line_surface_integrals",
+        "surface_scalar_explicit",
+    ): _surface_scalar_explicit,
+    ("line_surface_integrals", "flux_explicit"): _flux_explicit,
     ("series", "sum"): _series_sum,
     ("series", "convergence"): _series_convergence,
     ("series", "power_radius"): _power_radius,

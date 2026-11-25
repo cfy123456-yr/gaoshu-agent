@@ -52,6 +52,12 @@ ALL_TOPIC_CASES = {
         "y_expression": "t^3",
         "parameter": "t",
     },
+    ("derivatives", "parametric_tangent_normal"): {
+        "x_expression": "sin(t)",
+        "y_expression": "cos(2*t)",
+        "parameter": "t",
+        "parameter_value": "pi/4",
+    },
     ("integrals", "indefinite"): {"expression": "x", "variable": "x"},
     ("integrals", "definite"): {
         "expression": "x",
@@ -64,6 +70,25 @@ ALL_TOPIC_CASES = {
         "variable": "x",
         "lower": "1",
         "upper": "oo",
+    },
+    ("integrals", "area_between"): {
+        "upper_expression": "x^2",
+        "lower_expression": "0",
+        "variable": "x",
+        "lower": "0",
+        "upper": "1",
+    },
+    ("integrals", "volume_revolution"): {
+        "expression": "x",
+        "variable": "x",
+        "lower": "0",
+        "upper": "1",
+    },
+    ("integrals", "arc_length"): {
+        "expression": "(2/3)*x^(3/2)",
+        "variable": "x",
+        "lower": "0",
+        "upper": "1",
     },
     ("differential_equations", "dsolve"): {
         "equation": "y' - y",
@@ -202,6 +227,35 @@ ALL_TOPIC_CASES = {
         "v_lower": "0",
         "v_upper": "1",
     },
+    ("line_surface_integrals", "line_scalar_explicit"): {
+        "expression": "x+y",
+        "y_expression": "x",
+        "lower": "0",
+        "upper": "1",
+    },
+    ("line_surface_integrals", "line_vector_explicit"): {
+        "vector_field": ["x", "y"],
+        "y_expression": "x",
+        "lower": "0",
+        "upper": "1",
+    },
+    ("line_surface_integrals", "surface_scalar_explicit"): {
+        "expression": "1",
+        "z_expression": "x",
+        "x_lower": "0",
+        "x_upper": "1",
+        "y_lower": "0",
+        "y_upper": "1",
+    },
+    ("line_surface_integrals", "flux_explicit"): {
+        "vector_field": ["0", "0", "1"],
+        "z_expression": "x",
+        "x_lower": "0",
+        "x_upper": "1",
+        "y_lower": "0",
+        "y_upper": "1",
+        "orientation": "up",
+    },
     ("series", "sum"): {
         "expression": "1/n^2",
         "variable": "n",
@@ -235,6 +289,15 @@ class ChapterSolverTest(unittest.TestCase):
             {"expression": "x^2", "variable": "x", "point": "1"},
         )
         self.assertIn("2*x - 1", payload["result"])
+
+    def test_horizontal_tangent_has_vertical_normal(self):
+        payload = self.solve(
+            "derivatives",
+            "normal",
+            {"expression": "x^2", "variable": "x", "point": "0"},
+        )
+        self.assertEqual("Eq(x, 0)", payload["result"])
+        self.assertIs(True, payload["verification"]["passed"])
 
     def test_differential_equation(self):
         payload = self.solve(
@@ -378,6 +441,32 @@ class ChapterSolverTest(unittest.TestCase):
         )
         self.assertIn("2*x*y", payload["result"])
         self.assertIn("x**2", payload["result"])
+
+    def test_partial_derivative_at_complete_point(self):
+        payload = self.solve(
+            "multivariable_calculus",
+            "partial",
+            {
+                "expression": "x^2*y",
+                "variables": ["x"],
+                "point": {"x": "1", "y": "2"},
+            },
+        )
+
+        self.assertEqual("4", payload["result"])
+        self.assertEqual("偏导数", payload["method"])
+
+    def test_partial_derivative_rejects_incomplete_point(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "multivariable_calculus",
+                "partial",
+                {
+                    "expression": "x^2*y",
+                    "variables": ["x"],
+                    "point": {"x": "1"},
+                },
+            )
 
     def test_double_integral(self):
         payload = self.solve(
@@ -596,6 +685,131 @@ class ChapterSolverTest(unittest.TestCase):
                 {"x_expression": "1", "y_expression": "t^2", "parameter": "t"},
             )
 
+    def test_parametric_tangent_and_normal_at_point(self):
+        payload = self.solve(
+            "derivatives",
+            "parametric_tangent_normal",
+            {
+                "x_expression": "sin(t)",
+                "y_expression": "cos(2*t)",
+                "parameter": "t",
+                "parameter_value": "pi/4",
+            },
+        )
+
+        self.assertEqual("参数方程切线与法线", payload["method"])
+        self.assertIn("(sqrt(2)/2, 0)", payload["result"])
+        self.assertIn("y = -2*sqrt(2)*x + 2", payload["result"])
+        self.assertIn("y = sqrt(2)*x/4 - 1/4", payload["result"])
+        details = payload["details"]
+        self.assertEqual("sqrt(2)/2", details["point_x"])
+        self.assertEqual("0", details["point_y"])
+        self.assertEqual("-2*sqrt(2)", details["tangent_slope"])
+        self.assertEqual("sqrt(2)/4", details["normal_slope"])
+        self.assertEqual(
+            [
+                "参数方程求导",
+                "切线斜率与切线方程",
+                "法线斜率与法线方程",
+                "切点坐标与直线方程",
+            ],
+            [item["title"] for item in details["knowledge_points"]],
+        )
+
+    def test_parametric_tangent_and_normal_handles_horizontal_and_vertical(self):
+        horizontal = self.solve(
+            "derivatives",
+            "parametric_tangent_normal",
+            {
+                "x_expression": "t",
+                "y_expression": "t^2",
+                "parameter": "t",
+                "parameter_value": "0",
+            },
+        )
+        vertical = self.solve(
+            "derivatives",
+            "parametric_tangent_normal",
+            {
+                "x_expression": "t^2",
+                "y_expression": "t",
+                "parameter": "t",
+                "parameter_value": "0",
+            },
+        )
+
+        self.assertEqual("horizontal", horizontal["details"]["tangent_kind"])
+        self.assertEqual("y = 0", horizontal["details"]["tangent_result"])
+        self.assertEqual("x = 0", horizontal["details"]["normal_result"])
+        self.assertEqual("vertical", vertical["details"]["tangent_kind"])
+        self.assertEqual("x = 0", vertical["details"]["tangent_result"])
+        self.assertEqual("y = 0", vertical["details"]["normal_result"])
+
+    def test_parametric_tangent_and_normal_rejects_degenerate_point(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "derivatives",
+                "parametric_tangent_normal",
+                {
+                    "x_expression": "t^2",
+                    "y_expression": "t^2",
+                    "parameter": "t",
+                    "parameter_value": "0",
+                },
+            )
+
+    def test_parametric_tangent_and_normal_requires_parameter_value(self):
+        with self.assertRaises(SolveError):
+            self.solve(
+                "derivatives",
+                "parametric_tangent_normal",
+                {
+                    "x_expression": "sin(t)",
+                    "y_expression": "cos(2*t)",
+                    "parameter": "t",
+                },
+            )
+
+    def test_definite_integral_applications(self):
+        area = self.solve(
+            "integrals",
+            "area_between",
+            {
+                "upper_expression": "x^2",
+                "lower_expression": "0",
+                "variable": "x",
+                "lower": "0",
+                "upper": "1",
+            },
+        )
+        volume = self.solve(
+            "integrals",
+            "volume_revolution",
+            {
+                "expression": "x",
+                "variable": "x",
+                "lower": "0",
+                "upper": "1",
+            },
+        )
+        arc_length = self.solve(
+            "integrals",
+            "arc_length",
+            {
+                "expression": "(2/3)*x^(3/2)",
+                "variable": "x",
+                "lower": "0",
+                "upper": "1",
+            },
+        )
+
+        self.assertEqual("1/3", area["result"])
+        self.assertEqual("pi/3", volume["result"])
+        self.assertEqual("-2/3 + 4*sqrt(2)/3", arc_length["result"])
+        self.assertEqual("平面图形面积", area["method"])
+        self.assertEqual("旋转体体积（绕x轴）", volume["method"])
+        self.assertEqual("平面曲线弧长", arc_length["method"])
+
     def test_power_radius(self):
         payload = self.solve(
             "series",
@@ -603,6 +817,76 @@ class ChapterSolverTest(unittest.TestCase):
             {"coefficient": "1/n", "variable": "n"},
         )
         self.assertEqual("1", payload["result"])
+
+    def test_explicit_curve_and_surface_integrals(self):
+        cases = (
+            (
+                "line_scalar_explicit",
+                {
+                    "expression": "x+y",
+                    "y_expression": "x",
+                    "lower": "0",
+                    "upper": "1",
+                },
+                "第一类曲线积分（显式曲线）",
+                "sqrt(2)",
+            ),
+            (
+                "line_vector_explicit",
+                {
+                    "vector_field": ["x", "y"],
+                    "y_expression": "x",
+                    "lower": "0",
+                    "upper": "1",
+                },
+                "第二类曲线积分（显式曲线）",
+                "1",
+            ),
+            (
+                "surface_scalar_explicit",
+                {
+                    "expression": "1",
+                    "z_expression": "x",
+                    "x_lower": "0",
+                    "x_upper": "1",
+                    "y_lower": "0",
+                    "y_upper": "1",
+                },
+                "第一类曲面积分（显式曲面）",
+                "sqrt(2)",
+            ),
+            (
+                "flux_explicit",
+                {
+                    "vector_field": ["0", "0", "1"],
+                    "z_expression": "x",
+                    "x_lower": "0",
+                    "x_upper": "1",
+                    "y_lower": "0",
+                    "y_upper": "1",
+                    "orientation": "up",
+                },
+                "第二类曲面积分（显式曲面）",
+                "1",
+            ),
+        )
+        for topic, inputs, method, expected in cases:
+            with self.subTest(topic=topic):
+                payload = self.solve(
+                    "line_surface_integrals",
+                    topic,
+                    inputs,
+                )
+                self.assertEqual(method, payload["method"])
+                self.assertEqual(expected, payload["result"])
+                self.assertTrue(payload["notes"])
+
+        downward = self.solve(
+            "line_surface_integrals",
+            "flux_explicit",
+            {**cases[-1][1], "orientation": "down"},
+        )
+        self.assertEqual("-1", downward["result"])
 
     def test_unknown_topic_is_rejected(self):
         with self.assertRaises(SolveError):

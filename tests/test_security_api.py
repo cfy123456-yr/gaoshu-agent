@@ -31,6 +31,7 @@ class SecurityApiTest(unittest.TestCase):
             {
                 "MATH_API_KEY": API_KEY,
                 "RATE_LIMIT_PER_MINUTE": "2",
+                "TRUSTED_PROXY_HOPS": "1",
                 "CALCULATION_TIMEOUT_SECONDS": "5",
                 "LOG_ENABLED": "false",
             }
@@ -115,14 +116,31 @@ class SecurityApiTest(unittest.TestCase):
 
     def test_rate_limit_returns_429(self):
         params = {"expression": "x^2", "variable": "x"}
-        headers = {
-            "X-Forwarded-For": "198.51.100.20",
-            "X-API-Key": API_KEY,
-        }
-
-        self.request("/verify-query", params, headers)
-        self.request("/verify-query", params, headers)
-        self.request("/verify-query", params, headers, expected_status=429)
+        self.request(
+            "/verify-query",
+            params,
+            {
+                "X-Forwarded-For": "203.0.113.1, 198.51.100.20",
+                "X-API-Key": API_KEY,
+            },
+        )
+        self.request(
+            "/verify-query",
+            params,
+            {
+                "X-Forwarded-For": "203.0.113.2, 198.51.100.20",
+                "X-API-Key": API_KEY,
+            },
+        )
+        self.request(
+            "/verify-query",
+            params,
+            {
+                "X-Forwarded-For": "203.0.113.3, 198.51.100.20",
+                "X-API-Key": API_KEY,
+            },
+            expected_status=429,
+        )
 
 
 if __name__ == "__main__":

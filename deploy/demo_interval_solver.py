@@ -14,6 +14,7 @@ from sympy.parsing.sympy_parser import (
 )
 
 from app.main import parse_math_expression
+from app.solution_gate import verification_check, verification_result
 
 
 _REPLACEMENTS = str.maketrans(
@@ -189,6 +190,27 @@ def solve_interval_extrema(question: str) -> dict[str, Any] | None:
     return {
         "status": "ok",
         "intent": "solve",
+        "verified": True,
+        "verification": verification_result(
+            "interval_extrema",
+            [
+                verification_check(
+                    "derivative_available",
+                    derivative is not None,
+                    "已对目标函数求导",
+                ),
+                verification_check(
+                    "candidate_values",
+                    bool(candidates),
+                    "驻点或端点中至少有一个可比较的有限候选值",
+                ),
+                verification_check(
+                    "selected_is_extreme",
+                    selected_value in {value for _, value in candidates},
+                    "最终值必须来自候选值集合",
+                ),
+            ],
+        ),
         "reply": (
             f"\u51fd\u6570\u5728\u533a\u95f4 {interval_text} "
             f"\u4e0a\u7684{kind_label}\u662f "

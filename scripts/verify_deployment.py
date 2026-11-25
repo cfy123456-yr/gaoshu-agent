@@ -14,13 +14,23 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-EXPECTED_VERSION = "0.6.7"
+EXPECTED_VERSION = "0.6.11"
+DEFAULT_OCR_IMAGE_URL = (
+    "https://latex.codecogs.com/png.latex?%5Cint%20x%5E2%20dx"
+)
 DEMO_REQUIRED_MARKERS = (
     "interactive-widget=resizes-content",
     "window.visualViewport",
     "OCR_REQUEST_TIMEOUT_MS = 90000",
     "SLOW_REQUEST_NOTICE_MS = 8000",
     "VERY_SLOW_REQUEST_NOTICE_MS = 22000",
+    'id="mathToolbar"',
+    'id="mathLimitsPanel"',
+    'id="mathLowerLimit"',
+    'id="mathUpperLimit"',
+    'data-math-insert="∫ "',
+    'data-math-insert="lim_{x→0} "',
+    'data-math-insert="√()"',
 )
 MODEL_PROVIDERS = {"dashscope", "deepseek", "openai-compatible"}
 MODEL_KEY_SOURCES = {"dedicated", "vision_fallback"}
@@ -184,14 +194,99 @@ def assert_model_health(health: dict[str, Any]) -> None:
     )
 
 
+def verify_ocr_url_api(
+    base_url: str,
+    image_url: str,
+    *,
+    timeout: float,
+) -> None:
+    missing = request_json(
+        base_url,
+        "/demo/api/ocr-url",
+        method="POST",
+        json_body={},
+        expected_status=400,
+        timeout=timeout,
+    )
+    expect(
+        "image_url" in missing.get("detail", ""),
+        f"OCR URL 缺参未被正确拒绝：{missing}",
+    )
+
+    local_target = request_json(
+        base_url,
+        "/demo/api/ocr-url",
+        method="POST",
+        json_body={"image_url": "http://localhost/question.png"},
+        expected_status=400,
+        timeout=timeout,
+    )
+    expect(
+        "本机" in local_target.get("detail", ""),
+        f"OCR URL 本机地址未被正确拒绝：{local_target}",
+    )
+
+    private_target = request_json(
+        base_url,
+        "/demo/api/ocr-url",
+        method="POST",
+        json_body={"image_url": "http://127.0.0.1/question.png"},
+        expected_status=400,
+        timeout=timeout,
+    )
+    expect(
+        "本机、内网或保留地址" in private_target.get("detail", ""),
+        f"OCR URL 私网地址未被正确拒绝：{private_target}",
+    )
+
+    non_image = request_json(
+        base_url,
+        "/demo/api/ocr-url",
+        method="POST",
+        json_body={"image_url": "https://example.com/"},
+        expected_status=400,
+        timeout=timeout,
+    )
+    expect(
+        "不是图片" in non_image.get("detail", ""),
+        f"OCR URL 非图片内容未被正确拒绝：{non_image}",
+    )
+
+    recognized = request_json(
+        base_url,
+        "/demo/api/ocr-url",
+        method="POST",
+        json_body={"image_url": image_url},
+        timeout=max(timeout, 45.0),
+    )
+    expect(
+        recognized.get("provider") == "vision",
+        f"OCR URL 未使用视觉模型：{recognized}",
+    )
+    expect(
+        recognized.get("requires_confirmation") is True,
+        f"OCR URL 未进入人工确认状态：{recognized}",
+    )
+    text = str(recognized.get("text", ""))
+    compact_text = "".join(text.lower().split())
+    expect(
+        "x" in compact_text
+        and "dx" in compact_text
+        and any(power in compact_text for power in ("x^2", "x²", "x2")),
+        f"OCR URL 未保留平方、积分变量和 dx：{recognized}",
+    )
+    print(f"      识别结果：{text}")
+
+
 def verify_deployment(
     base_url: str,
     api_key: str | None,
     *,
     skip_version_check: bool,
     timeout: float,
+    ocr_image_url: str,
 ) -> None:
-    print(f"[1/10] 健康检查: {base_url}/health")
+    print(f"[1/11] 健康检查: {base_url}/health")
     health = request_json(base_url, "/health", timeout=timeout)
     expect(health.get("status") == "ok", f"健康检查失败：{health}")
     if not skip_version_check:
@@ -228,7 +323,7 @@ def verify_deployment(
             "云端已启用 MATH_API_KEY，请通过 --api-key 或环境变量 MATH_API_KEY 提供密钥"
         )
 
-    print("[2/10] 求导与候选答案判定")
+    print("[2/11] 求导与候选答案判定")
     derivative = request_json(
         base_url,
         "/verify-query",
@@ -240,7 +335,7 @@ def verify_deployment(
     expect(derivative.get("derivative") == "2*x", f"求导结果错误：{derivative}")
     expect(derivative.get("is_correct") is True, f"求导判题错误：{derivative}")
 
-    print("[3/10] 不定积分与候选答案判定")
+    print("[3/11] 不定积分与候选答案判定")
     indefinite = request_json(
         base_url,
         "/integrate-query",
@@ -256,7 +351,7 @@ def verify_deployment(
     expect(indefinite.get("integral") == "x**3/3", f"不定积分结果错误：{indefinite}")
     expect(indefinite.get("is_correct") is True, f"不定积分判题错误：{indefinite}")
 
-    print("[4/10] 定积分与候选答案判定")
+    print("[4/11] 定积分与候选答案判定")
     definite = request_json(
         base_url,
         "/integrate-query",
@@ -274,7 +369,7 @@ def verify_deployment(
     expect(definite.get("integral") == "1/3", f"定积分结果错误：{definite}")
     expect(definite.get("is_correct") is True, f"定积分判题错误：{definite}")
 
-    print("[5/10] 极限与候选答案判定")
+    print("[5/11] 极限与候选答案判定")
     limit = request_json(
         base_url,
         "/limit-query",
@@ -291,7 +386,7 @@ def verify_deployment(
     expect(limit.get("limit") == "1", f"极限结果错误：{limit}")
     expect(limit.get("is_correct") is True, f"极限判题错误：{limit}")
 
-    print("[6/10] 章节统一求解接口")
+    print("[6/11] 章节统一求解接口")
     solve = request_json(
         base_url,
         "/solve",
@@ -310,7 +405,7 @@ def verify_deployment(
     )
     expect(solve.get("result") == "6*x", f"统一求解结果错误：{solve}")
 
-    print("[7/10] 函数图像生成")
+    print("[7/11] 函数图像生成")
     plot = request_json(
         base_url,
         "/plot-query",
@@ -322,7 +417,7 @@ def verify_deployment(
     expect(plot.get("expression") == "sin(x)", f"函数图像表达式错误：{plot}")
     expect("<svg" in plot.get("svg", ""), f"函数图像内容错误：{plot}")
 
-    print("[8/10] 非法表达式拦截")
+    print("[8/11] 非法表达式拦截")
     invalid = request_json(
         base_url,
         "/verify-query",
@@ -334,7 +429,7 @@ def verify_deployment(
     )
     expect("unsupported identifier" in invalid.get("detail", ""), f"安全拦截异常：{invalid}")
 
-    print("[9/10] API Key 鉴权")
+    print("[9/11] API Key 鉴权")
     if api_key_enabled:
         unauthorized = request_json(
             base_url,
@@ -352,10 +447,13 @@ def verify_deployment(
     else:
         print("      当前未启用密钥，跳过；固定公网部署后必须启用")
 
-    print("[10/10] 演示页前端标记")
+    print("[10/11] 演示页前端标记")
     demo_page = request_text(base_url, "/demo", timeout=timeout)
     assert_demo_page_markers(demo_page)
     print(f"      页面 {len(demo_page.encode('utf-8'))} 字节，所需标记完整")
+
+    print("[11/11] 远程图片 OCR 与 SSRF 防护")
+    verify_ocr_url_api(base_url, ocr_image_url, timeout=timeout)
 
     print("\n部署验收通过。")
 
@@ -383,6 +481,11 @@ def parse_args() -> argparse.Namespace:
         default=20.0,
         help="单次请求超时秒数，默认 20",
     )
+    parser.add_argument(
+        "--ocr-image-url",
+        default=os.getenv("OCR_TEST_IMAGE_URL", DEFAULT_OCR_IMAGE_URL),
+        help="用于公网 OCR 验收的公开公式图片 URL",
+    )
     return parser.parse_args()
 
 
@@ -394,6 +497,7 @@ def main() -> int:
             args.api_key,
             skip_version_check=args.skip_version_check,
             timeout=args.timeout,
+            ocr_image_url=args.ocr_image_url,
         )
     except VerificationError as exc:
         print(f"\n部署验收失败：{exc}", file=sys.stderr)

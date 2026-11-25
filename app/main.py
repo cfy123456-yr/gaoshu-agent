@@ -4,9 +4,11 @@ import logging
 import os
 import re
 import time
-from collections import defaultdict, deque
+from collections import deque
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from datetime import datetime, timezone
+from ipaddress import ip_address
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from threading import Lock
@@ -24,6 +26,7 @@ from sympy.parsing.sympy_parser import (
 )
 
 from app.chapter_solvers import SUPPORTED_TOPICS, SolveError, solve_chapter
+from app.math_text import normalize_math_text
 from app.plotting import render_function_svg
 
 
@@ -44,9 +47,51 @@ def read_float_env(name: str, default: float, minimum: float = 0.1) -> float:
         return default
 
 
+def normalize_query_text(
+    value: str | None,
+    default: str | None = None,
+) -> str | None:
+    if value is None:
+        return default
+    normalized = str(value).strip()
+    return normalized or default
+
+
+def normalize_query_number(
+    value: str | int | float | None,
+    default: int | float,
+    field_name: str,
+    *,
+    minimum: int | float,
+    maximum: int | float,
+    integer: bool = False,
+) -> int | float:
+    if value is None or str(value).strip() == "":
+        return default
+    try:
+        parsed = int(str(value).strip()) if integer else float(str(value).strip())
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"{field_name} must be numeric") from exc
+    if not minimum <= parsed <= maximum:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{field_name} must be between {minimum} and {maximum}",
+        )
+    return parsed
+
+
 MAX_EXPRESSION_LENGTH = read_int_env("MAX_EXPRESSION_LENGTH", 300)
 MAX_SYMBOL_LENGTH = read_int_env("MAX_SYMBOL_LENGTH", 32)
 RATE_LIMIT_PER_MINUTE = read_int_env("RATE_LIMIT_PER_MINUTE", 60, minimum=0)
+RATE_LIMIT_MAX_CLIENTS = read_int_env(
+    "RATE_LIMIT_MAX_CLIENTS",
+    10_000,
+    minimum=100,
+)
+TRUSTED_PROXY_HOPS = min(
+    read_int_env("TRUSTED_PROXY_HOPS", 0, minimum=0),
+    10,
+)
 CALCULATION_TIMEOUT_SECONDS = read_float_env("CALCULATION_TIMEOUT_SECONDS", 10.0)
 CALCULATION_WORKERS = read_int_env("CALCULATION_WORKERS", 4)
 LOG_ENABLED = os.getenv("LOG_ENABLED", "true").strip().lower() not in {
@@ -64,7 +109,7 @@ LOG_MAX_BYTES = read_int_env("LOG_MAX_BYTES", 5 * 1024 * 1024)
 LOG_BACKUP_COUNT = read_int_env("LOG_BACKUP_COUNT", 3, minimum=0)
 API_KEY = os.getenv("MATH_API_KEY", "").strip()
 PUBLIC_API_PATHS = {"/plot.svg"}
-SERVICE_VERSION = "0.6.7"
+SERVICE_VERSION = "0.6.11"
 SERVICE_STARTED_AT = datetime.now(timezone.utc)
 SERVICE_STARTED_MONOTONIC = time.monotonic()
 
@@ -176,6 +221,10 @@ class LimitResponse(BaseModel):
     direction: str | None
     limit: str
     limit_latex: str
+    exists: bool = True
+    left_limit: str | None = None
+    right_limit: str | None = None
+    explanation: str = ""
     candidate: str | None
     is_correct: bool | None
 
@@ -196,6 +245,12 @@ class SolveResponse(BaseModel):
     candidate: str | None
     is_correct: bool | None
     notes: list[str]
+    status: str
+    intent: str
+    verified: bool
+    verification: dict[str, Any]
+    verification_context: dict[str, Any]
+    details: dict[str, Any] | None = None
 
 
 class PlotRequest(BaseModel):
@@ -295,7 +350,7 @@ def validate_expression_text(value: str, field_name: str = "expression") -> str:
 
 
 def parse_math_expression(value: str):
-    normalized = validate_expression_text(value)
+    normalized = validate_expression_text(normalize_math_text(value))
     local_dict = dict(SAFE_LOCAL_DICT)
 
     # SymPy's implicit multiplication splits C1 into C*1 unless the exact
@@ -336,6 +391,23 @@ def expressions_equal(left, right) -> bool:
     if left == right:
         return True
     return simplify(left - right) == 0
+
+
+def resolved_limit_value(value: Any) -> bool:
+    if value in {sympy.nan, sympy.zoo}:
+        return False
+    return not value.has(sympy.Limit, sympy.AccumBounds)
+
+
+def limit_values_equal(left: Any, right: Any) -> bool:
+    if left == right:
+        return True
+    if left in {sympy.oo, -sympy.oo} or right in {sympy.oo, -sympy.oo}:
+        return False
+    try:
+        return simplify(left - right) == 0
+    except (TypeError, ValueError):
+        return False
 
 
 def build_plot_response(request: PlotRequest) -> PlotResponse:
@@ -395,11 +467,41 @@ def run_calculation(callback, calculation_name: str):
     return result
 
 
+def _normalize_ip(value: str | None) -> str:
+    candidate = str(value or "").strip().strip('"')
+    if candidate.startswith("[") and "]" in candidate:
+        candidate = candidate[1 : candidate.index("]")]
+    try:
+        return ip_address(candidate).compressed
+    except ValueError:
+        return ""
+
+
+def client_key_from_request(
+    headers: Mapping[str, str],
+    remote_addr: str | None,
+    trusted_proxy_hops: int | None = None,
+) -> str:
+    hops = TRUSTED_PROXY_HOPS if trusted_proxy_hops is None else trusted_proxy_hops
+    remote = _normalize_ip(remote_addr) or str(remote_addr or "").strip() or "unknown"
+    if hops <= 0:
+        return remote
+
+    forwarded = [
+        normalized
+        for value in headers.get("x-forwarded-for", "").split(",")
+        if (normalized := _normalize_ip(value))
+    ]
+    if len(forwarded) < hops:
+        return remote
+    return forwarded[-hops]
+
+
 def client_fingerprint(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    client_key = forwarded_for.split(",")[0].strip()
-    if not client_key:
-        client_key = request.client.host if request.client else "unknown"
+    client_key = client_key_from_request(
+        request.headers,
+        request.client.host if request.client else None,
+    )
     return hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:12]
 
 
@@ -446,10 +548,46 @@ async def log_request(request: Request, call_next):
 
 
 class InMemoryRateLimiter:
-    def __init__(self, limit_per_minute: int):
+    def __init__(
+        self,
+        limit_per_minute: int,
+        max_clients: int = 10_000,
+        prune_interval_seconds: float = 60.0,
+    ):
         self.limit_per_minute = limit_per_minute
-        self.requests: dict[str, deque[float]] = defaultdict(deque)
+        self.max_clients = max(1, max_clients)
+        self.prune_interval_seconds = max(1.0, prune_interval_seconds)
+        self.requests: dict[str, deque[float]] = {}
         self.lock = Lock()
+        self._last_prune_at = time.monotonic()
+
+    def _prune_locked(self, now: float) -> None:
+        if (
+            now - self._last_prune_at < self.prune_interval_seconds
+            and len(self.requests) <= self.max_clients
+        ):
+            return
+
+        cutoff = now - 60
+        empty_keys: list[str] = []
+        for client_key, bucket in self.requests.items():
+            while bucket and bucket[0] < cutoff:
+                bucket.popleft()
+            if not bucket:
+                empty_keys.append(client_key)
+        for client_key in empty_keys:
+            self.requests.pop(client_key, None)
+
+        overflow = len(self.requests) - self.max_clients
+        if overflow > 0:
+            oldest_keys = sorted(
+                self.requests,
+                key=lambda client_key: self.requests[client_key][-1],
+            )[:overflow]
+            for client_key in oldest_keys:
+                self.requests.pop(client_key, None)
+
+        self._last_prune_at = now
 
     def check(self, client_key: str) -> None:
         if self.limit_per_minute <= 0:
@@ -458,7 +596,11 @@ class InMemoryRateLimiter:
         now = time.monotonic()
         cutoff = now - 60
         with self.lock:
-            bucket = self.requests[client_key]
+            self._prune_locked(now)
+            bucket = self.requests.get(client_key)
+            if bucket is None:
+                bucket = deque()
+                self.requests[client_key] = bucket
             while bucket and bucket[0] < cutoff:
                 bucket.popleft()
             if len(bucket) >= self.limit_per_minute:
@@ -469,9 +611,14 @@ class InMemoryRateLimiter:
                     headers={"Retry-After": str(retry_after)},
                 )
             bucket.append(now)
+            if len(self.requests) > self.max_clients:
+                self._prune_locked(now)
 
 
-rate_limiter = InMemoryRateLimiter(RATE_LIMIT_PER_MINUTE)
+rate_limiter = InMemoryRateLimiter(
+    RATE_LIMIT_PER_MINUTE,
+    max_clients=RATE_LIMIT_MAX_CLIENTS,
+)
 
 
 def enforce_api_access(
@@ -485,10 +632,10 @@ def enforce_api_access(
     ):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    client_key = forwarded_for.split(",")[0].strip()
-    if not client_key:
-        client_key = request.client.host if request.client else "unknown"
+    client_key = client_key_from_request(
+        request.headers,
+        request.client.host if request.client else None,
+    )
     rate_limiter.check(client_key)
 
 
@@ -514,6 +661,8 @@ def health_check():
         "calculation_timeout_seconds": CALCULATION_TIMEOUT_SECONDS,
         "calculation_workers": CALCULATION_WORKERS,
         "rate_limit_per_minute": RATE_LIMIT_PER_MINUTE,
+        "rate_limit_max_clients": RATE_LIMIT_MAX_CLIENTS,
+        "trusted_proxy_hops": TRUSTED_PROXY_HOPS,
         "api_key_enabled": bool(API_KEY),
         "persistent_logging_enabled": PERSISTENT_LOGGING_ENABLED,
         "limits": {
@@ -560,15 +709,15 @@ def verify_derivative(
 @app.post("/verify-query", response_model=VerifyResponse)
 def verify_derivative_query(
     expression: str = Query(min_length=1),
-    variable: str = Query(default="x", min_length=1),
-    candidate: str | None = Query(default=None),
+    variable: str | None = Query(default=None, max_length=MAX_SYMBOL_LENGTH),
+    candidate: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
     _: None = Depends(enforce_api_access),
 ):
     return verify_derivative(
         VerifyRequest(
             expression=expression,
-            variable=variable,
-            candidate=candidate,
+            variable=normalize_query_text(variable, "x"),
+            candidate=normalize_query_text(candidate),
         )
     )
 
@@ -627,19 +776,19 @@ def calculate_integral(
 @app.post("/integrate-query", response_model=IntegrateResponse)
 def calculate_integral_query(
     expression: str = Query(min_length=1),
-    variable: str = Query(default="x", min_length=1),
-    lower: str | None = Query(default=None),
-    upper: str | None = Query(default=None),
-    candidate: str | None = Query(default=None),
+    variable: str | None = Query(default=None, max_length=MAX_SYMBOL_LENGTH),
+    lower: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
+    upper: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
+    candidate: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
     _: None = Depends(enforce_api_access),
 ):
     return calculate_integral(
         IntegrateRequest(
             expression=expression,
-            variable=variable,
-            lower=lower,
-            upper=upper,
-            candidate=candidate,
+            variable=normalize_query_text(variable, "x"),
+            lower=normalize_query_text(lower),
+            upper=normalize_query_text(upper),
+            candidate=normalize_query_text(candidate),
         )
     )
 
@@ -655,25 +804,94 @@ def calculate_limit(
         point = parse_math_expression(request.point)
         direction = parse_direction(request.direction)
         candidate_text = request.candidate.strip() if request.candidate else None
-        candidate = parse_math_expression(candidate_text) if candidate_text else None
 
-        if direction is None:
-            limit_expression = Limit(expression, variable, point)
+        left_value = None
+        right_value = None
+        if direction in {None, "-"}:
+            left_value = Limit(expression, variable, point, "-").doit()
+        if direction in {None, "+"}:
+            right_value = Limit(expression, variable, point, "+").doit()
+
+        if direction == "-":
+            exists = resolved_limit_value(left_value)
+            limit_value = left_value if exists else sympy.nan
+            explanation = (
+                "左极限已确定。"
+                if exists
+                else "左极限振荡或无法稳定确定。"
+            )
+        elif direction == "+":
+            exists = resolved_limit_value(right_value)
+            limit_value = right_value if exists else sympy.nan
+            explanation = (
+                "右极限已确定。"
+                if exists
+                else "右极限振荡或无法稳定确定。"
+            )
         else:
-            limit_expression = Limit(expression, variable, point, direction)
-        limit_value = limit_expression.doit()
-        if getattr(limit_value, "has", lambda *_: False)(Limit):
-            raise ValueError("极限无法确定，可能需要补充条件或改写表达式")
+            directions_resolved = (
+                resolved_limit_value(left_value)
+                and resolved_limit_value(right_value)
+            )
+            exists = (
+                directions_resolved
+                and limit_values_equal(left_value, right_value)
+            )
+            limit_value = (
+                left_value if exists else sympy.nan
+            )
+            if (
+                left_value.has(sympy.AccumBounds)
+                or right_value.has(sympy.AccumBounds)
+            ):
+                explanation = (
+                    "函数在趋近点附近振荡，左、右极限均不能稳定收敛。"
+                )
+            elif not directions_resolved:
+                explanation = "左极限或右极限无法稳定确定。"
+            elif not exists:
+                explanation = (
+                    f"左极限为 {left_value}，右极限为 {right_value}，"
+                    "两侧趋势不一致。"
+                )
+            else:
+                explanation = (
+                    f"左、右极限同为 {left_value}，因此双侧极限存在。"
+                )
 
-        is_correct = expressions_equal(limit_value, candidate) if candidate is not None else None
+        if candidate_text and exists:
+            candidate = parse_math_expression(candidate_text)
+            is_correct = expressions_equal(limit_value, candidate)
+        elif candidate_text:
+            candidate = None
+            is_correct = candidate_text.lower() in {
+                "不存在",
+                "无极限",
+                "does not exist",
+                "dne",
+            }
+        else:
+            candidate = None
+            is_correct = None
+
+        limit_text = str(limit_value) if exists else "不存在"
+        limit_latex = latex(limit_value) if exists else r"\text{不存在}"
 
         return LimitResponse(
             expression=str(expression),
             variable=str(variable),
             point=str(point),
             direction=direction,
-            limit=str(limit_value),
-            limit_latex=latex(limit_value),
+            limit=limit_text,
+            limit_latex=limit_latex,
+            exists=exists,
+            left_limit=(
+                str(left_value) if left_value is not None else None
+            ),
+            right_limit=(
+                str(right_value) if right_value is not None else None
+            ),
+            explanation=explanation,
             candidate=str(candidate) if candidate is not None else None,
             is_correct=is_correct,
         )
@@ -689,19 +907,19 @@ def calculate_limit(
 @app.post("/limit-query", response_model=LimitResponse)
 def calculate_limit_query(
     expression: str = Query(min_length=1),
-    variable: str = Query(default="x", min_length=1),
-    point: str = Query(default="0", min_length=1),
-    direction: str | None = Query(default=None),
-    candidate: str | None = Query(default=None),
+    variable: str | None = Query(default=None, max_length=MAX_SYMBOL_LENGTH),
+    point: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
+    direction: str | None = Query(default=None, max_length=1),
+    candidate: str | None = Query(default=None, max_length=MAX_EXPRESSION_LENGTH),
     _: None = Depends(enforce_api_access),
 ):
     return calculate_limit(
         LimitRequest(
             expression=expression,
-            variable=variable,
-            point=point,
-            direction=direction,
-            candidate=candidate,
+            variable=normalize_query_text(variable, "x"),
+            point=normalize_query_text(point, "0"),
+            direction=normalize_query_text(direction),
+            candidate=normalize_query_text(candidate),
         )
     )
 
@@ -753,7 +971,7 @@ def solve_math_query(
             chapter=chapter,
             topic=topic,
             inputs=parsed_inputs,
-            candidate=candidate or None,
+            candidate=normalize_query_text(candidate),
         ),
         _=None,
     )
@@ -782,27 +1000,80 @@ def plot_function(
 @app.api_route("/plot-query", methods=["GET", "POST"], response_model=PlotResponse)
 def plot_function_query(
     expression: str = Query(min_length=1, max_length=MAX_EXPRESSION_LENGTH),
-    variable: str = Query(default="x", min_length=1, max_length=MAX_SYMBOL_LENGTH),
-    x_min: float = Query(default=-10, ge=-1_000_000, le=1_000_000),
-    x_max: float = Query(default=10, ge=-1_000_000, le=1_000_000),
-    y_min: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
-    y_max: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
-    samples: int = Query(default=600, ge=80, le=1200),
-    width: int = Query(default=720, ge=320, le=1200),
-    height: int = Query(default=420, ge=240, le=800),
+    variable: str | None = Query(default=None, max_length=MAX_SYMBOL_LENGTH),
+    x_min: str | None = Query(default=None),
+    x_max: str | None = Query(default=None),
+    y_min: str | None = Query(default=None),
+    y_max: str | None = Query(default=None),
+    samples: str | None = Query(default=None),
+    width: str | None = Query(default=None),
+    height: str | None = Query(default=None),
     _: None = Depends(enforce_api_access),
 ):
     return calculate_plot(
         PlotRequest(
             expression=expression,
-            variable=variable,
-            x_min=x_min,
-            x_max=x_max,
-            y_min=y_min,
-            y_max=y_max,
-            samples=samples,
-            width=width,
-            height=height,
+            variable=normalize_query_text(variable, "x"),
+            x_min=normalize_query_number(
+                x_min,
+                -10,
+                "x_min",
+                minimum=-1_000_000,
+                maximum=1_000_000,
+            ),
+            x_max=normalize_query_number(
+                x_max,
+                10,
+                "x_max",
+                minimum=-1_000_000,
+                maximum=1_000_000,
+            ),
+            y_min=(
+                normalize_query_number(
+                    y_min,
+                    0,
+                    "y_min",
+                    minimum=-1_000_000_000,
+                    maximum=1_000_000_000,
+                )
+                if normalize_query_text(y_min) is not None
+                else None
+            ),
+            y_max=(
+                normalize_query_number(
+                    y_max,
+                    0,
+                    "y_max",
+                    minimum=-1_000_000_000,
+                    maximum=1_000_000_000,
+                )
+                if normalize_query_text(y_max) is not None
+                else None
+            ),
+            samples=normalize_query_number(
+                samples,
+                600,
+                "samples",
+                minimum=80,
+                maximum=1200,
+                integer=True,
+            ),
+            width=normalize_query_number(
+                width,
+                720,
+                "width",
+                minimum=320,
+                maximum=1200,
+                integer=True,
+            ),
+            height=normalize_query_number(
+                height,
+                420,
+                "height",
+                minimum=240,
+                maximum=800,
+                integer=True,
+            ),
         )
     )
 
@@ -810,14 +1081,14 @@ def plot_function_query(
 @app.get("/plot.svg", response_class=Response)
 def plot_function_svg(
     expression: str = Query(min_length=1, max_length=MAX_EXPRESSION_LENGTH),
-    variable: str = Query(default="x", min_length=1, max_length=MAX_SYMBOL_LENGTH),
-    x_min: float = Query(default=-10, ge=-1_000_000, le=1_000_000),
-    x_max: float = Query(default=10, ge=-1_000_000, le=1_000_000),
-    y_min: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
-    y_max: float | None = Query(default=None, ge=-1_000_000_000, le=1_000_000_000),
-    samples: int = Query(default=600, ge=80, le=1200),
-    width: int = Query(default=720, ge=320, le=1200),
-    height: int = Query(default=420, ge=240, le=800),
+    variable: str | None = Query(default=None, max_length=MAX_SYMBOL_LENGTH),
+    x_min: str | None = Query(default=None),
+    x_max: str | None = Query(default=None),
+    y_min: str | None = Query(default=None),
+    y_max: str | None = Query(default=None),
+    samples: str | None = Query(default=None),
+    width: str | None = Query(default=None),
+    height: str | None = Query(default=None),
     _: None = Depends(enforce_api_access),
 ):
     result = plot_function_query(

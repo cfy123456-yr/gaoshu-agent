@@ -111,10 +111,19 @@ try {
     $backupResponse = $client.GetAsync($remoteUrl).GetAwaiter().GetResult()
     $backupBytes = $backupResponse.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
     if (-not $backupResponse.IsSuccessStatusCode) {
-        throw "Remote backup failed with HTTP $([int]$backupResponse.StatusCode)."
+        if ([int]$backupResponse.StatusCode -eq 404) {
+            $backupBytes = [byte[]]@()
+            $backupFile = $null
+            $backupHash = "MISSING"
+        }
+        else {
+            throw "Remote backup failed with HTTP $([int]$backupResponse.StatusCode)."
+        }
     }
-    [IO.File]::WriteAllBytes($backupFile, $backupBytes)
-    $backupHash = Get-Sha256FromBytes $backupBytes
+    else {
+        [IO.File]::WriteAllBytes($backupFile, $backupBytes)
+        $backupHash = Get-Sha256FromBytes $backupBytes
+    }
 
     $localBytes = [IO.File]::ReadAllBytes($localFile)
     $multipart = [System.Net.Http.MultipartFormDataContent]::new()

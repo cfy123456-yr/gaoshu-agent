@@ -118,6 +118,25 @@ def transcribe_question_image(data: bytes, mime_type: str) -> str:
     return _transcribe_with_bot(data, mime_type)
 
 
+def transcribe_question_image_url(
+    image_url: str,
+    *,
+    timeout_seconds: float | None = None,
+) -> str:
+    """Transcribe a public image URL with the Coze OCR workflow."""
+    _require_configuration()
+    if not COZE_OCR_WORKFLOW_ID:
+        raise CozeConfigurationError(
+            "图片链接识别需要配置 COZE_OCR_WORKFLOW_ID。"
+        )
+
+    deadline = _request_deadline(timeout_seconds)
+    return _run_ocr_workflow(
+        str(image_url or "").strip(),
+        deadline=deadline,
+    )
+
+
 def _transcribe_with_bot(
     data: bytes,
     mime_type: str,
@@ -204,8 +223,13 @@ def _upload_image(data: bytes, mime_type: str, *, deadline: float) -> str:
 def _transcribe_with_workflow(data: bytes, mime_type: str) -> str:
     deadline = time.monotonic() + COZE_TIMEOUT_SECONDS
     file_id = _upload_image(data, mime_type, deadline=deadline)
+    image_value: Any
+    if COZE_OCR_IMAGE_PARAMETER_FORMAT == "file_object":
+        image_value = {"file_id": file_id}
+    else:
+        image_value = file_id
     try:
-        return _run_ocr_workflow(file_id, deadline=deadline)
+        return _run_ocr_workflow(image_value, deadline=deadline)
     except CozeUpstreamError as workflow_error:
         if not COZE_BOT_ID:
             raise
@@ -221,16 +245,11 @@ def _transcribe_with_workflow(data: bytes, mime_type: str) -> str:
             raise CozeUpstreamError(str(bot_error)) from workflow_error
 
 
-def _run_ocr_workflow(file_id: str, *, deadline: float) -> str:
-    if COZE_OCR_IMAGE_PARAMETER_FORMAT == "file_object":
-        image_parameter: Any = {"file_id": file_id}
-    else:
-        image_parameter = file_id
-
+def _run_ocr_workflow(image_value: Any, *, deadline: float) -> str:
     body: dict[str, Any] = {
         "workflow_id": COZE_OCR_WORKFLOW_ID,
         "parameters": {
-            COZE_OCR_IMAGE_PARAMETER: image_parameter,
+            COZE_OCR_IMAGE_PARAMETER: image_value,
         },
         "is_async": False,
     }
@@ -258,6 +277,13 @@ def _run_ocr_workflow(file_id: str, *, deadline: float) -> str:
             "识图工作流没有返回可用文字，请检查结束节点和输出字段配置。"
         )
     return _clean_transcription(text)[:2000]
+
+
+def _request_deadline(timeout_seconds: float | None) -> float:
+    timeout = COZE_TIMEOUT_SECONDS
+    if timeout_seconds is not None:
+        timeout = max(0.1, min(COZE_TIMEOUT_SECONDS, float(timeout_seconds)))
+    return time.monotonic() + timeout
 
 
 def _create_chat(file_id: str, *, deadline: float) -> dict[str, Any]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -14,9 +15,9 @@ from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
-from sympy import E, diff, latex, limit, simplify, solve, symbols
+from sympy import E, Matrix, diff, latex, limit, simplify, solve, symbols
 
-from app.chapter_solvers import SolveError, solve_chapter
+from app.chapter_solvers import MissingInputError, SolveError, solve_chapter
 from app.main import (
     IntegrateRequest,
     LimitRequest,
@@ -26,7 +27,14 @@ from app.main import (
     parse_math_expression,
     verify_derivative,
 )
+from app.solution_gate import (
+    SOLUTION_INTENTS,
+    failed_verification,
+    is_verified_solution,
+    verify_calculation,
+)
 from deploy.demo_math_text import normalize_math_text
+from deploy.demo_knowledge import search_knowledge
 from deploy.demo_interval_solver import solve_interval_extrema
 from deploy.demo_question_blocks import strip_question_number_prefix
 
@@ -41,6 +49,15 @@ class DemoChatRequest(BaseModel):
     history: list[DemoChatHistoryMessage] = Field(default_factory=list, max_length=20)
     source: Literal["text", "ocr"] = "text"
     pending_question: str = Field(default="", max_length=600)
+    mode: Literal["qa", "teach"] = "qa"
+    teaching_action: Literal[
+        "start",
+        "answer",
+        "hint",
+        "explain",
+        "skip",
+        "restart",
+    ] | None = None
 
 
 _GENERAL_CHAT_API_KEY = os.getenv("GENERAL_CHAT_API_KEY", "").strip()
@@ -54,6 +71,8 @@ GENERAL_CHAT_MODEL = (
     os.getenv("GENERAL_CHAT_MODEL") or "qwen-plus"
 ).strip()
 GENERAL_CHAT_TIMEOUT_SECONDS = 30.0
+GENERAL_CHAT_MAX_TOKENS = 1400
+CONFIRMED_SOLVE_MAX_TOKENS = 2400
 
 
 def general_chat_configured() -> bool:
@@ -87,26 +106,63 @@ GENERAL_CHAT_SYSTEM_PROMPT = """
 使用求导、积分、极限或全章节解题功能。
 """.strip()
 
+TEACHING_CHAT_SYSTEM_PROMPT = """
+你是“知微老师”，中文回答，采用循序渐进的教学方式。先判断用户已经掌握到
+哪一步，再给出一个最关键的思路提示和下一步可执行动作，必要时用一个问题检查
+理解；除非用户明确要求完整解法或表示已经尝试仍不会，不要一次直接公布最终答案。
+回答要诚实、具体，不能编造事实或来源。涉及医疗、法律、金融等专业决定时，只提供
+一般信息，并建议咨询专业人士。不要声称调用过数学工具；需要精确数学计算时，提醒
+用户使用求导、积分、极限或全章节解题功能。
+""".strip()
+
 CONFIRMED_SOLVE_SYSTEM_PROMPT = """
 你是“知微老师”，负责解答用户已经确认过的题目。请直接依据用户给出的
 “待解题目”完成读题、考点判断和分步讲解，最后给出答案。题目若包含选择题，
 请判断正确选项并说明理由。不要再次要求用户确认题目，不要说需要用户重新上传
 图片，也不要因为题目文本有轻微 OCR 噪声就拒绝作答；可说明不确定之处后继续。
 仅使用清晰、可核验的步骤，无法唯一确定答案时要明确指出缺少的条件。
+回答必须严格使用以下四个 Markdown 小标题，顺序不可改变，每部分都要有内容：
+**题目理解**
+**解题思路**
+**详细计算步骤**
+**最终答案**
+简单题可以简洁，但不能只写答案；复杂题必须保留关键推导。不要声称调用过
+计算器、数学工具或外部工具。
 """.strip()
+
+_CONFIRMED_SOLVE_HEADINGS = (
+    "题目理解",
+    "解题思路",
+    "详细计算步骤",
+    "最终答案",
+)
+_UNVERIFIED_TOOL_CLAIM_PATTERN = re.compile(
+    r"(?:已|我)(?:经)?(?:调用|使用)(?:了)?.{0,12}"
+    r"(?:计算器|数学工具|外部工具|工具完成计算)",
+)
 
 _MATH_HINT_PATTERN = re.compile(
     r"(?:求导|导数|微分|积分|极限|级数|收敛|发散|函数图像|函数图象|"
-    r"方程|向量|矩阵|偏导|梯度|重积分|曲线积分|曲面积分|\blim\b)",
+    r"方程|向量|矩阵|偏导|梯度|重积分|曲线积分|曲面积分|"
+    r"极值|极大值|极小值|最大值|最小值|最值|"
+    r"\blim\b)",
     re.IGNORECASE,
 )
 _MATH_CONCEPT_TERM_PATTERN = re.compile(
     r"(?:导数|微分|积分|极限|偏导|梯度|重积分|曲线积分|曲面积分|级数|"
-    r"洛必达法则|中值定理|泰勒公式)"
+    r"洛必达法则|中值定理|泰勒公式|极值|极大值|极小值|最大值|最小值|最值)"
 )
 _MATH_CONCEPT_REQUEST_PATTERN = re.compile(
     r"(?:什么是|什么叫|定义|概念|含义|几何意义|物理意义|性质|"
     r"怎么理解|如何理解|解释一下|讲解一下|说明一下|有什么区别|关系)"
+)
+_DIRECT_EXTREMA_REQUEST_PATTERN = re.compile(
+    r"(?:求|计算|确定|找出|判断)\s*(?:一下)?\s*"
+    r"(?:函数|曲线)?[^。！？?\n]{0,24}"
+    r"(?:极值|极大值|极小值|最大值|最小值|最值)"
+)
+_SPOKEN_EXPRESSION_HINT_PATTERN = re.compile(
+    r"(?:平方|立方|次方|根号|除以|乘以|分之)"
 )
 
 
@@ -254,6 +310,16 @@ _EXTENDED_CHAPTER_HINTS = {
         "missing": "请写出参数方程，例如“参数方程 x=t^2, y=t^3 求 dy/dx”。",
         "suggestions": ["参数方程 x=t^2, y=t^3 求 dy/dx"],
     },
+    ("derivatives", "parametric_tangent_normal"): {
+        "missing": (
+            "请写出参数方程、参数点和切线/法线要求，例如"
+            "“x=sin(t), y=cos(2*t) 在 t=pi/4 处的切线方程和法线方程”。"
+        ),
+        "suggestions": [
+            "x=sin(t), y=cos(2*t) 在 t=pi/4 处的切线方程和法线方程",
+            "参数方程 x=t^2, y=t^3 在 t=1 处的切线和法线",
+        ],
+    },
     ("vectors", "dot"): {
         "missing": "请写出两个向量，例如“向量 (1,2,3) 点乘 (4,5,6)”。",
         "suggestions": ["向量 (1,2,3) 点乘 (4,5,6)"],
@@ -270,6 +336,15 @@ def _looks_like_differential_equation(value: str) -> bool:
     if "隐函数" in value or "方程组" in value:
         return False
     if "微分方程" in value:
+        return True
+    if (
+        re.search(
+            r"(?<![A-Za-z])y\s*的\s*"
+            r"(?:(?:[一二三四五六七八九十\d]+)\s*阶\s*)?导数",
+            value,
+        )
+        and re.search(r"=|等于", value)
+    ):
         return True
     if re.search(
         r"(?:\bd\s*(?:\^\s*\(?\d+\s*\)?)?\s*y\s*/\s*d\s*[A-Za-z]|"
@@ -343,6 +418,23 @@ def _normalize_differential_equation(value: str) -> str:
         maxsplit=1,
     )[0]
     equation = equation.replace("′", "'").replace("’", "'")
+    equation = re.sub(
+        r"(?<![A-Za-z])y\s*的\s*(?:二阶|二次)\s*导数",
+        "y''",
+        equation,
+    )
+    equation = re.sub(
+        r"(?<![A-Za-z])y\s*的\s*(?:(?:一阶|一次)\s*)?导数",
+        "y'",
+        equation,
+    )
+    equation = equation.replace("等于", "=")
+    equation = re.sub(r"\s*减去\s*", "-", equation)
+    equation = re.sub(r"\s*加上\s*", "+", equation)
+    equation = re.sub(r"\s*乘以\s*", "*", equation)
+    equation = re.sub(r"\s*减\s*", "-", equation)
+    equation = re.sub(r"\s*加\s*", "+", equation)
+    equation = re.sub(r"\s*乘\s*", "*", equation)
     equation = re.sub(r"[_＿]{2,}", "", equation)
     return equation.strip().rstrip("，,。;；:：_＿")
 
@@ -440,6 +532,17 @@ def _infer_variables(expression: str, count: int) -> list[str]:
     return variables[:count]
 
 
+def _infer_expression_variables(expression: str) -> list[str]:
+    variables: list[str] = []
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9_]*", expression):
+        lowered = token.lower()
+        if lowered in _NON_VARIABLE_NAMES or lowered == "e":
+            continue
+        if token not in variables:
+            variables.append(token)
+    return variables or ["x", "y"]
+
+
 def _extract_curve_components(message: str) -> dict[str, str]:
     return {
         name: value.strip()
@@ -524,8 +627,198 @@ def _extract_vector_operands(message: str) -> tuple[list[str], list[str]] | None
     return left, right
 
 
+def _extract_parametric_tangent_normal(
+    message: str,
+) -> tuple[str, str, str, str | None] | None:
+    """Extract x(t), y(t) and the requested parameter point."""
+    compact = str(message).strip()
+    if "切线" not in compact or "法线" not in compact:
+        return None
+
+    x_match = re.search(r"(?<![A-Za-z])x\s*=\s*", compact)
+    if x_match is None:
+        return None
+    y_match = re.search(
+        r"[,，;；]\s*y\s*=\s*",
+        compact[x_match.end() :],
+    )
+    if y_match is None:
+        return None
+    y_start = x_match.end() + y_match.end()
+    x_expression = compact[x_match.end() : x_match.end() + y_match.start()]
+    tail = compact[y_start:]
+    point_marker = re.search(r"\s*[}\]]?\s*(?:在|当)", tail)
+    point_match = None
+    if point_marker is not None:
+        y_expression = tail[: point_marker.start()]
+        point_tail = tail[point_marker.start() :]
+        point_match = re.search(
+            r"(?:(?:在|当|其中|参数)\s*){1,4}"
+            r"(?P<parameter>[A-Za-z][A-Za-z0-9_]*)\s*=\s*"
+            r"(?P<point>.+?)"
+            r"(?=\s*(?:处|时|的切线|求|$|[，,;；。]))",
+            point_tail,
+        )
+        if point_match is None:
+            return None
+    else:
+        y_expression = _strip_expression_tail(tail)
+
+    if point_match is not None:
+        parameter = point_match.group("parameter")
+        point = _strip_expression_tail(
+            point_match.group("point")
+        ).strip(" {}[]")
+    else:
+        parameter_match = re.search(
+            r"参数\s*([A-Za-z][A-Za-z0-9_]*)",
+            compact,
+        )
+        x_variables = _infer_expression_variables(x_expression)
+        parameter = (
+            parameter_match.group(1)
+            if parameter_match is not None
+            else (x_variables[0] if x_variables else "t")
+        )
+        point = None
+
+    if re.search(rf"(?<![A-Za-z0-9_]){re.escape(parameter)}(?![A-Za-z0-9_])", x_expression) is None:
+        return None
+    if re.search(rf"(?<![A-Za-z0-9_]){re.escape(parameter)}(?![A-Za-z0-9_])", y_expression) is None:
+        return None
+
+    x_expression = _strip_expression_tail(x_expression).strip(" {}[]")
+    y_expression = _strip_expression_tail(y_expression).strip(" {}[]")
+    if not x_expression or not y_expression:
+        return None
+    return x_expression, y_expression, parameter, point
+
+
+def _extract_explicit_tangent_at_x(
+    message: str,
+) -> tuple[str, str] | None:
+    """Extract y=f(x) and x=a from a natural tangent-line request."""
+    compact = str(message).strip()
+    if "切线" not in compact:
+        return None
+
+    match = re.search(
+        r"(?:求|作|写出|计算)?\s*(?:曲线\s*)?"
+        r"(?:y\s*=\s*)?(?P<expression>[^，,;；。\n]+?)"
+        r"\s*(?:在|当)\s*(?:点\s*)?x\s*=\s*"
+        r"(?P<point>[^\s,，;；。]+?)"
+        r"\s*(?:处|时)?(?:的\s*)?切线",
+        compact,
+    )
+    if match is None:
+        return None
+
+    expression = _strip_expression_tail(match.group("expression"))
+    point = _strip_expression_tail(match.group("point")).strip(" {}[]")
+    if not expression or not point:
+        return None
+    return expression, point
+
+
+def _parse_partial_point(
+    value: str,
+    variables: list[str],
+) -> dict[str, str] | None:
+    text = str(value).strip()
+    named_values = re.findall(
+        r"(?<![A-Za-z])([A-Za-z][A-Za-z0-9_]*)\s*=\s*"
+        r"([^,，;；\s]+)",
+        text,
+    )
+    if named_values:
+        return {name: item for name, item in named_values}
+
+    coordinates = [
+        part.strip()
+        for part in re.split(r"[,，;；]+", text)
+        if part.strip()
+    ]
+    if not coordinates or len(coordinates) > len(variables):
+        return None
+    return dict(zip(variables, coordinates, strict=False))
+
+
+def _extract_pointwise_partial_request(
+    message: str,
+) -> tuple[str, str, dict[str, str]] | None:
+    match = re.search(
+        r"(?:求|计算)?\s*(?:函数\s*)?(?:z\s*=\s*)?"
+        r"(?P<expression>.+?)\s*(?:在|当)\s*(?:点\s*)?"
+        r"[（(](?P<point>[^（）()]+)[）)]\s*(?:处|时)\s*"
+        r"(?:对|关于|变量)\s*(?P<variable>[A-Za-z])\s*"
+        r"(?:的)?\s*(?:一阶)?\s*偏导数?(?:值)?",
+        message,
+    )
+    if match is None:
+        return None
+
+    expression = _strip_expression_tail(match.group("expression"))
+    expression = re.sub(
+        r"^(?:z|f)\s*=\s*",
+        "",
+        expression,
+    ).strip()
+    if not expression:
+        return None
+
+    variables = _infer_expression_variables(expression)
+    variable = match.group("variable")
+    if variable not in variables:
+        variables.insert(0, variable)
+    point = _parse_partial_point(match.group("point"), variables)
+    if point is None:
+        return None
+    return expression, variable, point
+
+
 def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] | None:
     compact = message.strip()
+
+    parametric_tangent_normal = _extract_parametric_tangent_normal(compact)
+    if parametric_tangent_normal is not None:
+        x_expression, y_expression, parameter, point = (
+            parametric_tangent_normal
+        )
+        inputs = {
+            "x_expression": x_expression,
+            "y_expression": y_expression,
+            "parameter": parameter,
+        }
+        if point is not None:
+            inputs["parameter_value"] = point
+        return (
+            "derivatives",
+            "parametric_tangent_normal",
+            inputs,
+        )
+
+    if "参数方程" in compact and "切线" in compact and "法线" in compact:
+        x_match = re.search(
+            r"x\s*=\s*(.+?)(?=\s*[,，;；]\s*y\s*=|y\s*=)",
+            compact,
+        )
+        y_match = re.search(
+            r"y\s*=\s*(.+?)(?=\s*(?:的切线|的?法线|求|$))",
+            compact,
+        )
+        if x_match and y_match:
+            parameter_match = re.search(r"参数\s*([A-Za-z])", compact)
+            return (
+                "derivatives",
+                "parametric_tangent_normal",
+                {
+                    "x_expression": _strip_expression_tail(x_match.group(1)),
+                    "y_expression": _strip_expression_tail(y_match.group(1)),
+                    "parameter": (
+                        parameter_match.group(1) if parameter_match else "t"
+                    ),
+                },
+            )
 
     if "参数方程" in compact:
         x_match = re.search(
@@ -547,6 +840,100 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                     "parameter": (
                         parameter_match.group(1) if parameter_match else "t"
                     ),
+                },
+            )
+
+    if "切线" in compact and "法线" in compact:
+        # A partial tangent-only answer would violate the completion gate.
+        return None
+
+    tangent_match = re.search(
+        r"(?:求|作|写出)?\s*切线\s*(?:y\s*=\s*)?"
+        r"(?P<expression>.+?)\s*(?:在|当)\s*"
+        r"x\s*=\s*(?P<point>[^\s,，]+)\s*(?:处)?",
+        compact,
+    )
+    if tangent_match:
+        expression = _strip_expression_tail(
+            tangent_match.group("expression")
+        )
+        return (
+            "derivatives",
+            "tangent",
+            {
+                "expression": expression,
+                "variable": "x",
+                "point": tangent_match.group("point"),
+            },
+        )
+
+    explicit_tangent = _extract_explicit_tangent_at_x(compact)
+    if explicit_tangent is not None:
+        expression, point = explicit_tangent
+        return (
+            "derivatives",
+            "tangent",
+            {
+                "expression": expression,
+                "variable": "x",
+                "point": point,
+            },
+        )
+
+    if "单调" in compact and "区间" in compact:
+        monotonic_match = re.search(
+            r"单调(?:递增|递减)?区间\s*(?:为|是)?\s*(?P<expression>.+)",
+            compact,
+        )
+        if monotonic_match:
+            expression = _strip_expression_tail(
+                monotonic_match.group("expression")
+            )
+            variables = _infer_expression_variables(expression)
+            return (
+                "derivatives",
+                "monotonicity",
+                {
+                    "expression": expression,
+                    "variable": variables[0] if variables else "x",
+                },
+            )
+
+    if "驻点" in compact:
+        critical_match = re.search(
+            r"驻点\s*(?:为|是)?\s*(?P<expression>.+)",
+            compact,
+        )
+        if critical_match:
+            expression = _strip_expression_tail(
+                critical_match.group("expression")
+            )
+            variables = _infer_expression_variables(expression)
+            return (
+                "derivatives",
+                "critical_points",
+                {
+                    "expression": expression,
+                    "variable": variables[0] if variables else "x",
+                },
+            )
+
+    if "极值" in compact and "条件极值" not in compact:
+        extrema_match = re.search(
+            r"极值\s*(?:为|是)?\s*(?P<expression>.+)",
+            compact,
+        )
+        if extrema_match:
+            expression = _strip_expression_tail(
+                extrema_match.group("expression")
+            )
+            variables = _infer_expression_variables(expression)
+            return (
+                "derivatives",
+                "extrema",
+                {
+                    "expression": expression,
+                    "variable": variables[0] if variables else "x",
                 },
             )
 
@@ -702,6 +1089,18 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                     "variables": _split_variables(match.group(2)),
                 },
             )
+        fallback = re.search(r"梯度\s*(.+)$", compact)
+        if fallback:
+            expression = _strip_expression_tail(fallback.group(1)).strip()
+            if expression:
+                return (
+                    "multivariable_calculus",
+                    "gradient",
+                    {
+                        "expression": expression,
+                        "variables": _infer_expression_variables(expression),
+                    },
+                )
 
     if "混合偏导" in compact:
         match = re.search(r"混合偏导\s*(.+?)\s*(?:变量|对)\s*(.+)", compact)
@@ -714,6 +1113,19 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                     "variables": _split_variables(match.group(2)),
                 },
             )
+
+    pointwise_partial = _extract_pointwise_partial_request(compact)
+    if pointwise_partial is not None:
+        expression, variable, point = pointwise_partial
+        return (
+            "multivariable_calculus",
+            "partial",
+            {
+                "expression": expression,
+                "variables": [variable],
+                "point": point,
+            },
+        )
 
     if "偏导" in compact or "∂" in compact:
         match = re.search(
@@ -738,7 +1150,7 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                 "projection",
                 {"left": vectors[0], "right": vectors[1]},
             )
-    if "点乘" in compact or "数量积" in compact:
+    if "点乘" in compact or "点积" in compact or "数量积" in compact:
         vectors = _extract_vector_operands(compact)
         if vectors:
             return "vectors", "dot", {"left": vectors[0], "right": vectors[1]}
@@ -758,6 +1170,76 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
         vectors = _extract_vector_operands(compact)
         if vectors:
             return "vectors", "distance", {"left": vectors[0], "right": vectors[1]}
+
+    area_match = re.search(
+        r"(?:求|计算)?\s*(?:由\s*)?曲线\s*y\s*=\s*"
+        r"(?P<upper_expression>.+?)\s*与\s*(?:x\s*轴|y\s*=\s*0)"
+        r"\s*(?:在|从)?\s*(?:x\s*)?(?:从\s*)?"
+        r"(?P<lower>[^\s,，]+)\s*(?:到|至)\s*"
+        r"(?P<upper>[^\s,，]+)\s*(?:之间)?\s*"
+        r"(?:围成的?)?面积",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if area_match:
+        return (
+            "integrals",
+            "area_between",
+            {
+                "upper_expression": _strip_expression_tail(
+                    area_match.group("upper_expression")
+                ),
+                "lower_expression": "0",
+                "variable": "x",
+                "lower": area_match.group("lower"),
+                "upper": area_match.group("upper"),
+            },
+        )
+
+    volume_match = re.search(
+        r"(?:求|计算)?\s*(?:曲线\s*)?y\s*=\s*"
+        r"(?P<expression>.+?)\s*(?:绕|围绕)\s*x\s*轴"
+        r".*?(?:体积)"
+        r".*?(?:x\s*)?(?:从\s*)?(?P<lower>[^\s,，]+)"
+        r"\s*(?:到|至)\s*(?P<upper>[^\s,，]+)",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if volume_match:
+        return (
+            "integrals",
+            "volume_revolution",
+            {
+                "expression": _strip_expression_tail(
+                    volume_match.group("expression")
+                ),
+                "variable": "x",
+                "lower": volume_match.group("lower"),
+                "upper": volume_match.group("upper"),
+            },
+        )
+
+    arc_length_match = re.search(
+        r"(?:求|计算)?\s*(?:曲线\s*)?y\s*=\s*"
+        r"(?P<expression>.+?)\s*(?:从\s*)?"
+        r"x\s*=\s*(?P<lower>[^\s,，]+)\s*(?:到|至)\s*"
+        r"x\s*=\s*(?P<upper>[^\s,，]+)\s*(?:的)?弧长",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if arc_length_match:
+        return (
+            "integrals",
+            "arc_length",
+            {
+                "expression": _strip_expression_tail(
+                    arc_length_match.group("expression")
+                ),
+                "variable": "x",
+                "lower": arc_length_match.group("lower"),
+                "upper": arc_length_match.group("upper"),
+            },
+        )
 
     polar_match = re.search(
         r"极坐标(?:二重积分)?\s*(?P<expression>.+?)"
@@ -1104,7 +1586,15 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                 {"coefficient": match.group(1).strip(), "variable": "n"},
             )
 
-    if "级数" in compact or "∑" in compact:
+    has_convergence_request = re.search(r"收敛|发散|敛散", compact) is not None
+    if (
+        "级数" in compact
+        or "∑" in compact
+        or (
+            ("一般项" in compact or "通项" in compact)
+            and has_convergence_request
+        )
+    ):
         if "求和" in compact or "和函数" in compact:
             match = re.search(r"(?:级数求和|级数和|求和)\s*(.+)", compact)
             if match:
@@ -1113,10 +1603,18 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
                     "sum",
                     {"expression": _strip_expression_tail(match.group(1)), "variable": "n"},
                 )
-        if re.search(r"收敛|发散|敛散", compact):
-            match = re.search(r"(?:判断)?\s*级数\s*(.+?)\s*(?:是否|收敛|发散|的敛散性|敛散性)", compact)
+        if has_convergence_request:
+            match = re.search(
+                r"(?:判断)?\s*级数\s*(.+?)\s*"
+                r"(?:是否|收敛|发散|的敛散性|敛散性)",
+                compact,
+            )
             if match is None:
-                match = re.search(r"一般项\s*(.+)", compact)
+                match = re.search(
+                    r"(?:一般项|通项)\s*(?:为|是|[:：])?\s*(.+?)\s*"
+                    r"(?:是否|收敛|发散|的敛散性|敛散性)",
+                    compact,
+                )
             if match:
                 return (
                     "series",
@@ -1130,6 +1628,26 @@ def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] |
 def build_chat_response(
     message: str,
     history: list[DemoChatHistoryMessage] | None = None,
+    mode: Literal["qa", "teach"] = "qa",
+) -> dict[str, Any]:
+    response = _build_mode_aware_chat_response(message, history, mode)
+    response["mode"] = mode
+    return response
+
+
+def build_ocr_confirmation_reply(question: str) -> str:
+    """Build one OCR confirmation prompt with consistent terminal punctuation."""
+    cleaned = re.sub(r"[\s。；;，,、.!！?？]+$", "", str(question).strip())
+    return (
+        f"题目已识别，请核对：{cleaned}。"
+        "确认无误回复“确认”，我将开始计算。"
+    )
+
+
+def _build_mode_aware_chat_response(
+    message: str,
+    history: list[DemoChatHistoryMessage] | None,
+    mode: Literal["qa", "teach"],
 ) -> dict[str, Any]:
     normalized = _normalize_text(message)
     ocr_question = _extract_ocr_question(normalized)
@@ -1142,8 +1660,7 @@ def build_chat_response(
         if solved is not None and solved.get("intent") in {"solve", "calculation"}:
             return solved
         response = _needs_input(
-            f"题目已识别，请核对：{ocr_question}。"
-            "确认无误回复“确认”，我将开始计算。"
+            build_ocr_confirmation_reply(ocr_question)
         )
         response["intent"] = "ocr_confirm"
         response["formula_text"] = ocr_question
@@ -1181,19 +1698,59 @@ def build_chat_response(
         )
 
     if _is_math_concept_question(normalized):
-        general_response = _build_general_chat_response(normalized, history)
+        knowledge_response = _build_knowledge_response(normalized)
+        if knowledge_response is not None:
+            return knowledge_response
+        general_response = _build_general_chat_response(
+            normalized,
+            history,
+            _general_system_prompt_for_mode(mode),
+        )
         if general_response is not None:
             return general_response
+        return _concept_help_response()
 
     math_response = _math_response(normalized)
+    if math_response.get("intent") == "unknown":
+        normalized_response = _build_normalized_expression_response(
+            str(message),
+            normalized,
+        )
+        if normalized_response is not None:
+            return normalized_response
+    if (
+        math_response.get("intent") == "unknown"
+        and _DIRECT_EXTREMA_REQUEST_PATTERN.search(normalized)
+    ):
+        return _missing_extrema_condition_response()
     if (
         math_response.get("intent") == "unknown"
         and not _MATH_HINT_PATTERN.search(normalized)
     ):
-        general_response = _build_general_chat_response(normalized, history)
+        general_response = _build_general_chat_response(
+            normalized,
+            history,
+            _general_system_prompt_for_mode(mode),
+        )
         if general_response is not None:
             return general_response
     return math_response
+
+
+def _missing_extrema_condition_response() -> dict[str, Any]:
+    response = _needs_input(
+        "这个极值/最值请求还缺少可验证的计算条件。请补充具体函数表达式；"
+        "如果题目要求最大值或最小值，还请给出定义域或闭区间。"
+        "缺少这些条件时，我不会生成最终答案、教学步骤或知识点推荐。"
+    )
+    response["intent"] = "solve"
+    return response
+
+
+def _general_system_prompt_for_mode(mode: Literal["qa", "teach"]) -> str:
+    if mode == "teach":
+        return TEACHING_CHAT_SYSTEM_PROMPT
+    return GENERAL_CHAT_SYSTEM_PROMPT
 
 
 def _math_response(normalized: str) -> dict[str, Any]:
@@ -1210,6 +1767,10 @@ def _math_response(normalized: str) -> dict[str, Any]:
     interval_extrema = solve_interval_extrema(normalized)
     if interval_extrema is not None:
         return interval_extrema
+
+    algebra_response = _build_algebra_response(normalized)
+    if algebra_response is not None:
+        return algebra_response
 
     extended = _resolve_extended_chapter(normalized)
     if extended is not None:
@@ -1230,6 +1791,93 @@ def _math_response(normalized: str) -> dict[str, Any]:
     )
     fallback["intent"] = "unknown"
     return fallback
+
+
+def _build_knowledge_response(query: str) -> dict[str, Any] | None:
+    try:
+        results = search_knowledge(query, limit=3)
+    except Exception:
+        return None
+    if not results:
+        return None
+
+    top = results[0]
+    reply = f"{top.title}：{top.excerpt}"
+    if len(results) > 1:
+        related = "、".join(result.title for result in results[1:])
+        reply += f"\n\n还可以继续看：{related}。"
+    return {
+        "status": "ok",
+        "intent": "knowledge",
+        "reply": reply,
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "sources": [
+            {
+                "title": result.title,
+                "source": result.source,
+                "chapter": result.chapter,
+            }
+            for result in results
+        ],
+        "suggestions": [
+            "积分的基本性质是什么",
+            "定积分和不定积分有什么区别",
+        ],
+    }
+
+
+def _concept_help_response() -> dict[str, Any]:
+    return {
+        "status": "needs_input",
+        "intent": "knowledge",
+        "reply": (
+            "这是概念问题，不是待计算的表达式。请把具体概念或定理写完整，"
+            "例如“定积分的定义”“微积分基本定理”或“洛必达法则的适用条件”。"
+        ),
+        "formula_latex": "",
+        "formula_text": "",
+        "calculation": None,
+        "suggestions": [
+            "定积分的定义",
+            "导数的几何意义",
+            "级数收敛的定义",
+        ],
+    }
+
+
+def _build_normalized_expression_response(
+    original: str,
+    normalized: str,
+) -> dict[str, Any] | None:
+    if not _SPOKEN_EXPRESSION_HINT_PATTERN.search(original):
+        return None
+    expression_text = normalized.strip()
+    if not expression_text or expression_text == original.strip():
+        return None
+    if not _is_parsable_expression(expression_text):
+        return None
+
+    expression = parse_math_expression(expression_text)
+    rendered = str(expression)
+    return _result_response(
+        intent="normalize",
+        reply=(
+            f"已识别为 {rendered}。如果要继续计算，请补充“求导”、"
+            "“积分”或“极限”等要求。"
+        ),
+        formula_latex=latex(expression),
+        formula_text=rendered,
+        calculation={
+            "expression": rendered,
+            "normalized": rendered,
+        },
+        suggestions=[
+            f"求 {rendered} 的导数",
+            f"求 {rendered} 的积分",
+        ],
+    )
 
 
 def _build_arithmetic_response(message: str) -> dict[str, Any] | None:
@@ -1508,12 +2156,10 @@ def _solve_confirmed_question(
     fallback["status"] = "error"
     fallback["intent"] = "solve"
     fallback["reply"] = (
-        "\u5df2\u7ecf\u8bfb\u53d6\u5230\u4f60\u786e\u8ba4\u7684\u9898\u76ee\uff0c"
-        "\u4f46\u81ea\u52a8\u6c42\u89e3\u6682\u65f6\u6ca1\u6709\u5b8c\u6210\u3002"
-        "\u8bf7\u4fdd\u7559\u9898\u5e72\u4e2d\u7684\u51fd\u6570\u3001\u533a\u95f4\u548c"
-        "\u6700\u503c\u8981\u6c42\uff0c\u76f4\u63a5\u91cd\u65b0\u53d1\u9001\u4e00\u6b21\uff1b"
-        "\u5982\u679c\u539f\u9898\u542b\u591a\u4e2a\u5c0f\u95ee\uff0c"
-        "\u8bf7\u5148\u53d1\u9001\u5f53\u524d\u8981\u8ba1\u7b97\u7684\u90a3\u4e00\u95ee\u3002"
+        "已经读取到题目，但题型识别或确定性求解阶段没有完成，"
+        "因此不会继续生成教学步骤或知识点建议。"
+        "请保留参数方程、参数点以及切线/法线、积分、极限等具体要求，"
+        "修改题干后重新发送；如果原题含多个小问，请先发送当前要计算的那一问。"
     )
     return fallback
 
@@ -1610,12 +2256,17 @@ def _build_general_chat_response(
             messages.append({"role": role, "content": text.strip()})
     messages.append({"role": "user", "content": message})
 
+    solve_mode = system_prompt == CONFIRMED_SOLVE_SYSTEM_PROMPT
     payload = json.dumps(
         {
             "model": GENERAL_CHAT_MODEL,
             "messages": messages,
-            "temperature": 0.3,
-            "max_tokens": 800,
+            "temperature": 0.15 if solve_mode else 0.3,
+            "max_tokens": (
+                CONFIRMED_SOLVE_MAX_TOKENS
+                if solve_mode
+                else GENERAL_CHAT_MAX_TOKENS
+            ),
         },
         ensure_ascii=False,
     ).encode("utf-8")
@@ -1632,7 +2283,9 @@ def _build_general_chat_response(
     try:
         with urlopen(request, timeout=GENERAL_CHAT_TIMEOUT_SECONDS) as response:
             data = json.loads(response.read().decode("utf-8"))
-        reply = data["choices"][0]["message"]["content"].strip()
+        choice = data["choices"][0]
+        reply = choice["message"]["content"].strip()
+        finish_reason = str(choice.get("finish_reason") or "").lower()
     except HTTPError as exc:
         print(
             f"general_chat_request_failed: HTTPError: {exc.code}",
@@ -1654,6 +2307,43 @@ def _build_general_chat_response(
 
     if not reply:
         return _general_chat_error()
+    if finish_reason == "length":
+        return _general_chat_error(
+            "问答服务返回的解析被截断，为避免给出不完整结论，本次结果未采用。"
+            "请把题目拆成较小的一问后重试；高数求导、积分和极限仍可直接输入计算。"
+        )
+    if finish_reason == "content_filter":
+        return _general_chat_error(
+            "问答服务未返回完整解析，请调整题目表述后重试。"
+        )
+    if solve_mode:
+        invalid_reason = _confirmed_solve_reply_invalid_reason(reply)
+        if invalid_reason:
+            return _general_chat_error(
+                f"问答服务返回的解题结果不完整（{invalid_reason}），"
+                "为避免误导未采用该结果。请保留原题重新发送，或拆成单问后再试；"
+                "高数求导、积分和极限可直接使用确定性计算。"
+            )
+    if solve_mode:
+        return {
+            "status": "unverified",
+            "intent": "general",
+            "reply": (
+                "以下为未经独立验算的参考解析，不能替代确定性求解结果；"
+                "教学步骤、知识点和错题本不会据此生成。\n\n"
+                f"{reply}"
+            ),
+            "formula_latex": "",
+            "formula_text": "",
+            "calculation": None,
+            "verified": False,
+            "verification": failed_verification(
+                "model_solution",
+                "模型参考解析未经过独立符号计算与结果验算",
+            ),
+            "suggestions": _HELP_SUGGESTIONS,
+        }
+
     return {
         "status": "ok",
         "intent": "general",
@@ -1663,6 +2353,35 @@ def _build_general_chat_response(
         "calculation": None,
         "suggestions": _HELP_SUGGESTIONS,
     }
+
+
+def _confirmed_solve_reply_invalid_reason(reply: str) -> str | None:
+    """Return why a model-written confirmed solution is unsafe to display."""
+    text = str(reply or "").strip()
+    if len(text) < 40:
+        return "内容过短"
+
+    positions = [text.find(heading) for heading in _CONFIRMED_SOLVE_HEADINGS]
+    if any(position < 0 for position in positions):
+        return "缺少统一的四段结构"
+    if positions != sorted(positions) or len(set(positions)) != len(positions):
+        return "四段结构顺序错误"
+
+    for index, heading in enumerate(_CONFIRMED_SOLVE_HEADINGS):
+        content_start = positions[index] + len(heading)
+        content_end = (
+            positions[index + 1]
+            if index + 1 < len(positions)
+            else len(text)
+        )
+        section = text[content_start:content_end]
+        section = re.sub(r"[\s#*`：:>\-]+", "", section)
+        if len(section) < 2:
+            return f"{heading}部分为空"
+
+    if _UNVERIFIED_TOOL_CLAIM_PATTERN.search(text):
+        return "包含未经核验的工具调用声明"
+    return None
 
 
 def _general_chat_http_error_message(status_code: int) -> str:
@@ -1693,6 +2412,125 @@ def _general_chat_error(reply: str = "") -> dict[str, Any]:
     }
 
 
+def _build_algebra_response(message: str) -> dict[str, Any] | None:
+    determinant = _build_determinant_response(message)
+    if determinant is not None:
+        return determinant
+    return _build_equation_response(message)
+
+
+def _build_equation_response(message: str) -> dict[str, Any] | None:
+    if "微分方程" in message:
+        return None
+
+    match = re.search(
+        r"^(?:请|帮我)?\s*(?:求解|解|求)\s*(?:下列|这个|该)?\s*"
+        r"(?:一元(?:一次|二次|三次)?|方程)\s*[:：]?\s*(?P<equation>.+)$",
+        message,
+    )
+    if match is None:
+        match = re.search(
+            r"^(?:请|帮我)?\s*求\s*(?P<equation>[^,，。;；]+=[^,，。;；]+)"
+            r"\s*的(?:解|根)$",
+            message,
+        )
+    if match is None:
+        return None
+
+    equation_text = _strip_expression_tail(match.group("equation")).strip(
+        " .。"
+    )
+    if equation_text.count("=") != 1:
+        return None
+    left_text, right_text = equation_text.split("=", 1)
+    try:
+        difference = simplify(
+            parse_math_expression(left_text)
+            - parse_math_expression(right_text)
+        )
+    except Exception as exc:
+        return _calculation_error(exc)
+
+    variables = sorted(difference.free_symbols, key=str)
+    if not variables:
+        return _needs_input("这个等式里没有待求解的未知数，请补充方程。")
+
+    variable_match = re.search(
+        r"(?:关于|对)\s*([A-Za-z][A-Za-z0-9_]*)\s*(?:求解|求根|解方程)?",
+        message,
+    )
+    if variable_match:
+        variable_name = variable_match.group(1)
+        variable = symbols(variable_name)
+        if variable not in variables:
+            return _needs_input(
+                f"方程中没有未知数 {variable_name}，请核对题目。"
+            )
+    else:
+        variable = variables[0]
+
+    solutions = solve(difference, variable)
+    solution_texts = [str(solution) for solution in solutions]
+    result_text = str(solution_texts)
+    return _result_response(
+        intent="solve",
+        reply=(
+            f"方程的解是 {result_text}。"
+            "代回原方程就能检验结果，你可以任选一个解试一下。"
+        ),
+        formula_latex=(
+            f"{_to_latex(equation_text)}\\Rightarrow "
+            f"{latex(variable)}={latex(solutions)}"
+        ),
+        formula_text=f"{equation_text} => {result_text}",
+        calculation={
+            "method": "方程求解",
+            "equation": equation_text,
+            "variable": str(variable),
+            "solutions": solution_texts,
+            "result": result_text,
+        },
+        suggestions=["解方程 x^2-1=0", "求矩阵 [[1,2],[3,4]] 的行列式"],
+    )
+
+
+def _build_determinant_response(message: str) -> dict[str, Any] | None:
+    match = re.search(
+        r"(?:矩阵|matrix)\s*(?P<matrix>\[\[.+\]\])\s*"
+        r"(?:的)?\s*(?:行列式|determinant|det)",
+        message,
+        re.IGNORECASE,
+    )
+    if match is None:
+        return None
+
+    try:
+        raw_matrix = ast.literal_eval(match.group("matrix"))
+        matrix = Matrix(raw_matrix)
+    except (SyntaxError, TypeError, ValueError) as exc:
+        return _calculation_error(exc)
+
+    if matrix.rows != matrix.cols:
+        return _needs_input("只有方阵才有行列式，请检查矩阵的行数和列数。")
+
+    determinant = simplify(matrix.det())
+    return _result_response(
+        intent="solve",
+        reply=(
+            f"矩阵的行列式是 {determinant}。"
+            "行列式会用在可逆性和线性方程组判断中。"
+        ),
+        formula_latex=rf"\det\left({latex(matrix)}\right)={latex(determinant)}",
+        formula_text=f"det({matrix}) = {determinant}",
+        calculation={
+            "method": "矩阵行列式",
+            "matrix": str(matrix),
+            "result": str(determinant),
+        },
+        suggestions=["求矩阵 [[1,2],[3,4]] 的行列式", "解方程 x^2-1=0"],
+    )
+
+
 def _build_extended_chapter_response(
     chapter: str,
     topic: str,
@@ -1700,26 +2538,317 @@ def _build_extended_chapter_response(
 ) -> dict[str, Any]:
     try:
         result = solve_chapter(chapter, topic, inputs)
+    except MissingInputError as exc:
+        return _missing_chapter_input_response(exc, chapter, topic)
     except SolveError as exc:
         return _calculation_error(exc)
 
     method = result["method"]
     value = result["result"]
     notes = result.get("notes") or []
-    note_text = f" {notes[0]}。" if notes else ""
-    reply = (
-        f"结果是 {value}。这里用的是 {method}。{note_text}"
-        "你可以先试着说说这个方法最关键的使用条件。"
+    latex_result = result.get("latex") or _to_latex(value)
+    details = result.get("details")
+    solution_sections = None
+    if (
+        chapter == "derivatives"
+        and topic == "parametric_tangent_normal"
+        and isinstance(details, dict)
+    ):
+        solution_sections = _format_parametric_tangent_normal_solution(
+            details
+        )
+    if solution_sections is None:
+        solution_sections = _format_generic_chapter_solution(
+            method=method,
+            inputs=inputs,
+            value=value,
+            latex_result=latex_result,
+            notes=notes,
+        )
+    understanding, strategy, steps, conclusion = solution_sections
+    reply = _format_math_solution_reply(
+        understanding=understanding,
+        strategy=strategy,
+        steps=steps,
+        conclusion=conclusion,
     )
     hint = _EXTENDED_CHAPTER_HINTS.get((chapter, topic), {})
-    return _result_response(
+    response = _result_response(
         intent="solve",
         reply=reply,
-        formula_latex=result["latex"],
+        formula_latex=latex_result,
         formula_text=f"{method}: {value}",
         calculation=result,
         suggestions=hint.get("suggestions", _HELP_SUGGESTIONS),
     )
+    if is_verified_solution(response) and isinstance(details, dict):
+        knowledge_points = details.get("knowledge_points")
+        if isinstance(knowledge_points, list) and knowledge_points:
+            response["knowledge_points"] = knowledge_points
+    return response
+
+
+def _format_generic_chapter_solution(
+    *,
+    method: str,
+    inputs: dict[str, Any],
+    value: str,
+    latex_result: str,
+    notes: list[Any],
+) -> tuple[str, str, str, str]:
+    condition_lines = _format_chapter_conditions(inputs)
+    understanding = f"本题要求使用“{method}”完成计算。"
+    if condition_lines:
+        understanding += f"\n已确认的题目条件：\n{condition_lines}"
+
+    strategy = (
+        f"根据上述条件确定{method}的计算对象与适用范围，"
+        "按对应定义或判定定理完成化简，"
+        "最后将结果代回原条件进行独立复算。"
+    )
+    step_lines = [
+        "1. 整理题目中的表达式、变量、区间或方程等已知条件。"
+    ]
+    step_lines.extend(
+        f"{index}. {str(note).strip().rstrip('。；;')}。"
+        for index, note in enumerate(notes, start=2)
+        if str(note).strip()
+    )
+    result_latex = str(latex_result or "").strip() or _to_latex(value)
+    step_lines.extend(
+        (
+            (
+                f"{len(step_lines) + 1}. 应用{method}的定义、公式或判定条件"
+                "完成计算与化简。"
+            ),
+            (
+                f"{len(step_lines) + 2}. 将结果代回原条件独立复算，"
+                f"得到 ${result_latex}$，验算通过。"
+            ),
+        )
+    )
+    steps = "\n".join(step_lines)
+    conclusion = (
+        f"计算结果为 ${result_latex}$。"
+        "该结果已通过独立复算和结果一致性检查。"
+    )
+    return understanding, strategy, steps, conclusion
+
+
+_CHAPTER_INPUT_LABELS = {
+    "expression": "表达式",
+    "x_expression": "x 的参数表达式",
+    "y_expression": "y 的参数表达式",
+    "upper_expression": "上边界函数",
+    "lower_expression": "下边界函数",
+    "equation": "方程",
+    "equations": "方程组",
+    "constraint": "约束条件",
+    "constraints": "约束条件",
+    "variable": "自变量",
+    "variables": "变量",
+    "parameter": "参数",
+    "parameter_value": "参数取值",
+    "function": "未知函数",
+    "dependent": "因变量",
+    "dependents": "因变量",
+    "left": "第一个向量",
+    "right": "第二个向量",
+    "vector": "向量",
+    "lower": "下限",
+    "upper": "上限",
+    "lower_x": "x 下限",
+    "upper_x": "x 上限",
+    "lower_y": "y 下限",
+    "upper_y": "y 上限",
+    "lower_z": "z 下限",
+    "upper_z": "z 上限",
+    "point": "取值点",
+    "direction": "方向",
+    "order": "阶数",
+    "kind": "目标类型",
+}
+
+
+def _format_chapter_conditions(inputs: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for key, value in inputs.items():
+        if value is None or value == "" or value == []:
+            continue
+        label = _CHAPTER_INPUT_LABELS.get(key, str(key))
+        lines.append(f"- {label}：{_format_chapter_condition_value(key, value)}")
+    return "\n".join(lines)
+
+
+def _format_chapter_condition_value(key: str, value: Any) -> str:
+    if isinstance(value, dict):
+        assignments = ", ".join(
+            f"{_to_latex(str(name))}={_to_latex(str(item))}"
+            for name, item in value.items()
+        )
+        return f"$({assignments})$"
+    if isinstance(value, (list, tuple)):
+        parts = [_format_chapter_condition_value(key, item) for item in value]
+        if key in {"left", "right", "vector"}:
+            values = ", ".join(_to_latex(str(item)) for item in value)
+            return f"$({values})$"
+        separator = "、" if key in {"variables", "dependents", "equations"} else ", "
+        return separator.join(parts)
+
+    text = str(value).strip()
+    if key in {
+        "variable",
+        "variables",
+        "parameter",
+        "function",
+        "dependent",
+        "dependents",
+    }:
+        return f"${_to_latex(text)}$"
+    if key in {"order", "kind"}:
+        return text
+    return f"${_to_latex(text)}$"
+
+
+def _format_parametric_tangent_normal_solution(
+    details: dict[str, Any],
+) -> tuple[str, str, str, str] | None:
+    required_keys = (
+        "x_expression",
+        "y_expression",
+        "parameter",
+        "parameter_value",
+        "point_x",
+        "point_y",
+        "dx_dt",
+        "dy_dt",
+        "dx_value",
+        "dy_value",
+        "tangent_kind",
+        "tangent_slope",
+        "normal_slope",
+        "tangent_latex",
+        "normal_latex",
+    )
+    values = {
+        key: str(details.get(key) or "").strip()
+        for key in required_keys
+    }
+    if any(not value for value in values.values()):
+        return None
+
+    parameter = values["parameter"]
+    parameter_value = values["parameter_value"]
+    x_latex = _to_latex(values["x_expression"])
+    y_latex = _to_latex(values["y_expression"])
+    parameter_latex = _to_latex(parameter_value)
+    tangent_latex = values["tangent_latex"]
+    normal_latex = values["normal_latex"]
+    point_text = (
+        f"$\\left({_to_latex(values['point_x'])},"
+        f"{_to_latex(values['point_y'])}\\right)$"
+    )
+
+    understanding = (
+        f"已知参数方程 $x={x_latex}$、$y={y_latex}$，"
+        f"要求在 ${parameter}={parameter_latex}$ 处的切线方程和法线方程。"
+    )
+    strategy = (
+        f"先分别求 $dx/d{parameter}$ 和 $dy/d{parameter}$，"
+        "再把参数值代入得到切点和切向量；接着由切向量确定切线斜率，"
+        "用法线斜率与切线斜率的负倒数关系写出两条直线，最后复核。"
+    )
+
+    step_lines = [
+        (
+            f"1. 对 $x={x_latex}$ 关于 ${parameter}$ 求导，"
+            f"得到 $\\dfrac{{dx}}{{d{parameter}}}="
+            f"{_to_latex(values['dx_dt'])}$。"
+        ),
+        (
+            f"2. 对 $y={y_latex}$ 关于 ${parameter}$ 求导，"
+            f"得到 $\\dfrac{{dy}}{{d{parameter}}}="
+            f"{_to_latex(values['dy_dt'])}$。"
+        ),
+        (
+            f"3. 代入 ${parameter}={parameter_latex}$，得到切点 "
+            f"{point_text}，且 "
+            f"$\\dfrac{{dx}}{{d{parameter}}}="
+            f"{_to_latex(values['dx_value'])}$、"
+            f"$\\dfrac{{dy}}{{d{parameter}}}="
+            f"{_to_latex(values['dy_value'])}$。"
+        ),
+    ]
+
+    tangent_kind = values["tangent_kind"]
+    if tangent_kind == "slope":
+        step_lines.append(
+            f"4. 切线斜率 $k_T=\\dfrac{{dy/d{parameter}}}"
+            f"{{dx/d{parameter}}}={_to_latex(values['tangent_slope'])}$；"
+            f"法线斜率 $k_N=-\\dfrac{{1}}{{k_T}}="
+            f"{_to_latex(values['normal_slope'])}$。"
+        )
+    elif tangent_kind == "vertical":
+        step_lines.append(
+            "4. 该点处 $dx/d"
+            f"{parameter}=0$，所以切线竖直、普通斜率不存在；"
+            "法线水平，法线斜率为 $0$。"
+        )
+    else:
+        step_lines.append(
+            "4. 该点处 $dy/d"
+            f"{parameter}=0$，所以切线水平、斜率为 $0$；"
+            "法线竖直，普通斜率不存在。"
+        )
+
+    step_lines.extend(
+        (
+            f"5. 切线经过切点 {point_text}，方程为 "
+            f"$ {tangent_latex} $。",
+            f"6. 法线经过同一坐标的切点，方程为 "
+            f"$ {normal_latex} $。",
+            (
+                "7. 复核切点代入结果，并检查切线与法线的方向互相垂直；"
+                "两项检查均与参数导数关系一致。"
+            ),
+        )
+    )
+    conclusion = (
+        f"切点为 {point_text}；"
+        f"切线方程为 $ {tangent_latex} $；"
+        f"法线方程为 $ {normal_latex} $。"
+    )
+    return understanding, strategy, "\n".join(step_lines), conclusion
+
+
+def _missing_chapter_input_response(
+    exc: MissingInputError,
+    chapter: str,
+    topic: str,
+) -> dict[str, Any]:
+    field = str(getattr(exc, "field", "") or "").strip()
+    hint = _EXTENDED_CHAPTER_HINTS.get((chapter, topic), {})
+    if field == "parameter_value":
+        reply = (
+            "这道参数方程切线/法线题还缺少参数点。"
+            "请补充参数值，例如 t=pi/4 或 t=1。"
+        )
+    elif field == "equation" and chapter == "differential_equations":
+        reply = (
+            "这道微分方程题还缺少方程表达式。"
+            "请写出完整方程，例如 y'-y=0。"
+        )
+    else:
+        reply = str(hint.get("missing") or "").strip()
+        if not reply:
+            reply = (
+                "这道题还缺少可验证的必要条件。"
+                f"请补充输入项：{field or '题目条件'}。"
+            )
+    reply += "缺少这些条件时，我不会生成最终答案、教学步骤或知识点推荐。"
+    response = _needs_input(reply, intent="solve")
+    response["missing_fields"] = [field] if field else []
+    return response
 
 
 def _recent_math_questions(
@@ -1928,7 +3057,7 @@ def _is_greeting(value: str) -> bool:
 
 def _detect_intent(value: str) -> str:
     lowered = value.lower()
-    if re.search(r"(?:极限|\blim\b|limit)", lowered):
+    if re.search(r"(?:极限|lim(?:it)?|limit)", lowered):
         return "limit"
     if (
         "积分" in value
@@ -2085,6 +3214,23 @@ def _build_plot_response(message: str) -> dict[str, Any]:
     )
 
 
+def _format_math_solution_reply(
+    *,
+    understanding: str,
+    strategy: str,
+    steps: str,
+    conclusion: str,
+) -> str:
+    return "\n\n".join(
+        (
+            f"**题目理解**\n{understanding}",
+            f"**解题思路**\n{strategy}",
+            f"**详细计算步骤**\n{steps}",
+            f"**最终答案**\n{conclusion}",
+        )
+    )
+
+
 def _build_derivative_response(message: str) -> dict[str, Any]:
     parsed = _parse_derivative(message)
     if parsed is None:
@@ -2093,53 +3239,203 @@ def _build_derivative_response(message: str) -> dict[str, Any]:
             "“判断 2x 是不是 x^2 的导数”。"
         )
 
-    expression, variable, candidate = parsed
+    expression, variable, candidate, order, point = parsed
+    if order == 1 and point is None:
+        try:
+            result = verify_derivative(
+                VerifyRequest(
+                    expression=expression,
+                    variable=variable,
+                    candidate=candidate,
+                ),
+                _=None,
+            ).model_dump(mode="json")
+        except (HTTPException, ValidationError, ValueError) as exc:
+            return _calculation_error(exc)
+
+        expression_latex = _to_latex(result["expression"])
+        formula_latex = (
+            rf"\frac{{d}}{{d{result['variable']}}}"
+            rf"\left({expression_latex}\right)"
+            rf"={result['derivative_latex']}"
+        )
+        formula_text = (
+            f"d/d{result['variable']} ({result['expression']}) = "
+            f"{result['derivative']}"
+        )
+
+        understanding = (
+            f"求函数 $f({result['variable']})={expression_latex}$ "
+            "的一阶导数。"
+        )
+        strategy = (
+            "按照基本求导公式、乘积法则和链式法则逐项求导，"
+            "再核对候选答案是否与求导结果恒等。"
+        )
+        steps = (
+            f"对 $f({result['variable']})={expression_latex}$ 求导，"
+            f"得到 ${result['derivative_latex']}$。"
+        )
+        if result["candidate"] is None:
+            conclusion = (
+                f"导数为 ${result['derivative_latex']}$。"
+            )
+        elif result["is_correct"]:
+            steps += (
+                f" 候选答案 ${_to_latex(result['candidate'])}$ "
+                "与求导结果化简后恒等。"
+            )
+            conclusion = (
+                f"这个答案是对的，导数是 ${result['derivative_latex']}$。"
+            )
+        else:
+            steps += (
+                f" 候选答案 ${_to_latex(result['candidate'])}$ "
+                "与求导结果化简后不恒等。"
+            )
+            conclusion = (
+                "这里还差一点，"
+                f"正确导数是 ${result['derivative_latex']}$。"
+            )
+        reply = _format_math_solution_reply(
+            understanding=understanding,
+            strategy=strategy,
+            steps=steps,
+            conclusion=conclusion,
+        )
+
+        return _result_response(
+            intent="verify",
+            reply=reply,
+            formula_latex=formula_latex,
+            formula_text=formula_text,
+            calculation=result,
+            suggestions=[
+                "求导 sin(x)",
+                "判断 cos(x) 是不是 sin(x) 的导数",
+            ],
+        )
+
     try:
-        result = verify_derivative(
-            VerifyRequest(
-                expression=expression,
-                variable=variable,
-                candidate=candidate,
-            ),
-            _=None,
-        ).model_dump(mode="json")
-    except (HTTPException, ValidationError, ValueError) as exc:
+        expression_value = parse_math_expression(expression)
+        variable_value = symbols(variable)
+        derivative_value = simplify(
+            diff(expression_value, variable_value, order)
+        )
+        answer = derivative_value
+        if point is not None:
+            answer = simplify(
+                derivative_value.subs(
+                    variable_value,
+                    parse_math_expression(point),
+                )
+            )
+        candidate_value = (
+            parse_math_expression(candidate) if candidate else None
+        )
+        is_correct = (
+            simplify(answer - candidate_value) == 0
+            if candidate_value is not None
+            else None
+        )
+    except Exception as exc:
         return _calculation_error(exc)
 
-    expression_latex = _to_latex(result["expression"])
-    formula_latex = (
-        rf"\frac{{d}}{{d{result['variable']}}}\left({expression_latex}\right)"
-        rf"={result['derivative_latex']}"
-    )
-    formula_text = (
-        f"d/d{result['variable']} ({result['expression']}) = {result['derivative']}"
-    )
-
-    if result["candidate"] is None:
-        reply = (
-            f"答案是 {result['derivative']}。"
-            "这一步主要看求导法则，你能认出用的是哪一条吗？"
+    expression_latex = latex(expression_value)
+    if order == 1:
+        derivative_operator = rf"\frac{{d}}{{d{variable}}}"
+        derivative_text = "导数"
+    else:
+        derivative_operator = (
+            rf"\frac{{d^{{{order}}}}}{{d{variable}^{{{order}}}}}"
         )
-    elif result["is_correct"]:
-        reply = (
-            f"这个答案是对的，导数是 {result['derivative']}。"
-            "再试着说说最关键的一步。"
+        derivative_text = f"{order} 阶导数"
+    derivative_formula = (
+        rf"{derivative_operator}\left({expression_latex}\right)"
+    )
+    if point is None:
+        formula_latex = rf"{derivative_formula}={latex(answer)}"
+        formula_text = (
+            f"{derivative_text} of {expression} = {answer}"
         )
     else:
-        reply = (
-            f"这里还差一点，正确导数是 {result['derivative']}。"
-            "先检查系数和符号，再回头看是否漏用了链式法则。"
+        formula_latex = (
+            rf"\left.{derivative_formula}\right|_"
+            rf"{{{variable}={_to_latex(point)}}}={latex(answer)}"
         )
+        formula_text = (
+            f"{derivative_text} of {expression} at {variable}={point} "
+            f"= {answer}"
+        )
+
+    if point is not None:
+        understanding = (
+            f"求函数 ${expression_latex}$ 在 "
+            f"${variable}={_to_latex(point)}$ 处的"
+            f"{derivative_text}值。"
+        )
+    else:
+        understanding = (
+            f"求函数 ${expression_latex}$ 的{derivative_text}。"
+        )
+    strategy = (
+        "先按基本求导公式、乘积法则或链式法则求导函数，"
+        "再按题目要求代入指定点或做候选答案恒等检查。"
+    )
+    steps = (
+        f"求导得到 ${derivative_formula}={latex(derivative_value)}$。"
+    )
+    if point is not None:
+        steps += (
+            f" 代入 ${variable}={_to_latex(point)}$，"
+            f"得到 ${latex(answer)}$。"
+        )
+    if candidate is not None:
+        if is_correct:
+            steps += (
+                f" 候选答案 ${_to_latex(candidate)}$ "
+                "与计算结果化简后恒等。"
+            )
+            conclusion = (
+                f"这个答案是对的，{derivative_text}结果是 ${latex(answer)}$。"
+            )
+        else:
+            steps += (
+                f" 候选答案 ${_to_latex(candidate)}$ "
+                "与计算结果化简后不恒等。"
+            )
+            conclusion = (
+                "这里还差一点，"
+                f"正确{derivative_text}结果是 ${latex(answer)}$。"
+            )
+    else:
+        conclusion = f"{derivative_text}结果是 ${latex(answer)}$。"
+    reply = _format_math_solution_reply(
+        understanding=understanding,
+        strategy=strategy,
+        steps=steps,
+        conclusion=conclusion,
+    )
 
     return _result_response(
         intent="verify",
         reply=reply,
         formula_latex=formula_latex,
         formula_text=formula_text,
-        calculation=result,
+        calculation={
+            "expression": str(expression_value),
+            "variable": variable,
+            "derivative": str(answer),
+            "derivative_latex": latex(answer),
+            "derivative_function": str(derivative_value),
+            "order": order,
+            "point": point,
+            "candidate": candidate,
+            "is_correct": is_correct,
+        },
         suggestions=[
-            "求导 sin(x)",
-            "判断 cos(x) 是不是 sin(x) 的导数",
+            "求二阶导 x^3",
+            "求 f(x)=x^2 在 x=2 的导数值",
         ],
     )
 
@@ -2189,29 +3485,73 @@ def _build_integral_response(message: str) -> dict[str, Any]:
         )
         result_label = "不定积分"
 
-    if result["candidate"] is None:
-        suffix = "，不要忘记任意常数 C" if result_label == "不定积分" else ""
-        reply = (
-            f"{result_label}结果是 {result['integral']}{suffix}。"
-            "这题的关键在积分方法，你能看出该用哪一种吗？"
+    if lower is not None and upper is not None:
+        understanding = (
+            f"计算函数 ${expression_latex}$ 关于 "
+            f"${result['variable']}$ 的定积分，"
+            f"积分区间为 ${_to_latex(lower)}$ 到 "
+            f"${_to_latex(upper)}$。"
         )
+        strategy = (
+            "先求出原函数，再代入上限和下限相减；"
+            "必要时通过原函数求导检查积分结果。"
+        )
+        steps = (
+            rf"$\int_{{{_to_latex(lower)}}}^{{{_to_latex(upper)}}}"
+            rf"{expression_latex}\,d{result['variable']}"
+            rf"={result['integral_latex']}$。"
+        )
+        conclusion_value = f"${result['integral_latex']}$"
+    else:
+        understanding = (
+            f"计算函数 ${expression_latex}$ 关于 "
+            f"${result['variable']}$ 的不定积分。"
+        )
+        strategy = (
+            "先求出原函数，并通过原函数的导数是否等于被积函数"
+            "来检查结果，最后补上任意常数 $C$。"
+        )
+        steps = (
+            rf"$\int {expression_latex}\,d{result['variable']}"
+            rf"={result['integral_latex']}+C$。"
+        )
+        conclusion_value = f"${result['integral_latex']}+C$"
+
+    if result["candidate"] is None:
+        conclusion = f"{result_label}结果是 {conclusion_value}。"
     elif result["is_correct"]:
-        reply = (
-            f"这个答案是对的，{result_label}结果是 {result['integral']}。"
-            "试着说说最关键的一步。"
+        steps += (
+            f" 候选答案 ${_to_latex(result['candidate'])}$ "
+            "与计算结果化简后恒等。"
+        )
+        conclusion = (
+            f"这个答案是对的，{result_label}结果是 {conclusion_value}。"
         )
     else:
-        reply = (
-            f"这里还差一点，正确{result_label}结果是 {result['integral']}。"
-            "先检查常数或上下限，再回头看基本积分公式。"
+        steps += (
+            f" 候选答案 ${_to_latex(result['candidate'])}$ "
+            "与计算结果化简后不恒等。"
         )
+        conclusion = (
+            f"这里还差一点，正确{result_label}结果是 {conclusion_value}。"
+        )
+    reply = _format_math_solution_reply(
+        understanding=understanding,
+        strategy=strategy,
+        steps=steps,
+        conclusion=conclusion,
+    )
 
     return _result_response(
         intent="integrate",
         reply=reply,
         formula_latex=formula_latex,
         formula_text=formula_text,
-        calculation=result,
+        calculation={
+            **result,
+            "lower": lower,
+            "upper": upper,
+        },
         suggestions=[
             "积分 x^2",
             "积分 0 到 1 x^2",
@@ -2258,21 +3598,61 @@ def _build_limit_response(message: str) -> dict[str, Any]:
         f"{result['point']} = {result['limit']}"
     )
 
-    if result["candidate"] is None:
-        reply = (
-            f"极限是 {result['limit']}。"
-            "这里最容易忽略趋近方向，你能判断是否需要区分左右极限吗？"
-        )
-    elif result["is_correct"]:
-        reply = (
-            f"这个答案是对的，极限是 {result['limit']}。"
-            "再说明一下这个结论成立的依据。"
+    direction_text = {
+        "+": "右极限",
+        "-": "左极限",
+        None: "双侧极限",
+    }[result["direction"]]
+    understanding = (
+        f"求函数 ${_to_latex(result['expression'])}$ 在 "
+        f"${result['variable']}\to {_to_latex(result['point'])}$ 时的"
+        f"{direction_text}。"
+    )
+    if result["direction"] is None:
+        strategy = (
+            "分别计算左极限和右极限，再比较两侧趋势；"
+            "只有两侧都收敛且结果一致时，双侧极限才存在。"
         )
     else:
-        reply = (
-            f"这里还差一点，正确极限是 {result['limit']}。"
-            "先检查趋近方向，再确认等价无穷小或洛必达法则是否满足条件。"
+        strategy = (
+            "沿着题目指定的方向计算单侧极限，并检查结果是否收敛。"
         )
+
+    if result["direction"] is None:
+        steps = (
+            f"左极限为 ${_to_latex(result['left_limit'])}$，"
+            f"右极限为 ${_to_latex(result['right_limit'])}$。"
+            f" {result['explanation']}"
+        )
+    else:
+        steps = (
+            f"{direction_text}计算得到 ${result['limit_latex']}$。"
+            f" {result['explanation']}"
+        )
+
+    if result["exists"]:
+        conclusion_value = f"${result['limit_latex']}$"
+    else:
+        conclusion_value = "不存在"
+
+    if result["candidate"] is None:
+        conclusion = f"该{direction_text}为 {conclusion_value}。"
+    elif result["is_correct"]:
+        conclusion = (
+            f"这个答案是对的，该{direction_text}为 {conclusion_value}。"
+        )
+    else:
+        conclusion = (
+            f"这里还差一点，该{direction_text}应为 {conclusion_value}。"
+        )
+    if not result["exists"]:
+        conclusion += f" {result['explanation']}"
+    reply = _format_math_solution_reply(
+        understanding=understanding,
+        strategy=strategy,
+        steps=steps,
+        conclusion=conclusion,
+    )
 
     return _result_response(
         intent="limit",
@@ -2287,9 +3667,71 @@ def _build_limit_response(message: str) -> dict[str, Any]:
     )
 
 
-def _parse_derivative(message: str) -> tuple[str, str, str | None] | None:
+_DERIVATIVE_ORDER_PATTERN = r"(?:\d+|[一二两三四五六七八九十]+)"
+_CHINESE_NUMBER_VALUES = {
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+}
+
+
+def _parse_derivative_order(message: str) -> int:
+    order_match = re.search(
+        rf"(?:第)?\s*(?P<order>{_DERIVATIVE_ORDER_PATTERN})"
+        r"\s*阶\s*(?:导|导数)",
+        message,
+    )
+    if order_match:
+        order_text = order_match.group("order")
+        if order_text.isdigit():
+            return int(order_text)
+        if order_text in _CHINESE_NUMBER_VALUES:
+            return _CHINESE_NUMBER_VALUES[order_text]
+
+    prime_match = re.search(r"f\s*(?P<primes>['′]+)", message)
+    if prime_match:
+        return len(prime_match.group("primes"))
+    return 1
+
+
+def _parse_derivative_point(message: str, variable: str) -> str | None:
+    function_point = re.search(
+        r"f\s*['′]+\s*\(\s*(?P<point>[^()]+?)\s*\)",
+        message,
+    )
+    if function_point:
+        point = _clean_math_fragment(function_point.group("point"))
+        if point and point != variable:
+            return point
+
+    at_point = re.search(
+        r"(?:在|当)\s*(?:[A-Za-z][A-Za-z0-9_]*\s*=\s*)?"
+        r"(?P<point>[^,，;；\s]+)\s*(?:处|点)?\s*"
+        r"(?:的)?(?:导数值|导数)",
+        message,
+    )
+    if at_point:
+        point = _clean_math_fragment(at_point.group("point"))
+        if point and point != variable:
+            return point
+    return None
+
+
+def _parse_derivative(
+    message: str,
+) -> tuple[str, str, str | None, int, str | None] | None:
     candidate: str | None = None
     expression: str | None = None
+    variable_override: str | None = None
+    order = _parse_derivative_order(message)
 
     relation = re.search(
         r"^\s*is\s+(?P<first>.+?)\s+(?:the\s+)?"
@@ -2332,6 +3774,74 @@ def _parse_derivative(message: str) -> tuple[str, str, str | None] | None:
 
     if expression is None:
         candidate = _extract_trailing_candidate(message) or candidate
+        function_match = re.search(
+            r"(?:f|g|h)\s*\(\s*(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*\)"
+            r"\s*=\s*(?P<expr>.+?)"
+            r"(?=\s*(?:[,，;；]|(?:在|求|计算|的)|$))",
+            message,
+            re.IGNORECASE,
+        )
+        if function_match:
+            expression = _clean_expression(function_match.group("expr"))
+            variable_override = function_match.group("variable")
+        else:
+            differential_match = re.search(
+                r"^(?:帮我|请|计算|求)?\s*d\s*/\s*d"
+                r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
+                r"(?P<expr>.+)$",
+                message,
+                re.IGNORECASE,
+            )
+            if differential_match:
+                expression = _clean_expression(
+                    differential_match.group("expr")
+                )
+                variable_override = differential_match.group("variable")
+            else:
+                advanced_patterns = (
+                    (
+                        rf"^(?:帮我|请|计算|求)?\s*(?:第)?"
+                        rf"{_DERIVATIVE_ORDER_PATTERN}\s*阶\s*"
+                        r"(?:导数|导)\s*(?:为|是|:)?\s*(?P<expr>.+)$",
+                        None,
+                    ),
+                    (
+                        rf"^(?:求|计算|帮我|请)?\s*(?P<expr>.+?)\s*"
+                        rf"的(?:第)?{_DERIVATIVE_ORDER_PATTERN}\s*阶\s*"
+                        r"(?:导数|导)(?:是多少)?$",
+                        None,
+                    ),
+                    (
+                        r"^(?:求|计算|帮我|请)?\s*(?P<expr>.+?)\s*在\s*"
+                        r"(?:[A-Za-z][A-Za-z0-9_]*\s*=\s*)?"
+                        r"[^,，;；\s]+\s*(?:处|点)?\s*的"
+                        r"(?:导数值|导数)$",
+                        None,
+                    ),
+                    (
+                        r"^对\s*(?P<expr>.+?)\s*求(?:关于|对)\s*"
+                        r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*的"
+                        r"(?:导函数|导数)$",
+                        "variable",
+                    ),
+                )
+                for pattern, variable_group in advanced_patterns:
+                    advanced_match = re.search(
+                        pattern,
+                        message,
+                        re.IGNORECASE,
+                    )
+                    if advanced_match:
+                        expression = _clean_expression(
+                            advanced_match.group("expr")
+                        )
+                        if variable_group:
+                            variable_override = advanced_match.group(
+                                variable_group
+                            )
+                        break
+
+    if expression is None:
         patterns = (
             r"^(?:帮我|请|来|计算|求)?\s*(?:求导|求导数|求导函数)\s*"
             r"(?:为|是|:)?\s*(.+)$",
@@ -2357,8 +3867,9 @@ def _parse_derivative(message: str) -> tuple[str, str, str | None] | None:
     if expression is None:
         return None
 
-    variable = _infer_variable(message, expression)
-    return expression, variable, candidate
+    variable = variable_override or _infer_variable(message, expression)
+    point = _parse_derivative_point(message, variable)
+    return expression, variable, candidate, order, point
 
 
 def _parse_integral(
@@ -2422,17 +3933,27 @@ def _parse_integral(
             r"to\s+(?P<upper>[^\s,]+)\s*$",
             r"(?:积分|∫)\s*(?:从\s*)?(?P<lower>[^\s,]+)\s*"
             r"(?:到|至)\s*(?P<upper>[^\s,]+)\s*(?P<expr>.+)$",
-            r"(?P<expr>.+?)\s*(?:从|在)\s*(?P<lower>[^\s,]+)\s*"
-            r"到\s*(?P<upper>[^\s,]+)\s*的(?:定积分|积分)$",
-            r"^∫\s*_?\s*(?P<lower>[^\s^]+)\s*\^\s*"
+            r"(?P<expr>.+?)\s*(?:从|在)\s*(?P<lower>[^\s,，]+?)\s*"
+            r"到\s*(?P<upper>[^\s,，]+?)\s*(?:上\s*)?"
+            r"的(?:定积分|积分)$",
+            r"∫\s*_?\s*(?P<lower>[^\s^]+)\s*\^\s*"
             r"(?P<upper>[^\s]+)\s*(?P<expr>.+)$",
+            r"^(?:计算|求|请)?\s*(?:当\s*)?"
+            r"[A-Za-z]\s*从\s*(?P<lower>[^\s,，]+)\s*"
+            r"到\s*(?P<upper>[^\s,，]+)\s*(?:时|的时候)\s*"
+            r"(?P<expr>.+?)\s*的(?:定积分|积分)$",
         )
         for pattern in bound_patterns:
             match = re.search(pattern, message, re.IGNORECASE)
             if match:
+                candidate_expression = _clean_integrand(
+                    match.group("expr")
+                )
+                if not candidate_expression:
+                    continue
                 lower = _clean_math_fragment(match.group("lower"))
                 upper = _clean_math_fragment(match.group("upper"))
-                expression = _clean_integrand(match.group("expr"))
+                expression = candidate_expression
                 break
 
     if expression is None:
@@ -2483,12 +4004,19 @@ def _parse_limit(
     expression: str | None = None
     variable: str | None = None
     point: str | None = None
+    limit_direction_pattern = r"(?:趋近于?|趋于|接近|→|->)"
+    limit_point_pattern = (
+        r"[+-]?(?:(?:\d+(?:\.\d+)?|pi|e)"
+        r"(?:\s*(?:\^?[+-]|正|负))?"
+        r"|[正负]?无穷(?:大)?|oo|∞|[A-Za-z][A-Za-z0-9_]*)"
+    )
 
     lim_match = re.search(
-        r"\blim(?:it)?\b\s*_?\s*\{?\s*"
+        r"(?:求|计算)?\s*(?:极限\s*)?lim(?:it)?\s*_?\s*\{?\s*"
         r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
-        r"(?:→|->|趋于|趋近于)\s*(?P<point>[^}\s,]+)\s*\}?\s*"
-        r"(?P<expr>.+)$",
+        rf"{limit_direction_pattern}\s*"
+        rf"(?P<point>{limit_point_pattern})\s*\}}?\s*"
+        r"(?P<expr>.+?)\s*$",
         message,
         re.IGNORECASE,
     )
@@ -2498,10 +4026,20 @@ def _parse_limit(
         expression = _clean_expression(lim_match.group("expr"))
     else:
         chinese_match = re.search(
+            r"^\s*(?:求|计算|请)?\s*(?:当\s*)?"
             r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
-            r"(?:趋于|趋近于|接近|→|->)\s*(?P<point>.+?)\s*"
+            rf"{limit_direction_pattern}\s*(?P<point>.+?)\s*"
             r"(?:时|的时候)\s*(?P<expr>.+?)\s*"
             r"(?:的)?(?:左极限|右极限|极限)$",
+            message,
+            re.IGNORECASE,
+        )
+        front_expression_match = re.search(
+            r"^\s*(?:求|计算|请)?\s*(?:当\s*)?"
+            r"(?P<expr>.+?)\s*"
+            r"(?:在|当)\s*(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
+            rf"{limit_direction_pattern}\s*(?P<point>.+?)\s*"
+            r"(?:时|的时候)\s*(?:的)?(?:左极限|右极限|极限)$",
             message,
             re.IGNORECASE,
         )
@@ -2509,33 +4047,75 @@ def _parse_limit(
             variable = chinese_match.group("variable")
             point = chinese_match.group("point")
             expression = _clean_expression(chinese_match.group("expr"))
+        elif front_expression_match:
+            variable = front_expression_match.group("variable")
+            point = front_expression_match.group("point")
+            expression = _clean_expression(
+                front_expression_match.group("expr")
+            )
         else:
-            trailing_match = re.search(
-                r"(?:求|计算)?\s*极限\s*(?P<expr>.+?)\s*,?\s*"
+            inline_match = re.search(
+                r"(?:求|计算)?\s*(?:极限|lim(?:it)?)\s*"
                 r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
-                r"(?:趋于|趋近于|接近|→|->)\s*(?P<point>.+)$",
+                rf"{limit_direction_pattern}\s*"
+                rf"(?P<point>{limit_point_pattern})\s*"
+                r"(?:时|的时候)?\s*"
+                r"(?P<expr>.+)$",
                 message,
                 re.IGNORECASE,
             )
-            if trailing_match:
-                variable = trailing_match.group("variable")
-                point = trailing_match.group("point")
-                expression = _clean_expression(trailing_match.group("expr"))
+            if inline_match:
+                variable = inline_match.group("variable")
+                point = inline_match.group("point")
+                expression = _clean_expression(inline_match.group("expr"))
+            else:
+                trailing_match = re.search(
+                    r"(?:求|计算)?\s*极限\s*(?P<expr>.+?)\s*,?\s*"
+                    r"(?P<variable>[A-Za-z][A-Za-z0-9_]*)\s*"
+                    r"(?:趋于|趋近于|接近|→|->)\s*(?P<point>.+)$",
+                    message,
+                    re.IGNORECASE,
+                )
+                if trailing_match:
+                    variable = trailing_match.group("variable")
+                    point = trailing_match.group("point")
+                    expression = _clean_expression(
+                        trailing_match.group("expr")
+                    )
 
     if expression is None or variable is None or point is None:
         return None
 
     direction = None
-    if re.search(r"(?:右极限|\+)\s*$", point) or "右极限" in message:
+    if "右极限" in message:
         direction = "+"
-    elif re.search(r"(?:左极限|-)\s*$", point) or "左极限" in message:
+    elif "左极限" in message:
         direction = "-"
 
-    point = re.sub(r"(?:右极限|左极限|\+|-)\s*$", "", point).strip()
-    point = point.replace("无穷大", "oo")
+    compact_point = re.sub(r"\s+", "", point)
+    if direction is None:
+        if compact_point.endswith("正"):
+            direction = "+"
+        elif compact_point.endswith("负"):
+            direction = "-"
+        elif compact_point.endswith("+") and compact_point not in {"+oo", "+∞"}:
+            direction = "+"
+        elif compact_point.endswith("-") and compact_point not in {"-oo", "-∞"}:
+            direction = "-"
+
+    if direction is not None:
+        point = re.sub(
+            r"(?:右极限|左极限|正|负|\^?[+-])\s*$",
+            "",
+            point,
+        ).strip()
+
+    point = point.replace("无穷大", "oo").replace("正无穷", "oo")
+    point = point.replace("负无穷", "-oo").replace("无穷", "oo")
+    point = point.replace("∞", "oo")
     if point in {"+∞", "+oo"}:
         point = "oo"
-    elif point in {"-∞", "-oo"}:
+    elif point == "-oo":
         point = "-oo"
 
     expression = _clean_expression(expression)
@@ -2670,10 +4250,14 @@ def _help_response() -> dict[str, Any]:
     }
 
 
-def _needs_input(reply: str) -> dict[str, Any]:
+def _needs_input(
+    reply: str,
+    *,
+    intent: str = "unknown",
+) -> dict[str, Any]:
     return {
         "status": "needs_input",
-        "intent": "unknown",
+        "intent": intent,
         "reply": reply,
         "formula_latex": "",
         "formula_text": "",
@@ -2707,15 +4291,63 @@ def _result_response(
     calculation: dict[str, Any],
     suggestions: list[str],
 ) -> dict[str, Any]:
-    return {
+    normalized_intent = str(intent or "").strip().lower()
+    verification = None
+    if normalized_intent in SOLUTION_INTENTS:
+        verification = verify_calculation(normalized_intent, calculation)
+        if verification.get("passed") is not True:
+            failed_details = [
+                str(check.get("detail") or check.get("name") or "")
+                for check in verification.get("checks", [])
+                if check.get("passed") is not True
+            ]
+            detail = "；".join(filter(None, failed_details))
+            return {
+                "status": "error",
+                "intent": normalized_intent,
+                "reply": (
+                    "计算已经停止：结果没有通过独立验算"
+                    + (f"（{detail}）" if detail else "")
+                    + "。请核对题目条件和输入格式后重新提交。"
+                ),
+                "formula_latex": "",
+                "formula_text": "",
+                "calculation": None,
+                "knowledge_points": [],
+                "verified": False,
+                "verification": verification,
+                "suggestions": suggestions,
+            }
+
+    response = {
         "status": "ok",
-        "intent": intent,
+        "intent": normalized_intent,
         "reply": reply,
         "formula_latex": formula_latex,
         "formula_text": formula_text,
         "calculation": calculation,
         "suggestions": suggestions,
     }
+    if verification is not None:
+        response["verified"] = True
+        response["verification"] = verification
+        if not is_verified_solution(response):
+            return {
+                "status": "error",
+                "intent": normalized_intent,
+                "reply": (
+                    "计算已经停止：结果未通过统一成功门禁。"
+                    "请核对题目条件和输入格式后重新提交。"
+                ),
+                "formula_latex": "",
+                "formula_text": "",
+                "calculation": None,
+                "knowledge_points": [],
+                "verified": False,
+                "verification": verification,
+                "suggestions": suggestions,
+            }
+    return response
 
 
 def _build_interval_extrema_response(message: str) -> dict[str, Any] | None:

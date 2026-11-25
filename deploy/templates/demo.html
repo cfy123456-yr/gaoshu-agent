@@ -338,14 +338,6 @@
       stroke-width: 1.8;
     }
 
-    #conversationPanelToggle svg {
-      transition: transform 0.15s ease;
-    }
-
-    .conversation-panel[data-collapsed="true"] #conversationPanelToggle svg {
-      transform: rotate(180deg);
-    }
-
     .conversation-panel-actions {
       display: flex;
       flex: 0 0 auto;
@@ -354,9 +346,9 @@
     }
 
     .conversation-panel-head .new-chat-icon {
-      flex-basis: 30px;
-      width: 30px;
-      height: 30px;
+      flex-basis: 36px;
+      width: 36px;
+      height: 36px;
       border-color: transparent;
       color: var(--blue-dark);
       background: transparent;
@@ -732,20 +724,23 @@
       stroke-width: 1.8;
     }
 
+    .theme-icon morph-icon {
+      display: contents;
+    }
+
     .sidebar-resizer {
       position: absolute;
       z-index: 5;
       top: 0;
       right: 0;
-      width: 6px;
+      width: 8px;
       height: 100%;
       cursor: col-resize;
+      touch-action: none;
     }
 
-    .sidebar-resizer:hover,
-    .sidebar-resizer:focus-visible {
+    .sidebar-resizer:hover {
       background: var(--line-strong);
-      outline: none;
     }
 
     .sidebar-scrim {
@@ -1782,19 +1777,20 @@
 
     .composer-image-remove {
       display: grid;
-      width: 30px;
-      height: 30px;
+      width: 36px;
+      height: 36px;
       padding: 0;
       place-items: center;
       border: 1px solid transparent;
-      border-radius: 4px;
+      border-radius: var(--radius-control);
       color: var(--muted);
       background: transparent;
       font-size: 1rem;
       line-height: 1;
     }
 
-    .composer-image-remove:hover {
+    .composer-image-remove:hover,
+    .composer-image-remove:focus-visible {
       border-color: var(--line);
       color: var(--ink);
       background: var(--surface);
@@ -1960,13 +1956,35 @@
       background-size: 100% 35px;
     }
 
+    .messages:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: -2px;
+    }
+
     .messages[data-welcome-only="true"] {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       padding-right: clamp(24px, 8vw, 96px);
+      padding-top: clamp(84px, 16vh, 150px);
+      padding-bottom: clamp(64px, 12vh, 112px);
       padding-left: clamp(24px, 8vw, 96px);
+    }
+
+    .messages[data-welcome-only="true"]::before {
+      position: absolute;
+      top: clamp(86px, 15vh, 146px);
+      right: clamp(42px, 9vw, 128px);
+      color: color-mix(in srgb, var(--blue) 8%, transparent);
+      content: "∫";
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: clamp(9rem, 18vw, 16rem);
+      font-weight: 700;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
     }
 
     .message {
@@ -2120,12 +2138,14 @@
     }
 
     .message[data-intent="welcome"] {
+      position: relative;
+      z-index: 1;
       margin-bottom: 0;
     }
 
     .message[data-intent="welcome"] .message-content {
-      width: min(560px, 100%);
-      max-width: min(560px, 100%);
+      width: min(640px, 100%);
+      max-width: min(640px, 100%);
     }
 
     .message[data-intent="welcome"] .bubble {
@@ -2135,22 +2155,32 @@
     }
 
     .welcome-message-text {
+      position: relative;
       margin: 0;
+    }
+
+    .welcome-message-text::before {
+      display: block;
+      width: 34px;
+      height: 2px;
+      margin-bottom: 16px;
+      background: var(--blue);
+      content: "";
     }
 
     .welcome-message-lead {
       display: block;
       color: var(--ink);
-      font-size: 1.08rem;
+      font-size: clamp(1.18rem, 1.25vw, 1.36rem);
       font-weight: 760;
-      line-height: 1.5;
+      line-height: 1.42;
     }
 
     .welcome-message-body {
       display: block;
-      margin-top: 5px;
+      margin-top: 8px;
       color: var(--muted);
-      font-size: 0.91rem;
+      font-size: 0.98rem;
       line-height: 1.75;
     }
 
@@ -2169,6 +2199,162 @@
       display: grid;
       min-width: 0;
       gap: 8px;
+    }
+
+    .teaching-panel {
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--line));
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 1px 2px rgba(24, 33, 47, 0.045);
+    }
+
+    .teaching-panel-head {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      background: color-mix(in srgb, var(--soft-blue) 48%, var(--surface));
+    }
+
+    .teaching-panel-identity {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .teaching-panel-kicker,
+    .teaching-panel-progress {
+      flex: 0 0 auto;
+      color: var(--blue-dark);
+      font-size: 0.66rem;
+      font-weight: 850;
+      letter-spacing: 0;
+      line-height: 1.35;
+    }
+
+    .teaching-panel-kicker {
+      padding: 2px 6px;
+      border: 1px solid color-mix(in srgb, var(--blue) 30%, var(--line));
+      border-radius: 4px;
+      background: var(--surface);
+    }
+
+    .teaching-panel-progress {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .teaching-panel-body {
+      display: grid;
+      min-width: 0;
+      gap: 9px;
+      padding: 12px;
+    }
+
+    .teaching-step-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.84rem;
+      font-weight: 850;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .teaching-step-copy,
+    .teaching-support-copy,
+    .teaching-feedback {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.79rem;
+      line-height: 1.72;
+      overflow-wrap: anywhere;
+    }
+
+    .teaching-feedback {
+      padding: 7px 9px;
+      border-left: 2px solid var(--line-strong);
+      background: color-mix(in srgb, var(--paper) 62%, var(--surface));
+    }
+
+    .teaching-feedback[data-state="correct"] {
+      border-left-color: var(--blue);
+      background: color-mix(in srgb, var(--soft-blue) 52%, var(--surface));
+    }
+
+    .teaching-feedback[data-state="wrong"] {
+      border-left-color: #a85b3f;
+      background: color-mix(in srgb, #a85b3f 8%, var(--surface));
+    }
+
+    .teaching-support {
+      display: grid;
+      gap: 4px;
+      padding: 8px 9px;
+      border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--paper) 48%, var(--surface));
+    }
+
+    .teaching-support-label {
+      color: var(--muted);
+      font-size: 0.65rem;
+      font-weight: 800;
+    }
+
+    .teaching-attempts {
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .teaching-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 0 12px 12px;
+    }
+
+    .teaching-action {
+      min-height: 30px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--ink);
+      background: var(--surface);
+      font-size: 0.7rem;
+      font-weight: 750;
+      line-height: 1.2;
+    }
+
+    .teaching-action:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--blue) 42%, var(--line));
+      background: var(--sidebar-hover);
+    }
+
+    .teaching-action:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 1px;
+    }
+
+    .teaching-pending {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .teaching-action:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
     }
 
     .solution-section {
@@ -2271,6 +2457,35 @@
     .solution-reasoning .math-display {
       margin-top: 10px;
       margin-bottom: 10px;
+    }
+
+    .solution-section-copy {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.81rem;
+      line-height: 1.72;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .solution-section-copy + .solution-section-copy {
+      margin-top: 9px;
+    }
+
+    .solution-section-copy .math-display {
+      max-width: 100%;
+      margin: 9px 0;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+
+    .solution-section-copy .math-display .katex-display {
+      margin: 0;
+    }
+
+    .solution-section--result .solution-section-copy + .solution-result-row,
+    .solution-section--result .solution-section-copy + .formula {
+      margin-top: 12px;
     }
 
     .solution-step-list {
@@ -2707,6 +2922,7 @@
       background: transparent;
       font-size: 0.7rem;
       font-weight: 650;
+      white-space: nowrap;
     }
 
     .suggestions-toggle:hover {
@@ -2724,12 +2940,6 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       stroke-width: 1.8;
-      transform: rotate(180deg);
-      transition: transform 0.15s ease;
-    }
-
-    .composer-area[data-suggestions-collapsed="true"] .suggestions-toggle-icon {
-      transform: rotate(0deg);
     }
 
     .suggestions {
@@ -2779,6 +2989,12 @@
       background: color-mix(in srgb, var(--soft-blue) 30%, var(--surface));
     }
 
+    .suggestion:focus-visible {
+      border-color: var(--focus-ring);
+      color: var(--ink);
+      background: color-mix(in srgb, var(--soft-blue) 30%, var(--surface));
+    }
+
     .suggestion:active {
       transform: none;
     }
@@ -2796,9 +3012,10 @@
     }
 
     .suggestion-label {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      min-width: max-content;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
     }
 
     .composer {
@@ -2828,6 +3045,361 @@
       color: var(--ink);
       font-size: 0.72rem;
       font-weight: 800;
+    }
+
+    .composer-mode {
+      display: inline-grid;
+      flex: 0 0 auto;
+      grid-template-columns: repeat(2, minmax(42px, auto));
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--paper) 62%, var(--surface));
+    }
+
+    .composer-mode-option {
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 0;
+      border-radius: 4px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .composer-mode-option:hover {
+      color: var(--ink);
+      background: color-mix(in srgb, var(--soft-blue) 46%, transparent);
+    }
+
+    .composer-mode-option:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
+    .composer-mode-option:disabled:hover {
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .composer-mode-option[aria-pressed="true"] {
+      color: var(--surface);
+      background: var(--blue-dark);
+      box-shadow: 0 1px 2px rgba(24, 33, 47, 0.14);
+    }
+
+    .composer-mode-option[aria-pressed="true"]:disabled,
+    .composer-mode-option[aria-pressed="true"]:disabled:hover {
+      color: var(--surface);
+      background: var(--blue-dark);
+    }
+
+    .composer-mode-option:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--blue) 72%, transparent);
+      outline-offset: 1px;
+    }
+
+    .input-guide {
+      min-width: 0;
+      padding: 0 8px 2px;
+    }
+
+    .input-guide-summary {
+      display: flex;
+      min-width: 0;
+      min-height: 30px;
+      align-items: center;
+      gap: 7px;
+      padding: 3px 0;
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 650;
+      line-height: 1.4;
+      list-style: none;
+    }
+
+    .input-guide-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .input-guide-summary:hover {
+      color: var(--ink);
+    }
+
+    .input-guide-summary:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .input-guide[open] .input-guide-summary {
+      color: var(--ink);
+    }
+
+    .input-guide-icon,
+    .input-guide-chevron {
+      display: block;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .input-guide-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--blue-dark);
+    }
+
+    .input-guide-chevron {
+      width: 14px;
+      height: 14px;
+    }
+
+    .input-guide-icon svg,
+    .input-guide-chevron svg {
+      display: block;
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      fill: none;
+      stroke: currentColor;
+    }
+
+    .input-guide-summary-text {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .input-guide-summary-text strong {
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .input-guide-action {
+      flex: 0 0 auto;
+      color: var(--blue-dark);
+      font-weight: 800;
+    }
+
+    .input-guide-body {
+      padding: 5px 0 1px;
+    }
+
+    .input-guide-copy {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.5;
+    }
+
+    .input-guide-examples {
+      display: flex;
+      min-width: 0;
+      gap: 6px;
+      padding-bottom: 2px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .input-guide-examples::-webkit-scrollbar {
+      display: none;
+    }
+
+    .input-guide-example {
+      display: inline-flex;
+      min-height: 30px;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+      border-radius: 5px;
+      color: var(--ink);
+      background: var(--surface);
+      font-size: 0.7rem;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .input-guide-example:hover {
+      border-color: color-mix(in srgb, var(--blue) 42%, var(--line));
+      background: color-mix(in srgb, var(--soft-blue) 32%, var(--surface));
+    }
+
+    .input-guide-example:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 1px;
+    }
+
+    .input-guide-example-type {
+      color: var(--blue-dark);
+      font-weight: 850;
+    }
+
+    .input-guide-example-value {
+      color: var(--muted);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 0.76rem;
+    }
+
+    .math-toolbar {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+      padding: 0 6px 2px;
+    }
+
+    .math-toolbar-label {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .math-toolbar-buttons {
+      display: flex;
+      min-width: 0;
+      flex: 1 1 auto;
+      gap: 4px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .math-toolbar-buttons::-webkit-scrollbar {
+      display: none;
+    }
+
+    .math-tool-group {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .math-tool-group + .math-tool-group {
+      padding-left: 8px;
+      border-left: 1px solid var(--line);
+    }
+
+    .math-tool-button {
+      display: inline-grid;
+      min-width: 32px;
+      min-height: 30px;
+      flex: 0 0 auto;
+      padding: 3px 8px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--ink);
+      background: var(--surface);
+      font-size: 0.78rem;
+      font-weight: 750;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .math-tool-button.is-symbol {
+      padding-right: 7px;
+      padding-left: 7px;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 0.94rem;
+    }
+
+    .math-tool-button:hover {
+      border-color: var(--line-strong);
+      background: var(--sidebar-hover);
+    }
+
+    .math-tool-button:active,
+    .math-tool-button[aria-expanded="true"] {
+      border-color: color-mix(in srgb, var(--blue) 46%, var(--line));
+      background: var(--soft-blue);
+    }
+
+    .math-limits-panel {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 8px;
+      margin: 0 6px 2px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+    }
+
+    .math-limits-panel[hidden] {
+      display: none;
+    }
+
+    .math-limits-fields {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .math-limits-fields.is-three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .math-limit-field {
+      display: grid;
+      min-width: 0;
+      gap: 3px;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .math-limit-field input,
+    .math-limit-field select {
+      width: 100%;
+      min-width: 0;
+      height: 32px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--ink);
+      background: var(--surface);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 0.86rem;
+    }
+
+    .math-limit-field input:focus-visible,
+    .math-limit-field select:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 1px;
+      border-color: var(--focus-ring);
+    }
+
+    .math-limits-apply {
+      min-height: 32px;
+      padding: 4px 12px;
+      border: 1px solid var(--blue);
+      border-radius: 5px;
+      color: #ffffff;
+      background: var(--blue-dark);
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .math-limits-apply:hover {
+      border-color: var(--blue-ink);
+      background: var(--blue-ink);
     }
 
     .composer-row {
@@ -2967,15 +3539,39 @@
     }
 
     .send-button {
+      display: inline-flex;
       flex: 0 0 auto;
       min-width: 72px;
       min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 8px 17px;
       border: 1px solid var(--blue);
       border-radius: 6px;
       color: #ffffff;
       background: var(--blue);
       font-weight: 800;
+    }
+
+    .send-button svg {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .send-button[aria-busy="true"] svg {
+      animation: send-spin 0.9s linear infinite;
+    }
+
+    @keyframes send-spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .send-button:hover {
@@ -3134,9 +3730,18 @@
     }
 
     .sidebar-resizer:focus-visible {
-      outline: none;
+      outline: 2px solid var(--focus-ring);
+      outline-offset: -2px;
       background: color-mix(in srgb, var(--focus-ring) 24%, transparent);
       box-shadow: inset 0 0 0 2px var(--focus-ring);
+    }
+
+    .icon-button:disabled,
+    .sidebar-rail-button:disabled,
+    .suggestion:disabled,
+    .composer-image-remove:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
     }
 
     @media (hover: none) {
@@ -3219,6 +3824,13 @@
       }
     }
 
+    @media (max-width: 1120px) and (min-width: 821px) {
+      .messages[data-welcome-only="true"] {
+        padding-right: clamp(28px, 7vw, 64px);
+        padding-left: clamp(28px, 7vw, 64px);
+      }
+    }
+
     @media (max-width: 640px) {
       .app-shell {
         width: 100%;
@@ -3273,6 +3885,27 @@
         padding: 22px 12px 16px;
       }
 
+      .messages[data-welcome-only="true"] {
+        padding: 92px 22px 48px;
+      }
+
+      .messages[data-welcome-only="true"]::before {
+        display: none;
+      }
+
+      .message[data-intent="welcome"] .message-content {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .welcome-message-lead {
+        font-size: 1.16rem;
+      }
+
+      .welcome-message-body {
+        font-size: 0.92rem;
+      }
+
       .message {
         gap: 7px;
         margin-bottom: 20px;
@@ -3294,6 +3927,21 @@
         padding: 10px 12px;
       }
 
+      .teaching-panel-head,
+      .teaching-panel-body {
+        padding-right: 10px;
+        padding-left: 10px;
+      }
+
+      .teaching-actions {
+        padding-right: 10px;
+        padding-left: 10px;
+      }
+
+      .teaching-action {
+        min-height: 34px;
+      }
+
       .formula {
         margin-right: -12px;
         margin-left: -12px;
@@ -3305,21 +3953,71 @@
       }
 
       .suggestions {
+        flex-wrap: nowrap;
         padding-top: 10px;
         padding-bottom: 8px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+
+      .suggestions::-webkit-scrollbar {
+        display: none;
       }
 
       .composer-row {
-        grid-template-columns: minmax(0, 1fr) 44px 44px 54px;
+        grid-template-areas:
+          "input input input"
+          "voice image send";
+        grid-template-columns: 44px 44px minmax(0, 1fr);
+        align-items: center;
         gap: 6px;
       }
 
       .composer-row[data-voice-available="false"] {
-        grid-template-columns: minmax(0, 1fr) 44px 54px;
+        grid-template-areas:
+          "input input"
+          "image send";
+        grid-template-columns: 44px minmax(0, 1fr);
+      }
+
+      .chat-input {
+        grid-area: input;
+        min-height: 48px;
+      }
+
+      .math-toolbar {
+        padding-right: 2px;
+        padding-left: 2px;
+      }
+
+      .math-tool-button {
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .math-limits-panel {
+        margin-right: 2px;
+        margin-left: 2px;
+      }
+
+      .math-limits-fields.is-three {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .voice-input-button {
+        grid-area: voice;
+      }
+
+      .image-upload-button {
+        grid-area: image;
       }
 
       .send-button {
-        min-width: 54px;
+        grid-area: send;
+        min-width: 88px;
+        justify-self: end;
         padding-right: 8px;
         padding-left: 8px;
       }
@@ -3358,16 +4056,18 @@
         justify-content: flex-end;
       }
 
-      .send-button {
-        min-width: 54px;
-        padding-right: 8px;
-        padding-left: 8px;
+      .voice-input-button[hidden] {
+        display: none;
       }
     }
 
     @media (max-width: 360px) {
       .chat-input {
         font-size: 0.875rem;
+      }
+
+      .math-toolbar-label {
+        display: none;
       }
     }
 
@@ -3397,6 +4097,9 @@
       .solver-button,
       .suggestions-toggle,
       .suggestion,
+      .math-tool-button,
+      .math-limit-field input,
+      .math-limits-apply,
       .chat-input,
       .image-upload-button,
       .voice-input-button,
@@ -3438,6 +4141,11 @@
       .voice-input-button[data-listening="true"] {
         animation: none;
       }
+
+      .image-upload-button[data-loading="true"] svg,
+      .send-button[aria-busy="true"] svg {
+        animation: none;
+      }
     }
   </style>
 </head>
@@ -3453,9 +4161,17 @@
             aria-label="展开侧边栏"
             title="展开侧边栏"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m9 18 6-6-6-6"></path>
-            </svg>
+            <morph-icon
+              id="sidebarRailToggleIcon"
+              size="20"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 18 6-6-6-6"></path>
+              </svg>
+            </morph-icon>
           </button>
           <button
             class="sidebar-rail-button"
@@ -3465,12 +4181,16 @@
             aria-label="错题集"
             title="错题集"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 3h12v18H6z"></path>
-              <path d="M9 8h6"></path>
-              <path d="M9 12h6"></path>
-              <path d="m9 16 1.5 1.5L14 14"></path>
-            </svg>
+            <morph-icon
+              size="20"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3h12v18H6zM9 8h6M9 12h6m-6 4 1.5 1.5L14 14"></path>
+              </svg>
+            </morph-icon>
           </button>
           <button
             class="sidebar-rail-button"
@@ -3480,11 +4200,16 @@
             aria-label="学习进度"
             title="学习进度"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 19V5"></path>
-              <path d="M4 19h16"></path>
-              <path d="m7 15 3-3 3 2 5-6"></path>
-            </svg>
+            <morph-icon
+              size="20"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 19V5M4 19h16m-13-4 3-3 3 2 5-6"></path>
+              </svg>
+            </morph-icon>
           </button>
         </nav>
 
@@ -3500,9 +4225,17 @@
             aria-label="折叠侧边栏"
             title="折叠侧边栏"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m15 18-6-6 6-6"></path>
-            </svg>
+            <morph-icon
+              id="sidebarTopToggleIcon"
+              size="18"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m15 18-6-6 6-6"></path>
+              </svg>
+            </morph-icon>
           </button>
         </div>
 
@@ -3654,10 +4387,17 @@
         <div class="sidebar-footer">
           <button class="theme-button" id="themeToggle" type="button">
             <span class="theme-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="8"></circle>
-                <path d="M12 4v16"></path>
-              </svg>
+              <morph-icon
+                id="themeMorphIcon"
+                size="18"
+                stroke-width="1.8"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0"></path>
+                </svg>
+              </morph-icon>
             </span>
             <span id="themeLabel">切换深色主题</span>
           </button>
@@ -3669,6 +4409,9 @@
         role="separator"
         aria-orientation="vertical"
         aria-label="调整侧边栏宽度"
+        aria-valuemin="220"
+        aria-valuemax="420"
+        aria-valuenow="272"
         tabindex="0"
       ></div>
     </aside>
@@ -3691,10 +4434,16 @@
             aria-label="新建会话"
             title="新建会话"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14"></path>
-              <path d="M5 12h14"></path>
-            </svg>
+            <morph-icon
+              size="18"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"></path>
+              </svg>
+            </morph-icon>
           </button>
           <button
             class="icon-button"
@@ -3703,9 +4452,17 @@
             aria-label="收起会话列表"
             title="收起会话列表"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m15 18-6-6 6-6"></path>
-            </svg>
+            <morph-icon
+              id="conversationPanelToggleIcon"
+              size="18"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m15 18-6-6 6-6"></path>
+              </svg>
+            </morph-icon>
           </button>
         </div>
       </div>
@@ -3730,11 +4487,17 @@
             aria-label="展开或折叠侧边栏"
             title="展开或折叠侧边栏"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16"></path>
-              <path d="M4 12h16"></path>
-              <path d="M4 17h16"></path>
-            </svg>
+            <morph-icon
+              id="sidebarHeaderToggleIcon"
+              size="18"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM9 3v18m7-6-3-3 3-3"></path>
+              </svg>
+            </morph-icon>
           </button>
           <div class="brand-mark" aria-hidden="true">∫</div>
           <div class="brand-copy">
@@ -3753,6 +4516,7 @@
           id="messageList"
           aria-label="知微老师对话记录"
           aria-live="polite"
+          tabindex="0"
         ></main>
 
       </div>
@@ -3767,16 +4531,525 @@
             aria-expanded="true"
             title="收起快捷入口"
           >
-            <svg class="suggestions-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 15 6-6 6 6"></path>
-            </svg>
+            <morph-icon
+              class="suggestions-toggle-icon"
+              id="suggestionsToggleIcon"
+              size="14"
+              stroke-width="1.8"
+              spring="snappy"
+              reduced-motion="user"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 15 6-6 6 6"></path>
+              </svg>
+            </morph-icon>
             <span id="suggestionsToggleLabel">收起快捷入口</span>
           </button>
         </div>
-        <div class="suggestions" id="suggestions" aria-label="常用学习入口"></div>
+        <div
+          class="suggestions"
+          id="suggestions"
+          role="group"
+          aria-label="常用学习入口"
+        ></div>
         <form class="composer" id="chatForm">
           <div class="composer-head">
-            <span class="composer-title">今天的草稿纸</span>
+            <span class="composer-title">写下你的题目</span>
+            <div
+              class="composer-mode"
+              id="composerMode"
+              role="group"
+              aria-label="回答方式"
+              aria-disabled="false"
+            >
+              <button
+                class="composer-mode-option"
+                type="button"
+                data-composer-mode="qa"
+                aria-pressed="true"
+                title="直接回答问题"
+              >问答</button>
+              <button
+                class="composer-mode-option"
+                type="button"
+                data-composer-mode="teach"
+                aria-pressed="false"
+                title="用提示和追问引导思考"
+              >教学</button>
+            </div>
+          </div>
+          <details class="input-guide" id="inputGuide">
+            <summary class="input-guide-summary">
+              <morph-icon
+                class="input-guide-icon"
+                size="14"
+                stroke-width="1.8"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9.2 9a3 3 0 1 1 4.5 2.6c-1.1.7-1.7 1.3-1.7 2.4M12 18h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                </svg>
+              </morph-icon>
+              <span class="input-guide-summary-text">
+                <strong>输入提示</strong>
+                写清函数、区间或点，以及所求目标。
+              </span>
+              <span class="input-guide-action">示例</span>
+              <morph-icon
+                class="input-guide-chevron"
+                id="inputGuideChevron"
+                size="14"
+                stroke-width="1.8"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </morph-icon>
+            </summary>
+            <div class="input-guide-body">
+              <p class="input-guide-copy" id="inputGuideText">
+                自然语言也能识别；点击示例填入后，把数字或函数改成你的题目。
+              </p>
+              <div
+                class="input-guide-examples"
+                role="group"
+                aria-label="规范输入示例"
+              >
+                <button
+                  class="input-guide-example"
+                  type="button"
+                  data-input-example="当 x 从 0 到 pi 时 sin(x) 的定积分"
+                  aria-label="填入定积分示例"
+                  title="填入：当 x 从 0 到 pi 时 sin(x) 的定积分"
+                >
+                  <span class="input-guide-example-type">定积分</span>
+                  <span class="input-guide-example-value">0 到 pi sin(x)</span>
+                </button>
+                <button
+                  class="input-guide-example"
+                  type="button"
+                  data-input-example="极限 x→0 sin(x)/x"
+                  aria-label="填入极限示例"
+                  title="填入：极限 x→0 sin(x)/x"
+                >
+                  <span class="input-guide-example-type">极限</span>
+                  <span class="input-guide-example-value">x→0 sin(x)/x</span>
+                </button>
+                <button
+                  class="input-guide-example"
+                  type="button"
+                  data-input-example="求 z=x^2*y 在点 (1,2) 处对 x 的偏导数"
+                  aria-label="填入偏导数示例"
+                  title="填入：求 z=x^2*y 在点 (1,2) 处对 x 的偏导数"
+                >
+                  <span class="input-guide-example-type">偏导</span>
+                  <span class="input-guide-example-value">z=x^2*y，(1,2)</span>
+                </button>
+                <button
+                  class="input-guide-example"
+                  type="button"
+                  data-input-example="y的导数减y等于0"
+                  aria-label="填入微分方程示例"
+                  title="填入：y的导数减y等于0"
+                >
+                  <span class="input-guide-example-type">微分方程</span>
+                  <span class="input-guide-example-value">y'-y=0</span>
+                </button>
+                <button
+                  class="input-guide-example"
+                  type="button"
+                  data-input-example="一般项 1/n^2 是否收敛"
+                  aria-label="填入级数示例"
+                  title="填入：一般项 1/n^2 是否收敛"
+                >
+                  <span class="input-guide-example-type">级数</span>
+                  <span class="input-guide-example-value">1/n^2 是否收敛</span>
+                </button>
+              </div>
+            </div>
+          </details>
+          <div class="math-toolbar" aria-label="数学符号快捷输入">
+            <span class="math-toolbar-label">高数输入</span>
+            <div
+              class="math-toolbar-buttons"
+              id="mathToolbar"
+              role="group"
+              aria-label="插入数学符号"
+            >
+              <div class="math-tool-group" role="group" aria-label="积分与极限">
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start="∫ "
+                  data-math-wrap-end=" dx"
+                  data-math-insert="∫ "
+                  title="插入积分符号；选中表达式时会补上 dx"
+                  aria-label="插入积分符号"
+                >∫</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  id="mathLimitsToggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="mathLimitsPanel"
+                  title="输入定积分上下限"
+                  aria-label="输入定积分上下限"
+                >∫ₐᵇ</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="lim_{x→0} "
+                  data-math-select="0"
+                  title="插入极限符号并选中趋于值"
+                  aria-label="插入极限符号"
+                >lim</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  id="mathCustomLimitToggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="mathCustomLimitPanel"
+                  title="选择极限变量、趋近值和左右方向"
+                  aria-label="自定义极限"
+                >lim…</button>
+              </div>
+              <div class="math-tool-group" role="group" aria-label="根式、分数与幂">
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start="√("
+                  data-math-wrap-end=")"
+                  data-math-insert="√()"
+                  data-math-caret="1"
+                  title="插入平方根；选中内容时会直接放入根号"
+                  aria-label="插入平方根"
+                >√</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start="∛("
+                  data-math-wrap-end=")"
+                  data-math-insert="∛()"
+                  data-math-caret="1"
+                  title="插入立方根；选中内容时会直接放入根号"
+                  aria-label="插入立方根"
+                >∛</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start=""
+                  data-math-wrap-end="^{2}"
+                  data-math-insert="^{2}"
+                  title="插入平方；选中内容时会加平方"
+                  aria-label="插入平方"
+                >x²</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start=""
+                  data-math-wrap-end="^{3}"
+                  data-math-insert="^{3}"
+                  title="插入立方；选中内容时会加立方"
+                  aria-label="插入立方"
+                >x³</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start=""
+                  data-math-wrap-end="^{n}"
+                  data-math-insert="^{n}"
+                  data-math-select="n"
+                  title="插入任意次幂；选中底数时会直接加指数"
+                  aria-label="插入任意次幂"
+                >xⁿ</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="()/()"
+                  data-math-caret="1"
+                  title="插入分数框架，依次填写分子和分母"
+                  aria-label="插入分数"
+                >a/b</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start="|"
+                  data-math-wrap-end="|"
+                  data-math-insert="||"
+                  data-math-caret="1"
+                  title="插入绝对值；选中内容时会自动包裹"
+                  aria-label="插入绝对值"
+                >|x|</button>
+              </div>
+              <div class="math-tool-group" role="group" aria-label="常用函数">
+                <button
+                  class="math-tool-button"
+                  type="button"
+                  data-math-insert="sin()"
+                  data-math-caret="4"
+                  title="插入正弦函数"
+                  aria-label="插入正弦函数"
+                >sin</button>
+                <button
+                  class="math-tool-button"
+                  type="button"
+                  data-math-insert="cos()"
+                  data-math-caret="4"
+                  title="插入余弦函数"
+                  aria-label="插入余弦函数"
+                >cos</button>
+                <button
+                  class="math-tool-button"
+                  type="button"
+                  data-math-insert="tan()"
+                  data-math-caret="4"
+                  title="插入正切函数"
+                  aria-label="插入正切函数"
+                >tan</button>
+                <button
+                  class="math-tool-button"
+                  type="button"
+                  data-math-insert="ln()"
+                  data-math-caret="3"
+                  title="插入自然对数"
+                  aria-label="插入自然对数"
+                >ln</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="e^{x}"
+                  data-math-select="x"
+                  title="插入自然指数函数"
+                  aria-label="插入自然指数函数"
+                >eˣ</button>
+              </div>
+              <div class="math-tool-group" role="group" aria-label="微积分运算">
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="d/dx "
+                  title="插入对 x 求导算子"
+                  aria-label="插入对 x 求导算子"
+                >d/dx</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="∂"
+                  title="插入偏导数符号"
+                  aria-label="插入偏导数符号"
+                >∂</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="dx"
+                  title="插入微分 dx"
+                  aria-label="插入微分 dx"
+                >dx</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="∑"
+                  title="插入求和符号"
+                  aria-label="插入求和符号"
+                >∑</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="∏"
+                  title="插入连乘符号"
+                  aria-label="插入连乘符号"
+                >∏</button>
+              </div>
+              <div class="math-tool-group" role="group" aria-label="希腊字母与趋向">
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="π"
+                  title="插入圆周率"
+                  aria-label="插入圆周率"
+                >π</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="θ"
+                  title="插入希腊字母 theta"
+                  aria-label="插入希腊字母 theta"
+                >θ</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="α"
+                  title="插入希腊字母 alpha"
+                  aria-label="插入希腊字母 alpha"
+                >α</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="β"
+                  title="插入希腊字母 beta"
+                  aria-label="插入希腊字母 beta"
+                >β</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="∞"
+                  title="插入无穷大"
+                  aria-label="插入无穷大"
+                >∞</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="→"
+                  title="插入趋于符号"
+                  aria-label="插入趋于符号"
+                >→</button>
+              </div>
+              <div class="math-tool-group" role="group" aria-label="括号与关系符">
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-wrap-start="("
+                  data-math-wrap-end=")"
+                  data-math-insert="()"
+                  data-math-caret="1"
+                  title="插入括号；选中内容时会自动括起"
+                  aria-label="插入括号"
+                >( )</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="&lt;"
+                  title="插入小于号"
+                  aria-label="插入小于号"
+                >&lt;</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="&gt;"
+                  title="插入大于号"
+                  aria-label="插入大于号"
+                >&gt;</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="≤"
+                  title="插入小于等于号"
+                  aria-label="插入小于等于号"
+                >≤</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="≥"
+                  title="插入大于等于号"
+                  aria-label="插入大于等于号"
+                >≥</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="≠"
+                  title="插入不等于号"
+                  aria-label="插入不等于号"
+                >≠</button>
+                <button
+                  class="math-tool-button is-symbol"
+                  type="button"
+                  data-math-insert="≈"
+                  title="插入约等于号"
+                  aria-label="插入约等于号"
+                >≈</button>
+              </div>
+            </div>
+          </div>
+          <div
+            class="math-limits-panel"
+            id="mathLimitsPanel"
+            role="group"
+            aria-label="定积分上下限"
+            hidden
+          >
+            <div class="math-limits-fields">
+              <label class="math-limit-field">
+                下限
+                <input
+                  id="mathLowerLimit"
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  maxlength="30"
+                  placeholder="例如 0"
+                >
+              </label>
+              <label class="math-limit-field">
+                上限
+                <input
+                  id="mathUpperLimit"
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  maxlength="30"
+                  placeholder="例如 1"
+                >
+              </label>
+            </div>
+            <button
+              class="math-limits-apply"
+              id="mathInsertDefinite"
+              type="button"
+            >插入定积分</button>
+          </div>
+          <div
+            class="math-limits-panel"
+            id="mathCustomLimitPanel"
+            role="group"
+            aria-label="自定义极限"
+            hidden
+          >
+            <div class="math-limits-fields is-three">
+              <label class="math-limit-field">
+                变量
+                <input
+                  id="mathLimitVariable"
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  maxlength="8"
+                  value="x"
+                  placeholder="x"
+                >
+              </label>
+              <label class="math-limit-field">
+                趋于
+                <input
+                  id="mathLimitPoint"
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  maxlength="30"
+                  value="0"
+                  placeholder="例如 0"
+                >
+              </label>
+              <label class="math-limit-field">
+                方向
+                <select id="mathLimitDirection">
+                  <option value="">双侧</option>
+                  <option value="+">右侧</option>
+                  <option value="-">左侧</option>
+                </select>
+              </label>
+            </div>
+            <button
+              class="math-limits-apply"
+              id="mathInsertLimit"
+              type="button"
+            >插入极限</button>
           </div>
           <div
             class="composer-image-preview"
@@ -3803,7 +5076,7 @@
               >移除全部</button>
             </div>
           </div>
-          <div class="composer-row">
+          <div class="composer-row" data-voice-available="false">
             <label class="sr-only" for="chatInput">输入高等数学题目</label>
             <textarea
               class="chat-input"
@@ -3813,8 +5086,8 @@
               maxlength="600"
               autocomplete="off"
               spellcheck="false"
-              aria-describedby="voiceStatus"
-              placeholder="发图或输入题目"
+              aria-describedby="inputGuideText voiceStatus"
+              placeholder="发图或输入题目；也可以展开“示例”"
             ></textarea>
             <button
               class="voice-input-button"
@@ -3825,18 +5098,24 @@
               title="用中文说出题目，转写后请核对再发送"
               hidden
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path>
-                <path d="M5 11v1a7 7 0 0 0 14 0v-1"></path>
-                <path d="M12 19v3"></path>
-                <path d="M8.5 22h7"></path>
-              </svg>
+              <morph-icon
+                id="voiceInputIcon"
+                size="19"
+                stroke-width="1.8"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 19v3M19 10v2a7 7 0 0 1-14 0v-2M15 5a3 3 0 0 0-6 0v6a3 3 0 0 0 6 0Z"></path>
+                </svg>
+              </morph-icon>
             </button>
             <input
               class="image-file-input"
               id="imageFileInput"
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
+              aria-label="选择题目图片"
               multiple
               tabindex="-1"
             >
@@ -3847,13 +5126,32 @@
               aria-label="添加题目图片，可一次选择多张"
               title="添加题目图片，支持 JPG、PNG、WebP、GIF，可一次选择多张"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect>
-                <circle cx="9" cy="9.5" r="1.5"></circle>
-                <path d="m5.5 17 4.4-4.4 3.1 3.1 2-2 3.5 3.3"></path>
-              </svg>
+              <morph-icon
+                id="imageUploadIcon"
+                size="19"
+                stroke-width="1.8"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-11A2.5 2.5 0 0 1 6 4ZM9 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m-3.5 6.5 4.4-4.4 3.1 3.1 2-2 3.5 3.3"></path>
+                </svg>
+              </morph-icon>
             </button>
-            <button class="send-button" id="sendButton" type="submit">发送</button>
+            <button class="send-button" id="sendButton" type="submit">
+              <morph-icon
+                id="sendButtonIcon"
+                size="17"
+                stroke-width="2"
+                spring="snappy"
+                reduced-motion="user"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m5 12 7-7 7 7M12 19V5"></path>
+                </svg>
+              </morph-icon>
+              <span id="sendButtonLabel">发送</span>
+            </button>
           </div>
           <span
             class="voice-status"
@@ -3880,10 +5178,16 @@
           aria-label="关闭全章节解题"
           title="关闭"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m6 6 12 12"></path>
-            <path d="M18 6 6 18"></path>
-          </svg>
+          <morph-icon
+            size="18"
+            stroke-width="1.8"
+            spring="snappy"
+            reduced-motion="user"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18"></path>
+            </svg>
+          </morph-icon>
         </button>
       </header>
       <div class="solver-body">
@@ -3918,6 +5222,10 @@
     defer
     src="{{ url_for('static', filename='katex/katex.min.js') }}"
   ></script>
+  <script type="module">
+    import { defineMorphIcon } from "{{ url_for('static', filename='morphicons/element.js') }}";
+    defineMorphIcon();
+  </script>
   <script>
     (() => {
       "use strict";
@@ -3928,9 +5236,11 @@
       const ACTIVE_CONVERSATION_KEY = "zhiwei-demo-active-conversation-v1";
       const WELCOME_INDEX_KEY = "zhiwei-demo-welcome-index-v1";
       const THEME_KEY = "zhiwei-demo-theme-v1";
+      const COMPOSER_MODE_KEY = "zhiwei-demo-composer-mode-v1";
       const SIDEBAR_WIDTH_KEY = "zhiwei-demo-sidebar-width-v1";
       const SIDEBAR_COLLAPSED_KEY = "zhiwei-demo-sidebar-collapsed-v1";
       const WRONG_BOOK_KEY = "zhiwei-demo-wrong-book-v1";
+      const WRONG_BOOK_GATE_VERSION = 2;
       const LEARNING_PROGRESS_KEY =
         "zhiwei-demo-learning-progress-v1";
       const LEARNING_PROGRESS_VERSION = 1;
@@ -3968,6 +5278,12 @@
         "plot",
         "arithmetic",
       ]);
+      const SOLUTION_SECTION_TITLES = Object.freeze([
+        "题目理解",
+        "解题思路",
+        "详细计算步骤",
+        "最终答案",
+      ]);
       const QUESTION_IMAGE_TYPES = new Set([
         "image/jpeg",
         "image/png",
@@ -3977,6 +5293,57 @@
       const MIN_SIDEBAR_WIDTH = 220;
       const MAX_SIDEBAR_WIDTH = 420;
       const DEFAULT_SIDEBAR_WIDTH = 272;
+      const MORPH_ICONS = Object.freeze({
+        sun:
+          "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41"
+          + "M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+          + "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+        moon:
+          "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803"
+          + "a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401",
+        chevronLeft: "m15 18-6-6 6-6",
+        chevronRight: "m9 18 6-6-6-6",
+        chevronUp: "m18 15-6-6-6 6",
+        chevronDown: "m6 9 6 6 6-6",
+        panelLeftClose:
+          "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"
+          + "a2 2 0 0 1 2-2ZM9 3v18m7-6-3-3 3-3",
+        panelLeftOpen:
+          "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"
+          + "a2 2 0 0 1 2-2ZM9 3v18M14 9l3 3-3 3",
+        microphone:
+          "M12 19v3M19 10v2a7 7 0 0 1-14 0v-2M15 5a3 3 0 0 0-6 0v6"
+          + "a3 3 0 0 0 6 0Z",
+        stop:
+          "M7 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7"
+          + "a2 2 0 0 1 2-2Z",
+        image:
+          "M6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6"
+          + "a2.5 2.5 0 0 1-2.5-2.5v-11A2.5 2.5 0 0 1 6 4Z"
+          + "M9 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"
+          + "m-3.5 6.5 4.4-4.4 3.1 3.1 2-2 3.5 3.3",
+        camera:
+          "M14.5 5 13 3h-2L9.5 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14"
+          + "a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4.5Z"
+          + "M12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
+        check:
+          "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"
+          + "M14 3v6h6m-11.5 6 2.2 2.2 4.8-5.2",
+        book:
+          "M4 5.5A2.5 2.5 0 0 1 6.5 3H19a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6.5"
+          + "A2.5 2.5 0 0 0 4 22ZM4 5.5V19a2.5 2.5 0 0 1 2.5-2.5H20M8 7h7",
+        chart: "M4 19V5M4 19h16m-13-4 3-3 3 2 5-6",
+        question:
+          "M9.2 9a3 3 0 1 1 4.5 2.6c-1.1.7-1.7 1.3-1.7 2.4"
+          + "M12 18h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+        speaker:
+          "M11 5 6.5 9H3v6h3.5L11 19ZM15 9a4.2 4.2 0 0 1 0 6"
+          + "M17.8 6.5a8 8 0 0 1 0 11",
+        plus: "M12 5v14M5 12h14",
+        close: "m6 6 12 12M18 6 6 18",
+        loader: "M21 12a9 9 0 1 1-6.219-8.56",
+        arrowUp: "m5 12 7-7 7 7M12 19V5",
+      });
       const KNOWLEDGE_API_URL = "/demo/api/knowledge";
       const KNOWLEDGE_API_TIMEOUT_MS = 4000;
       const DEFAULT_SUGGESTIONS = [
@@ -3997,6 +5364,27 @@
           points: [
             "先判断趋近方向、未定式和函数在邻域内的定义。",
             "常用路径是等价无穷小、洛必达法则、夹逼准则或有理化。",
+          ],
+        },
+        {
+          id: "parametric-tangent-normal",
+          title: "参数方程切线与法线",
+          keywords: [
+            "参数方程",
+            "切线",
+            "法线",
+            "切点",
+            "切线斜率",
+            "法线斜率",
+          ],
+          patterns: [
+            /x\s*=.*[,，]\s*y\s*=/u,
+            /d[xy]\s*\/\s*d[a-z]/iu,
+          ],
+          points: [
+            "先分别求 dx/dt 与 dy/dt，并把参数值代入参数方程得到切点。",
+            "切线斜率取 (dy/dt)/(dx/dt)，法线斜率取切线斜率的负倒数。",
+            "最后用点斜式分别写切线、法线方程，并检查水平或竖直情形。",
           ],
         },
         {
@@ -4836,12 +6224,38 @@
       const messageList = document.getElementById("messageList");
       const suggestions = document.getElementById("suggestions");
       const chatForm = document.getElementById("chatForm");
+      const inputGuide = document.getElementById("inputGuide");
+      const inputGuideChevron = document.getElementById(
+        "inputGuideChevron",
+      );
+      const composerModeControl = document.getElementById("composerMode");
+      const composerRow = chatForm.querySelector(".composer-row");
       const chatInput = document.getElementById("chatInput");
+      const mathToolbar = document.getElementById("mathToolbar");
+      const mathLimitsToggle = document.getElementById("mathLimitsToggle");
+      const mathLimitsPanel = document.getElementById("mathLimitsPanel");
+      const mathLowerLimit = document.getElementById("mathLowerLimit");
+      const mathUpperLimit = document.getElementById("mathUpperLimit");
+      const mathInsertDefinite = document.getElementById("mathInsertDefinite");
+      const mathCustomLimitToggle = document.getElementById(
+        "mathCustomLimitToggle",
+      );
+      const mathCustomLimitPanel = document.getElementById(
+        "mathCustomLimitPanel",
+      );
+      const mathLimitVariable = document.getElementById("mathLimitVariable");
+      const mathLimitPoint = document.getElementById("mathLimitPoint");
+      const mathLimitDirection = document.getElementById("mathLimitDirection");
+      const mathInsertLimit = document.getElementById("mathInsertLimit");
       const sendButton = document.getElementById("sendButton");
+      const sendButtonIcon = document.getElementById("sendButtonIcon");
+      const sendButtonLabel = document.getElementById("sendButtonLabel");
       const voiceInputButton = document.getElementById("voiceInputButton");
+      const voiceInputIcon = document.getElementById("voiceInputIcon");
       const voiceStatus = document.getElementById("voiceStatus");
       const imageFileInput = document.getElementById("imageFileInput");
       const imageUploadButton = document.getElementById("imageUploadButton");
+      const imageUploadIcon = document.getElementById("imageUploadIcon");
       const composerImagePreview = document.getElementById(
         "composerImagePreview",
       );
@@ -4852,8 +6266,20 @@
       const composerImageClear = document.getElementById("composerImageClear");
       const clearButton = document.getElementById("clearButton");
       const appShell = document.getElementById("appShell");
+      const sidebarRailToggleIcon = document.getElementById(
+        "sidebarRailToggleIcon",
+      );
+      const sidebarTopToggleIcon = document.getElementById(
+        "sidebarTopToggleIcon",
+      );
+      const sidebarHeaderToggleIcon = document.getElementById(
+        "sidebarHeaderToggleIcon",
+      );
       const composerArea = document.querySelector(".composer-area");
       const suggestionsToggle = document.getElementById("suggestionsToggle");
+      const suggestionsToggleIcon = document.getElementById(
+        "suggestionsToggleIcon",
+      );
       const suggestionsToggleLabel = document.getElementById(
         "suggestionsToggleLabel",
       );
@@ -4861,6 +6287,7 @@
       const historyCount = document.getElementById("historyCount");
       const newChatButton = document.getElementById("newChatButton");
       const themeToggle = document.getElementById("themeToggle");
+      const themeMorphIcon = document.getElementById("themeMorphIcon");
       const themeLabel = document.getElementById("themeLabel");
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
       const sidebarResizer = document.getElementById("sidebarResizer");
@@ -4879,6 +6306,9 @@
       const conversationPanel = document.getElementById("conversationPanel");
       const conversationPanelToggle = document.getElementById(
         "conversationPanelToggle",
+      );
+      const conversationPanelToggleIcon = document.getElementById(
+        "conversationPanelToggleIcon",
       );
       const questionKnowledge = document.getElementById("questionKnowledge");
       const questionKnowledgeList = document.getElementById(
@@ -4937,8 +6367,45 @@
       );
       const toolbox = document.querySelector(".toolbox-scroll");
       const sidebarMedia = window.matchMedia("(max-width: 820px)");
-      const compactComposerMedia = window.matchMedia("(max-width: 640px)");
+      const conversationPanelMedia = window.matchMedia("(max-width: 1120px)");
       let appViewportFrame = 0;
+
+      function setMorphIcon(target, iconPath) {
+        if (target && iconPath) {
+          target.setAttribute("icon", iconPath);
+        }
+      }
+
+      function createMorphIcon(iconPath, options = {}) {
+        const icon = document.createElement("morph-icon");
+        const {
+          className = "",
+          size = 18,
+          color = "currentColor",
+          strokeWidth = 1.8,
+          spring = "snappy",
+          reducedMotion = "user",
+        } = options;
+        if (className) {
+          icon.className = className;
+        }
+        icon.setAttribute("icon", iconPath);
+        icon.setAttribute("size", String(size));
+        icon.setAttribute("color", color);
+        icon.setAttribute("stroke-width", String(strokeWidth));
+        icon.setAttribute("spring", spring);
+        icon.setAttribute("reduced-motion", reducedMotion);
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", iconPath);
+        svg.append(path);
+        icon.append(svg);
+        return icon;
+      }
+
       const BrowserSpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
       const speechSynthesisApi = window.speechSynthesis || null;
@@ -4948,6 +6415,7 @@
       let messages = [];
       let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
+      let composerMode = "qa";
       let pendingQuestionImages = [];
       let questionImageRecognitionQueue = Promise.resolve();
       let lastRecognizedQuestion = "";
@@ -4974,6 +6442,59 @@
       let activeSpeechMessageId = "";
       let activeSpeechUtterance = null;
 
+      function normalizeTeaching(value) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return null;
+        }
+        const current = Math.max(0, Number(value.current) || 0);
+        const total = Math.max(0, Number(value.total) || 0);
+        const feedbackState = String(
+          value.feedback_state ?? value.feedbackState ?? "",
+        );
+        return {
+          active: Boolean(value.active),
+          phase: String(value.phase || ""),
+          question: String(value.question || ""),
+          current,
+          total,
+          stepTitle: String(value.step_title || value.stepTitle || ""),
+          prompt: String(value.prompt || ""),
+          attempts: Math.max(0, Number(value.attempts) || 0),
+          canSkip: Boolean(value.can_skip ?? value.canSkip),
+          canRestart: Boolean(value.can_restart ?? value.canRestart),
+          hint: String(value.hint || ""),
+          explanation: String(value.explanation || ""),
+          feedback: String(value.feedback || ""),
+          feedbackState: ["correct", "wrong", "neutral"].includes(feedbackState)
+            ? feedbackState
+            : "neutral",
+          reviewTitle: String(
+            value.review_title || value.reviewTitle || "",
+          ),
+          reviewExplanation: String(
+            value.review_explanation || value.reviewExplanation || "",
+          ),
+        };
+      }
+
+      function normalizeKnowledgePoints(value) {
+        if (!Array.isArray(value)) {
+          return [];
+        }
+        return value
+          .filter((item) => item && typeof item === "object")
+          .map((item) => ({
+            title: String(item.title || "").trim(),
+            points: Array.isArray(item.points)
+              ? item.points
+                .map((point) => String(point || "").trim())
+                .filter(Boolean)
+              : [],
+          }))
+          .filter((item) => item.title && item.points.length)
+          .slice(0, 4);
+      }
+
       function normalizeMessages(value) {
         if (!Array.isArray(value)) {
           return [];
@@ -4996,7 +6517,11 @@
               id: String(item.id || makeId()),
               role: item.role,
               text: normalizedWelcomeText,
+              status: String(item.status || "").trim().toLowerCase(),
               intent,
+              mode: ["qa", "teach"].includes(String(item.mode || ""))
+                ? String(item.mode)
+                : "",
               welcomeLead: legacyWelcome
                 ? welcomeParts.lead
                 : String(item.welcomeLead || welcomeParts.lead),
@@ -5005,10 +6530,30 @@
                 : String(item.welcomeBody || welcomeParts.body),
               formulaLatex: String(item.formulaLatex || ""),
               formulaText: String(item.formulaText || ""),
+              calculation:
+                item.calculation
+                && typeof item.calculation === "object"
+                && !Array.isArray(item.calculation)
+                  ? item.calculation
+                  : null,
+              verified: item.verified === true,
+              verification:
+                item.verification
+                && typeof item.verification === "object"
+                && !Array.isArray(item.verification)
+                  ? item.verification
+                  : null,
+              verificationContext: plainObjectOrNull(
+                item.verificationContext || item.verification_context,
+              ),
               resultLabel: String(item.resultLabel || ""),
               resultValue: String(item.resultValue || ""),
               verdict: typeof item.verdict === "boolean" ? item.verdict : null,
               plotUrl: String(item.plotUrl || ""),
+              teaching: normalizeTeaching(item.teaching),
+              knowledgePoints: normalizeKnowledgePoints(
+                item.knowledgePoints || item.knowledge_points,
+              ),
               attachments: Array.isArray(item.attachments)
                 ? item.attachments
                   .slice(0, MAX_QUESTION_IMAGE_COUNT)
@@ -5334,10 +6879,17 @@
           .filter((message) => message.text);
       }
 
-      function cacheResponse(question, data) {
+      function responseCacheKey(question, mode = composerMode) {
+        const normalizedMode = mode === "teach" ? "teach" : "qa";
+        return `${normalizedMode}\u0000${String(question || "").trim()}`;
+      }
+
+      function cacheResponse(question, data, mode = composerMode) {
         if (
           !data
           || data.history_used
+          || data.teaching
+          || data.mode === "teach"
           || [
             "general",
             "help",
@@ -5345,12 +6897,15 @@
             "unknown",
             "needs_input",
             "ocr_error",
+            "teaching_step",
+            "teaching_expired",
+            "teaching_unavailable",
           ].includes(data.intent)
         ) {
           return;
         }
-        const key = question.trim();
-        if (!key) {
+        const key = responseCacheKey(question, mode);
+        if (!String(question || "").trim()) {
           return;
         }
         responseCache.delete(key);
@@ -5375,10 +6930,19 @@
         if (!item || !String(item.text || "").trim()) {
           return null;
         }
+        const evidence = normalizeWrongBookEvidence(item.evidence);
+        if (
+          Number(item.gateVersion) !== WRONG_BOOK_GATE_VERSION
+          || !isVerifiedSolutionMessage(evidence)
+        ) {
+          return null;
+        }
         return {
           id: String(item.id || makeId()),
           text: String(item.text).trim(),
           answer: String(item.answer || ""),
+          gateVersion: WRONG_BOOK_GATE_VERSION,
+          evidence,
           createdAt: Number(item.createdAt) || Date.now(),
           lastPracticedAt: Number(item.lastPracticedAt) || 0,
           practiceCount: Math.max(0, Number(item.practiceCount) || 0),
@@ -5466,6 +7030,265 @@
         return null;
       }
 
+      function plainObjectOrNull(value) {
+        return Boolean(
+          value
+          && typeof value === "object"
+          && !Array.isArray(value),
+        )
+          ? value
+          : null;
+      }
+
+      function solutionVerificationKind(message) {
+        const intent = String(message && message.intent || "")
+          .trim()
+          .toLowerCase();
+        const fixedKinds = {
+          verify: "derivative",
+          integrate: "integral",
+          limit: "limit",
+          arithmetic: "arithmetic",
+          plot: "plot",
+        };
+        if (Object.hasOwn(fixedKinds, intent)) {
+          return fixedKinds[intent];
+        }
+        if (intent !== "solve") {
+          return "";
+        }
+        const calculation = plainObjectOrNull(message && message.calculation);
+        if (!calculation) {
+          return "";
+        }
+        const chapter = String(calculation.chapter || "").trim();
+        const topic = String(calculation.topic || "").trim();
+        if (chapter || topic) {
+          return chapter && topic ? topic : "";
+        }
+        if (
+          ["equation", "variable", "solutions"].every(
+            (key) => Object.hasOwn(calculation, key),
+          )
+        ) {
+          return "equation";
+        }
+        if (
+          Object.hasOwn(calculation, "matrix")
+          && Object.hasOwn(calculation, "result")
+        ) {
+          return "determinant";
+        }
+        if (
+          ["expression", "interval", "kind", "critical_points"].every(
+            (key) => Object.hasOwn(calculation, key),
+          )
+        ) {
+          return "interval_extrema";
+        }
+        return "generic_solve";
+      }
+
+      function verificationContextForMessage(message) {
+        const calculation = plainObjectOrNull(message && message.calculation);
+        let context = message && message.verificationContext;
+        if (context == null && calculation) {
+          context = calculation.verification_context;
+        }
+        context = plainObjectOrNull(context);
+        if (!context) {
+          return null;
+        }
+        const chapter = String(context.chapter || "").trim();
+        const topic = String(context.topic || "").trim();
+        const inputs = plainObjectOrNull(context.inputs);
+        if (!chapter || !topic || !inputs) {
+          return null;
+        }
+        return {chapter, topic, inputs};
+      }
+
+      function isVerifiedSolutionMessage(message) {
+        if (
+          !message
+          || message.role !== "assistant"
+          || message.loading
+          || !SOLUTION_INTENTS.has(
+            String(message.intent || "").trim().toLowerCase(),
+          )
+        ) {
+          return false;
+        }
+        if (String(message.status || "").trim().toLowerCase() !== "ok") {
+          return false;
+        }
+        if (message.verified !== true) {
+          return false;
+        }
+        const verification = message.verification;
+        if (
+          !verification
+          || typeof verification !== "object"
+          || Array.isArray(verification)
+          || verification.passed !== true
+          || !String(verification.kind || "").trim()
+        ) {
+          return false;
+        }
+        const checks = verification.checks;
+        if (
+          !Array.isArray(checks)
+          || !checks.length
+          || !checks.every(
+            (check) =>
+              check
+              && typeof check === "object"
+              && String(check.name || "").trim()
+              && check.passed === true,
+          )
+        ) {
+          return false;
+        }
+        const calculation = message.calculation;
+        if (
+          !plainObjectOrNull(calculation)
+          || !Object.keys(calculation).length
+        ) {
+          return false;
+        }
+        const expectedKind = solutionVerificationKind(message);
+        if (
+          !expectedKind
+          || String(verification.kind || "").trim() !== expectedKind
+        ) {
+          return false;
+        }
+        const calculationChapter = String(calculation.chapter || "").trim();
+        const calculationTopic = String(calculation.topic || "").trim();
+        const chapterIdentity = Boolean(
+          calculationChapter || calculationTopic,
+        );
+        const context = verificationContextForMessage(message);
+        if (chapterIdentity) {
+          return Boolean(
+            calculationChapter
+            && calculationTopic
+            && context
+            && context.chapter === calculationChapter
+            && context.topic === calculationTopic
+            && expectedKind === calculationTopic,
+          );
+        }
+        return context === null;
+      }
+
+      function isVerifiedTeachingMessage(message) {
+        if (
+          !message
+          || message.role !== "assistant"
+          || message.loading
+          || String(message.mode || "").trim().toLowerCase() !== "teach"
+        ) {
+          return false;
+        }
+        const teaching = plainObjectOrNull(message.teaching);
+        if (!teaching) {
+          return false;
+        }
+        const intent = String(message.intent || "").trim().toLowerCase();
+        const status = String(message.status || "").trim().toLowerCase();
+        const phase = String(teaching.phase || "").trim().toLowerCase();
+        const current = Number(teaching.current);
+        const total = Number(teaching.total);
+        const hasProgress = Boolean(
+          Number.isInteger(current)
+          && Number.isInteger(total)
+          && current > 0
+          && total > 0
+          && current <= total
+        );
+        const stepTitle = String(
+          teaching.step_title || teaching.stepTitle || "",
+        ).trim();
+        const prompt = String(teaching.prompt || "").trim();
+        const calculation = plainObjectOrNull(message.calculation);
+        const hasCalculation = Boolean(
+          calculation && Object.keys(calculation).length,
+        );
+        const hasKnowledge = normalizeKnowledgePoints(
+          message.knowledgePoints || message.knowledge_points,
+        ).length > 0;
+
+        if (intent === "teaching_step") {
+          return Boolean(
+            status === "ok"
+            && phase === "awaiting_answer"
+            && teaching.active === true
+            && hasProgress
+            && stepTitle
+            && prompt
+            && !hasCalculation
+            && !hasKnowledge
+          );
+        }
+
+        if (intent === "teaching_failed") {
+          return Boolean(
+            status === "error"
+            && phase === "error"
+            && teaching.active === false
+            && hasProgress
+            && stepTitle
+            && prompt
+            && !hasCalculation
+            && !hasKnowledge
+          );
+        }
+
+        return Boolean(
+          isVerifiedSolutionMessage(message)
+          && phase === "complete"
+          && teaching.active === false
+          && hasProgress
+          && current === total
+          && stepTitle
+          && prompt
+        );
+      }
+
+      function normalizeWrongBookEvidence(value) {
+        const evidence = plainObjectOrNull(value);
+        if (!evidence) {
+          return null;
+        }
+        return {
+          role: "assistant",
+          loading: false,
+          status: String(evidence.status || "").trim().toLowerCase(),
+          intent: String(evidence.intent || "").trim().toLowerCase(),
+          calculation: plainObjectOrNull(evidence.calculation),
+          verified: evidence.verified === true,
+          verification: plainObjectOrNull(evidence.verification),
+          verificationContext: plainObjectOrNull(
+            evidence.verificationContext || evidence.verification_context,
+          ),
+        };
+      }
+
+      function wrongBookEvidenceFor(message) {
+        if (!isVerifiedSolutionMessage(message)) {
+          return null;
+        }
+        return {
+          status: String(message.status || "").trim().toLowerCase(),
+          intent: String(message.intent || "").trim().toLowerCase(),
+          calculation: message.calculation,
+          verified: message.verified === true,
+          verification: message.verification,
+          verificationContext: verificationContextForMessage(message),
+        };
+      }
+
       function messageCanJoinWrongBook(message) {
         if (!message || message.loading) {
           return false;
@@ -5483,10 +7306,10 @@
         const answer = message.role === "assistant"
           ? message
           : resolvedAnswerForUserMessage(userMessage.id);
-        if (
-          !answer
-          || !WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))
-        ) {
+        if (!answer || !isVerifiedSolutionMessage(answer)) {
+          return false;
+        }
+        if (!WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))) {
           return false;
         }
         return Boolean(
@@ -5740,7 +7563,11 @@
         const controller = new AbortController();
         knowledgeAbortController = controller;
         const fragment = document.createDocumentFragment();
-        const matches = await fetchQuestionKnowledge(text, controller.signal);
+        const suppliedKnowledge = Array.isArray(options.knowledgePoints)
+          ? normalizeKnowledgePoints(options.knowledgePoints)
+          : null;
+        const matches = suppliedKnowledge
+          ?? await fetchQuestionKnowledge(text, controller.signal);
         if (requestId !== knowledgeRequestSerial) {
           return;
         }
@@ -5755,22 +7582,36 @@
             ),
           );
         } else if (!matches.length) {
-          questionKnowledgeStatus.textContent = "识别题型";
-          questionKnowledge.dataset.state = "generic";
-          const item = element("article", "knowledge-item");
-          item.append(
-            element("strong", "", "审题与验证"),
-            element(
-              "p",
-              "",
-              "先明确已知条件、目标量和所求形式；计算后再用代入或量纲检查结果。",
-            ),
-          );
-          fragment.append(item);
+          if (options.source === "solution") {
+            questionKnowledgeStatus.textContent = "验算通过";
+            questionKnowledge.dataset.state = "empty";
+            fragment.append(
+              element(
+                "div",
+                "related-knowledge-empty",
+                "本题已通过验算，但服务端没有返回可展示的知识点。",
+              ),
+            );
+          } else {
+            questionKnowledgeStatus.textContent = "识别题型";
+            questionKnowledge.dataset.state = "generic";
+            const item = element("article", "knowledge-item");
+            item.append(
+              element("strong", "", "审题与验证"),
+              element(
+                "p",
+                "",
+                "先明确已知条件、目标量和所求形式；计算后再用代入或量纲检查结果。",
+              ),
+            );
+            fragment.append(item);
+          }
         } else {
           questionKnowledgeStatus.textContent =
             options.source === "input"
               ? `正在匹配 ${matches.length} 个知识点`
+              : options.source === "solution"
+                ? `验算通过，匹配 ${matches.length} 个知识点`
               : `已匹配 ${matches.length} 个知识点`;
           questionKnowledge.dataset.state = "ready";
           matches.forEach((rule) => {
@@ -5792,6 +7633,120 @@
           });
         }
         questionKnowledgeList.replaceChildren(fragment);
+      }
+
+      function resetQuestionKnowledgeRequest() {
+        knowledgeRequestSerial += 1;
+        if (knowledgeAbortController) {
+          knowledgeAbortController.abort();
+          knowledgeAbortController = null;
+        }
+      }
+
+      function renderQuestionKnowledgePending() {
+        if (!questionKnowledgeList || !questionKnowledgeStatus) {
+          return;
+        }
+        resetQuestionKnowledgeRequest();
+        questionKnowledgeStatus.textContent = "正在验算";
+        questionKnowledge.dataset.state = "pending";
+        questionKnowledgeList.replaceChildren(
+          element(
+            "div",
+            "related-knowledge-empty",
+            "解题结果通过统一验算后，才会显示知识点。",
+          ),
+        );
+      }
+
+      function renderQuestionKnowledgeBlocked(
+        statusText = "未通过验算",
+        detail = "当前题目没有可靠的完整解题结果，因此不生成知识点推荐。",
+      ) {
+        if (!questionKnowledgeList || !questionKnowledgeStatus) {
+          return;
+        }
+        resetQuestionKnowledgeRequest();
+        questionKnowledgeStatus.textContent = statusText;
+        questionKnowledge.dataset.state = "blocked";
+        questionKnowledgeList.replaceChildren(
+          element(
+            "div",
+            "related-knowledge-empty",
+            detail,
+          ),
+        );
+      }
+
+      function syncQuestionKnowledgeFromMessage(message, questionText = "") {
+        const text = String(questionText || "").trim();
+        const intent = String(message && message.intent || "")
+          .trim()
+          .toLowerCase();
+        if (isVerifiedSolutionMessage(message)) {
+          renderQuestionKnowledge(text, {
+            source: "solution",
+            knowledgePoints: message.knowledgePoints,
+          });
+          return;
+        }
+        if (intent === "knowledge") {
+          renderQuestionKnowledge(text, { source: "answer" });
+          return;
+        }
+        if (intent === "teaching_step") {
+          renderQuestionKnowledgeBlocked(
+            "教学进行中",
+            "完成本题全部教学步骤后，才会显示对应知识点。",
+          );
+          return;
+        }
+        if (intent === "ocr_confirm") {
+          renderQuestionKnowledgeBlocked(
+            "等待题目确认",
+            "确认题目并完成验算后，才会显示知识点。",
+          );
+          return;
+        }
+        if (
+          SOLUTION_INTENTS.has(intent)
+          || [
+            "error",
+            "needs_input",
+            "teaching_failed",
+            "unknown",
+          ].includes(intent)
+        ) {
+          renderQuestionKnowledgeBlocked(
+            intent === "unknown" ? "等待完整题目" : "未通过验算",
+          );
+          return;
+        }
+        renderQuestionKnowledge(text, { source: "answer" });
+      }
+
+      function latestUserMessageRecord() {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const message = messages[index];
+          if (message.role === "user" && !message.loading && message.text) {
+            return message;
+          }
+        }
+        return null;
+      }
+
+      function syncQuestionKnowledgeFromConversation() {
+        const userMessage = latestUserMessageRecord();
+        if (!userMessage) {
+          renderQuestionKnowledge("");
+          return;
+        }
+        const answer = resolvedAnswerForUserMessage(userMessage.id);
+        if (!answer) {
+          renderQuestionKnowledgePending();
+          return;
+        }
+        syncQuestionKnowledgeFromMessage(answer, userMessage.text);
       }
 
       function queueQuestionKnowledgeUpdate(rawText) {
@@ -5834,6 +7789,10 @@
             id: makeId(),
             text: message.text.trim(),
             answer: wrongBookAnswerFor(message.id),
+            gateVersion: WRONG_BOOK_GATE_VERSION,
+            evidence: wrongBookEvidenceFor(
+              resolvedAnswerForUserMessage(message.id),
+            ),
             createdAt: Date.now(),
             lastPracticedAt: 0,
             practiceCount: 0,
@@ -6561,6 +8520,146 @@
         }
       }
 
+      function latestTeachingMessageId() {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const message = messages[index];
+          if (isVerifiedTeachingMessage(message)) {
+            return message.id;
+          }
+        }
+        return "";
+      }
+
+      function teachingCopy(className, text) {
+        const copy = element("p", className);
+        renderRichMessageText(copy, text);
+        return copy;
+      }
+
+      function renderTeachingPanel(message) {
+        if (!isVerifiedTeachingMessage(message)) {
+          return null;
+        }
+        const teaching = normalizeTeaching(message.teaching);
+        if (!teaching) {
+          return null;
+        }
+        const panel = element("section", "teaching-panel");
+        panel.dataset.teachingPhase = teaching.phase;
+        panel.setAttribute("aria-label", "教学模式当前步骤");
+
+        const head = element("div", "teaching-panel-head");
+        const identity = element("div", "teaching-panel-identity");
+        identity.append(
+          element("span", "teaching-panel-kicker", "教学"),
+          element(
+            "span",
+            "teaching-panel-progress",
+            `${teaching.current}/${teaching.total}`,
+          ),
+        );
+        head.append(
+          identity,
+          element(
+            "span",
+            "teaching-attempts",
+            teaching.attempts ? `已尝试 ${teaching.attempts} 次` : "第一次作答",
+          ),
+        );
+
+        const body = element("div", "teaching-panel-body");
+        body.append(
+          element("h3", "teaching-step-title", teaching.stepTitle || "当前步骤"),
+        );
+        if (teaching.feedback) {
+          const feedback = teachingCopy(
+            "teaching-feedback",
+            teaching.feedback,
+          );
+          feedback.dataset.state = teaching.feedbackState;
+          body.append(feedback);
+        }
+        if (teaching.prompt) {
+          body.append(teachingCopy("teaching-step-copy", teaching.prompt));
+        }
+        if (teaching.hint) {
+          const hint = element("div", "teaching-support");
+          hint.append(
+            element("span", "teaching-support-label", "提示"),
+            teachingCopy("teaching-support-copy", teaching.hint),
+          );
+          body.append(hint);
+        }
+        if (teaching.explanation) {
+          const explanation = element("div", "teaching-support");
+          explanation.append(
+            element("span", "teaching-support-label", "本步解析"),
+            teachingCopy("teaching-support-copy", teaching.explanation),
+          );
+          body.append(explanation);
+        }
+        if (teaching.reviewExplanation) {
+          const review = element("div", "teaching-support");
+          review.append(
+            element(
+              "span",
+              "teaching-support-label",
+              teaching.reviewTitle || "上一步回顾",
+            ),
+            teachingCopy(
+              "teaching-support-copy",
+              teaching.reviewExplanation,
+            ),
+          );
+          body.append(review);
+        }
+        if (message.teachingPending) {
+          const pending = element(
+            "p",
+            "teaching-pending",
+            "正在更新教学步骤...",
+          );
+          pending.setAttribute("role", "status");
+          body.append(pending);
+        }
+
+        panel.append(head, body);
+        const isCurrent = latestTeachingMessageId() === message.id;
+        if (!isCurrent || message.teachingPending || composerMode !== "teach") {
+          return panel;
+        }
+
+        const actions = [];
+        if (teaching.active) {
+          if (!teaching.hint) {
+            actions.push(["hint", "获取提示"]);
+          }
+          if (!teaching.explanation) {
+            actions.push(["explain", "查看本步解析"]);
+          }
+          if (teaching.canSkip) {
+            actions.push(["skip", "跳过本步"]);
+          }
+        }
+        if (teaching.canRestart) {
+          actions.push(["restart", "重新开始"]);
+        }
+        if (!actions.length) {
+          return panel;
+        }
+
+        const actionBar = element("div", "teaching-actions");
+        actions.forEach(([action, label]) => {
+          const button = element("button", "teaching-action", label);
+          button.type = "button";
+          button.dataset.teachingAction = action;
+          button.disabled = requestInFlight;
+          actionBar.append(button);
+        });
+        panel.append(actionBar);
+        return panel;
+      }
+
       function renderMessageAttachments(attachments) {
         const gallery = element("div", "message-attachments");
         attachments.forEach((attachment, index) => {
@@ -6583,30 +8682,40 @@
         return gallery;
       }
 
-      function solutionKnowledgeFor(sourceUserMessage) {
-        const matches = sourceUserMessage
-          ? localMatchedQuestionKnowledge(sourceUserMessage.text)
-          : [];
-        if (matches.length) {
-          return matches.slice(0, 3);
+      function solutionKnowledgeFor(message) {
+        if (!isVerifiedSolutionMessage(message)) {
+          return [];
         }
-        return [
-          {
-            title: "审题与验证",
-            points: [
-              "先明确已知条件、目标量和所求形式；计算后再用代入、量纲或边界情况检查结果。",
-            ],
-          },
-        ];
+        return normalizeKnowledgePoints(message && message.knowledgePoints)
+          .slice(0, 4);
+      }
+
+      function solutionFailureTextForMessage(message) {
+        const status = String(message && message.status || "")
+          .trim()
+          .toLowerCase();
+        const verification = plainObjectOrNull(
+          message && message.verification,
+        );
+        const checks = verification && Array.isArray(verification.checks)
+          ? verification.checks
+          : [];
+        const reasons = checks
+          .filter((check) => check && check.passed !== true)
+          .map((check) => String(check.detail || check.name || "").trim())
+          .filter(Boolean)
+          .slice(0, 2);
+        const lead = status === "needs_input"
+          ? "题目条件还不完整，暂未生成可验证解答。"
+          : "自动求解未通过统一验算，已停止后续流程。";
+        const reason = reasons.length
+          ? `失败原因：${reasons.join("；")}。`
+          : "";
+        return `${lead}${reason}请补充必要条件或修正输入后重新提交。`;
       }
 
       function solutionViewModel(message, sourceUserMessage) {
-        if (
-          !message
-          || message.role !== "assistant"
-          || message.loading
-          || !SOLUTION_INTENTS.has(String(message.intent || ""))
-        ) {
+        if (!isVerifiedSolutionMessage(message)) {
           return null;
         }
         const hasResult = Boolean(
@@ -6614,15 +8723,67 @@
           || String(message.formulaLatex || "").trim()
           || String(message.formulaText || "").trim()
           || String(message.plotUrl || "").trim()
-          || typeof message.verdict === "boolean",
+          || typeof message.verdict === "boolean"
+          || parseSolutionSections(message.text).length,
         );
-        if (!hasResult && !String(message.text || "").trim()) {
+        if (!hasResult) {
           return null;
         }
         return {
           hasResult,
-          knowledge: solutionKnowledgeFor(sourceUserMessage),
+          knowledge: solutionKnowledgeFor(message),
         };
+      }
+
+      function parseSolutionSections(rawText) {
+        const source = String(rawText || "")
+          .replace(/\r\n?/g, "\n")
+          .trim();
+        if (!source) {
+          return [];
+        }
+
+        const headingPattern =
+          /^\s*(?:#{1,6}\s*)?(?:\*\*|__)?\s*(题目理解|解题思路|详细计算步骤|最终答案)\s*(?:\*\*|__)?\s*[：:]?\s*(.*?)\s*$/u;
+        const sections = new Map();
+        let activeHeading = "";
+
+        source.split("\n").forEach((line) => {
+          const match = line.match(headingPattern);
+          if (match) {
+            activeHeading = match[1];
+            if (!sections.has(activeHeading)) {
+              sections.set(activeHeading, []);
+            }
+            if (match[2]) {
+              sections.get(activeHeading).push(match[2]);
+            }
+            return;
+          }
+          if (activeHeading) {
+            sections.get(activeHeading).push(line);
+          }
+        });
+
+        const parsed = SOLUTION_SECTION_TITLES.map((title) => ({
+          title,
+          body: (sections.get(title) || []).join("\n").trim(),
+        }));
+        return parsed.every((section) => section.body) ? parsed : [];
+      }
+
+      function renderSolutionBody(container, rawText) {
+        const paragraphs = String(rawText || "")
+          .replace(/\r\n?/g, "\n")
+          .trim()
+          .split(/\n\s*\n/)
+          .map((part) => part.trim())
+          .filter(Boolean);
+        paragraphs.forEach((paragraphText) => {
+          const paragraph = element("p", "solution-section-copy");
+          renderRichMessageText(paragraph, paragraphText);
+          container.append(paragraph);
+        });
       }
 
       function splitSolutionSteps(rawText) {
@@ -6651,11 +8812,7 @@
           return lines.slice(0, 4);
         }
 
-        const sentences = source
-          .split(/(?<=[。！？；])(?=\S)/u)
-          .map((part) => part.trim())
-          .filter(Boolean);
-        return sentences.length > 1 ? sentences.slice(0, 4) : [source];
+        return [source];
       }
 
       function solutionStepsFor(message) {
@@ -6772,25 +8929,18 @@
       function renderSolutionSheet(message, sourceUserMessage) {
         const sheet = element("article", "solution-sheet");
         sheet.setAttribute("aria-label", "结构化解题结果");
+        const viewModel = solutionViewModel(message, sourceUserMessage) || {
+          hasResult: false,
+        };
+        const structuredSections = parseSolutionSections(message.text);
+        const sectionTags = {
+          "题目理解": "读题",
+          "解题思路": "方法",
+          "详细计算步骤": "推导",
+          "最终答案": "结论",
+        };
 
-        if (solutionViewModel(message, sourceUserMessage).hasResult) {
-          const section = element(
-            "section",
-            "solution-section solution-section--result",
-          );
-          const head = element("div", "solution-section-head");
-          head.append(element("h3", "solution-section-title", "最终结果"));
-          head.append(
-            element(
-              "span",
-              "solution-section-tag",
-              typeof message.verdict === "boolean"
-                ? (message.verdict ? "答案正确" : "答案不正确")
-                : (message.resultLabel || "已计算"),
-            ),
-          );
-          section.append(head);
-
+        const appendResultDetails = (section) => {
           if (message.resultValue) {
             const row = element("div", "solution-result-row");
             row.append(
@@ -6821,45 +8971,93 @@
             figure.append(image);
             section.append(figure);
           }
+        };
 
-          sheet.append(section);
-        }
-
-        if (message.text) {
-          const section = element(
-            "section",
-            "solution-section solution-section--reasoning",
-          );
-          const head = element("div", "solution-section-head");
-          head.append(
-            element("h3", "solution-section-title", "解题思路"),
-            element("span", "solution-section-tag", "分步推演"),
-          );
-          section.append(head);
-          renderSolutionSteps(section, message);
-          sheet.append(section);
-        }
-
-        const knowledgeSection = element(
-          "section",
-          "solution-section solution-section--knowledge",
-        );
-        const knowledgeHead = element("div", "solution-section-head");
-        knowledgeHead.append(
-          element("h3", "solution-section-title", "知识点巩固"),
-          element("span", "solution-section-tag", "建议复习"),
-        );
-        const knowledgeList = element("div", "solution-knowledge-list");
-        solutionKnowledgeFor(sourceUserMessage).forEach((rule) => {
-          const item = element("article", "solution-knowledge-item");
-          item.append(element("strong", "", rule.title));
-          (rule.points || []).forEach((point) => {
-            item.append(element("p", "", point));
+        if (structuredSections.length) {
+          structuredSections.forEach((part) => {
+            const finalSection = part.title === "最终答案";
+            const section = element(
+              "section",
+              finalSection
+                ? "solution-section solution-section--result"
+                : "solution-section solution-section--reasoning",
+            );
+            const head = element("div", "solution-section-head");
+            const tagText = finalSection
+              && typeof message.verdict === "boolean"
+              ? (message.verdict ? "答案正确" : "答案不正确")
+              : sectionTags[part.title];
+            head.append(
+              element("h3", "solution-section-title", part.title),
+              element("span", "solution-section-tag", tagText),
+            );
+            section.append(head);
+            renderSolutionBody(section, part.body);
+            if (finalSection) {
+              appendResultDetails(section);
+            }
+            sheet.append(section);
           });
-          knowledgeList.append(item);
-        });
-        knowledgeSection.append(knowledgeHead, knowledgeList);
-        sheet.append(knowledgeSection);
+        } else {
+          if (viewModel.hasResult) {
+            const section = element(
+              "section",
+              "solution-section solution-section--result",
+            );
+            const head = element("div", "solution-section-head");
+            head.append(
+              element("h3", "solution-section-title", "最终结果"),
+              element(
+                "span",
+                "solution-section-tag",
+                typeof message.verdict === "boolean"
+                  ? (message.verdict ? "答案正确" : "答案不正确")
+                  : (message.resultLabel || "已计算"),
+              ),
+            );
+            section.append(head);
+            appendResultDetails(section);
+            sheet.append(section);
+          }
+
+          if (message.text) {
+            const section = element(
+              "section",
+              "solution-section solution-section--reasoning",
+            );
+            const head = element("div", "solution-section-head");
+            head.append(
+              element("h3", "solution-section-title", "解题说明"),
+              element("span", "solution-section-tag", "分步推演"),
+            );
+            section.append(head);
+            renderSolutionSteps(section, message);
+            sheet.append(section);
+          }
+        }
+
+        if (viewModel.knowledge.length) {
+          const knowledgeSection = element(
+            "section",
+            "solution-section solution-section--knowledge",
+          );
+          const knowledgeHead = element("div", "solution-section-head");
+          knowledgeHead.append(
+            element("h3", "solution-section-title", "知识点巩固"),
+            element("span", "solution-section-tag", "建议复习"),
+          );
+          const knowledgeList = element("div", "solution-knowledge-list");
+          viewModel.knowledge.forEach((rule) => {
+            const item = element("article", "solution-knowledge-item");
+            item.append(element("strong", "", rule.title));
+            (rule.points || []).forEach((point) => {
+              item.append(element("p", "", point));
+            });
+            knowledgeList.append(item);
+          });
+          knowledgeSection.append(knowledgeHead, knowledgeList);
+          sheet.append(knowledgeSection);
+        }
         sheet.append(renderSolutionActions(message, sourceUserMessage));
         return sheet;
       }
@@ -6908,9 +9106,16 @@
         } else {
           const sourceUserMessage = sourceUserMessageForAnswer(message);
           const viewModel = solutionViewModel(message, sourceUserMessage);
+          const teachingPanel = renderTeachingPanel(message);
+          const unverifiedSolutionIntent = SOLUTION_INTENTS.has(
+            String(message.intent || "").trim().toLowerCase(),
+          ) && !isVerifiedSolutionMessage(message);
           if (viewModel) {
             renderedSolutionSheet = true;
             const stack = element("div", "message-stack");
+            if (teachingPanel) {
+              stack.append(teachingPanel);
+            }
             if (
               Array.isArray(message.attachments)
               && message.attachments.length
@@ -6923,6 +9128,20 @@
             }
             stack.append(renderSolutionSheet(message, sourceUserMessage));
             content.append(meta, stack);
+          } else if (teachingPanel) {
+            const stack = element("div", "message-stack");
+            if (
+              Array.isArray(message.attachments)
+              && message.attachments.length
+            ) {
+              const attachments = element("div", "bubble");
+              attachments.append(
+                renderMessageAttachments(message.attachments),
+              );
+              stack.append(attachments);
+            }
+            stack.append(teachingPanel);
+            content.append(meta, stack);
           } else {
             const bubble = element("div", "bubble");
             if (
@@ -6931,23 +9150,26 @@
             ) {
               bubble.append(renderMessageAttachments(message.attachments));
             }
-            if (message.text) {
+            const displayText = unverifiedSolutionIntent
+              ? solutionFailureTextForMessage(message)
+              : message.text;
+            if (displayText) {
               const text = element("p", "message-text");
               if (message.intent === "welcome" && message.welcomeLead) {
                 renderWelcomeMessageText(text, message);
               } else {
-                renderRichMessageText(text, message.text);
+                renderRichMessageText(text, displayText);
               }
               bubble.append(text);
             }
 
-            if (message.formulaLatex) {
+            if (message.formulaLatex && !unverifiedSolutionIntent) {
               const formula = element("div", "formula");
               renderFormula(formula, message);
               bubble.append(formula);
             }
 
-            if (message.plotUrl) {
+            if (message.plotUrl && !unverifiedSolutionIntent) {
               const figure = element("figure", "function-plot");
               const image = element("img");
               image.src = message.plotUrl;
@@ -6959,7 +9181,10 @@
               bubble.append(figure);
             }
 
-            if (typeof message.verdict === "boolean") {
+            if (
+              typeof message.verdict === "boolean"
+              && !unverifiedSolutionIntent
+            ) {
               const verdict = element(
                 "div",
                 "verdict",
@@ -6969,7 +9194,11 @@
               bubble.append(verdict);
             }
 
-            if (message.resultLabel && message.resultValue) {
+            if (
+              message.resultLabel
+              && message.resultValue
+              && !unverifiedSolutionIntent
+            ) {
               const details = element("details", "calculation-details");
               details.append(element("summary", "", "计算明细"));
               const grid = element("dl", "calculation-grid");
@@ -7112,45 +9341,10 @@
       }
 
       function suggestionIcon(name) {
-        const paths = {
-          camera: [
-            "M14.5 5 13 3h-2L9.5 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4.5Z",
-            "M12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
-          ],
-          check: [
-            "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z",
-            "M14 3v6h6",
-            "m8.5 15 2.2 2.2 4.8-5.2",
-          ],
-          book: [
-            "M4 5.5A2.5 2.5 0 0 1 6.5 3H19a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 0 4 22Z",
-            "M4 5.5V19a2.5 2.5 0 0 1 2.5-2.5H20",
-            "M8 7h7",
-          ],
-          question: [
-            "M9.2 9a3 3 0 1 1 4.5 2.6c-1.1.7-1.7 1.3-1.7 2.4",
-            "M12 18h.01",
-            "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
-          ],
-          speaker: [
-            "M11 5 6.5 9H3v6h3.5L11 19Z",
-            "M15 9a4.2 4.2 0 0 1 0 6",
-            "M17.8 6.5a8 8 0 0 1 0 11",
-          ],
-        };
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("class", "suggestion-icon");
-        svg.setAttribute("viewBox", "0 0 24 24");
-        svg.setAttribute("aria-hidden", "true");
-        (paths[name] || paths.book).forEach((pathValue) => {
-          const path = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path",
-          );
-          path.setAttribute("d", pathValue);
-          svg.append(path);
+        return createMorphIcon(MORPH_ICONS[name] || MORPH_ICONS.book, {
+          className: "suggestion-icon",
+          size: 15,
         });
-        return svg;
       }
 
       function renderSuggestions(items) {
@@ -7192,6 +9386,10 @@
           "title",
           nextCollapsed ? "展开快捷入口" : "收起快捷入口",
         );
+        setMorphIcon(
+          suggestionsToggleIcon,
+          nextCollapsed ? MORPH_ICONS.chevronDown : MORPH_ICONS.chevronUp,
+        );
         suggestionsToggleLabel.textContent = nextCollapsed
           ? "展开快捷入口"
           : "收起快捷入口";
@@ -7200,6 +9398,154 @@
       function resizeInput() {
         chatInput.style.height = "auto";
         chatInput.style.height = `${Math.min(chatInput.scrollHeight, 132)}px`;
+      }
+
+      let mathInputSelection = { start: 0, end: 0 };
+
+      function rememberMathInputSelection() {
+        mathInputSelection = {
+          start: chatInput.selectionStart ?? chatInput.value.length,
+          end: chatInput.selectionEnd ?? chatInput.value.length,
+        };
+      }
+
+      function currentMathInputSelection() {
+        if (document.activeElement === chatInput) {
+          rememberMathInputSelection();
+        }
+        const maximum = chatInput.value.length;
+        const start = Math.min(
+          Math.max(mathInputSelection.start, 0),
+          maximum,
+        );
+        const end = Math.min(
+          Math.max(mathInputSelection.end, start),
+          maximum,
+        );
+        return { start, end };
+      }
+
+      function insertMathInputText(text, options = {}) {
+        const insertion = String(text || "");
+        const { start, end } = currentMathInputSelection();
+        chatInput.focus();
+        chatInput.setRangeText(insertion, start, end, "end");
+
+        const requestedSelection = String(options.selectText || "");
+        if (requestedSelection) {
+          const offset = insertion.indexOf(requestedSelection);
+          if (offset >= 0) {
+            chatInput.setSelectionRange(
+              start + offset,
+              start + offset + requestedSelection.length,
+            );
+          }
+        } else if (
+          Number.isFinite(options.caretOffset) ||
+          Number.isFinite(options.caretFromEnd)
+        ) {
+          const offset = Number.isFinite(options.caretOffset)
+            ? Math.max(0, options.caretOffset)
+            : insertion.length - Math.max(0, options.caretFromEnd);
+          const caret = Math.min(start + offset, start + insertion.length);
+          chatInput.setSelectionRange(caret, caret);
+        }
+
+        rememberMathInputSelection();
+        chatInput.dispatchEvent(
+          new InputEvent("input", {
+            bubbles: true,
+            data: insertion,
+            inputType: "insertText",
+          }),
+        );
+      }
+
+      function fillInputExample(button) {
+        const example = String(button?.dataset.inputExample || "").trim();
+        if (!example) {
+          return;
+        }
+        chatInput.focus();
+        chatInput.value = example;
+        chatInput.setSelectionRange(example.length, example.length);
+        rememberMathInputSelection();
+        chatInput.dispatchEvent(
+          new InputEvent("input", {
+            bubbles: true,
+            data: example,
+            inputType: "insertText",
+          }),
+        );
+      }
+
+      function insertMathSymbol(button) {
+        const { start, end } = currentMathInputSelection();
+        const selectedText = chatInput.value.slice(start, end);
+        const wrapStart = button.dataset.mathWrapStart;
+        const wrapEnd = button.dataset.mathWrapEnd;
+        const plainInsert = button.dataset.mathInsert || "";
+        if (selectedText && wrapStart !== undefined && wrapEnd !== undefined) {
+          insertMathInputText(`${wrapStart}${selectedText}${wrapEnd}`, {
+            selectText: button.dataset.mathSelect || "",
+          });
+          return;
+        }
+        insertMathInputText(plainInsert, {
+          caretOffset: Number(button.dataset.mathCaret),
+          selectText: button.dataset.mathSelect || "",
+        });
+      }
+
+      function setMathLimitsOpen(open) {
+        const nextOpen = Boolean(open);
+        mathLimitsPanel.hidden = !nextOpen;
+        mathLimitsToggle.setAttribute("aria-expanded", String(nextOpen));
+        if (nextOpen) {
+          setMathCustomLimitOpen(false);
+          window.requestAnimationFrame(() => mathLowerLimit.focus());
+        }
+      }
+
+      function setMathCustomLimitOpen(open) {
+        const nextOpen = Boolean(open);
+        mathCustomLimitPanel.hidden = !nextOpen;
+        mathCustomLimitToggle.setAttribute(
+          "aria-expanded",
+          String(nextOpen),
+        );
+        if (nextOpen) {
+          setMathLimitsOpen(false);
+          window.requestAnimationFrame(() => {
+            mathLimitVariable.focus();
+            mathLimitVariable.select();
+          });
+        }
+      }
+
+      function insertDefiniteIntegral() {
+        const lower = mathLowerLimit.value.trim() || "a";
+        const upper = mathUpperLimit.value.trim() || "b";
+        const integrand = "f(x)";
+        insertMathInputText(
+          `∫_{${lower}}^{${upper}} ${integrand} dx`,
+          { selectText: integrand },
+        );
+        setMathLimitsOpen(false);
+      }
+
+      function insertCustomLimit() {
+        const variable = mathLimitVariable.value.trim() || "x";
+        const point = mathLimitPoint.value.trim() || "0";
+        const direction = mathLimitDirection.value;
+        const directionSuffix =
+          direction === "+" ? "^+" : direction === "-" ? "^-" : "";
+        const expression = "f(x)";
+        insertMathInputText(
+          `lim_{${variable}→${point}${directionSuffix}} ${expression}`,
+          { selectText: expression },
+        );
+        setMathCustomLimitOpen(false);
       }
 
       function imageSizeLabel(bytes) {
@@ -7513,19 +9859,12 @@
           removeButton.dataset.imageId = item.id;
           removeButton.setAttribute("aria-label", `移除图片 ${item.name}`);
           removeButton.title = "移除图片";
-          const removeIcon = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "svg",
+          removeButton.append(
+            createMorphIcon(MORPH_ICONS.close, {
+              size: 16,
+              strokeWidth: 2,
+            }),
           );
-          removeIcon.setAttribute("viewBox", "0 0 24 24");
-          removeIcon.setAttribute("aria-hidden", "true");
-          const removeIconPath = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path",
-          );
-          removeIconPath.setAttribute("d", "m6 6 12 12M18 6 6 18");
-          removeIcon.append(removeIconPath);
-          removeButton.append(removeIcon);
 
           card.append(thumb, copy, removeButton);
           fragment.append(card);
@@ -7562,6 +9901,10 @@
       function setVoiceListeningState(active) {
         voiceInputListening = Boolean(active);
         voiceInputButton.dataset.listening = String(voiceInputListening);
+        setMorphIcon(
+          voiceInputIcon,
+          voiceInputListening ? MORPH_ICONS.stop : MORPH_ICONS.microphone,
+        );
         voiceInputButton.setAttribute(
           "aria-pressed",
           String(voiceInputListening),
@@ -7629,6 +9972,15 @@
           .replace(/[：]/g, ":")
           .replace(/\s+/g, " ");
 
+        const protectedInfinityConcepts = [];
+        text = text.replace(
+          /无穷级数|无穷小|无穷大量|无穷远|无穷多/g,
+          (term) => {
+            const token = `__INFINITY_CONCEPT_${protectedInfinityConcepts.length}__`;
+            protectedInfinityConcepts.push(term);
+            return token;
+          },
+        );
         text = text.replace(
           /([零〇一二两三四五六七八九十百千万]+)分之([零〇一二两三四五六七八九十百千万]+)/g,
           (_, denominator, numerator) =>
@@ -7644,6 +9996,14 @@
             `${base}^${chineseNumberToArabic(exponent)}`,
         );
         text = text.replace(
+          /([A-Za-z0-9_)^])\s*加上?\s*(?=[A-Za-z0-9_(]|根号)/g,
+          "$1+",
+        );
+        text = text.replace(
+          /([A-Za-z0-9_)^])\s*减去?\s*(?=[A-Za-z0-9_(]|根号)/g,
+          "$1-",
+        );
+        text = text.replace(
           /(?:开)?根号(?:下)?\s*([A-Za-z0-9()+\-*/^]+)/g,
           (_, expression) => `sqrt(${expression})`,
         );
@@ -7655,6 +10015,9 @@
         text = text.replace(/不等于/g, "!=");
         text = text.replace(/大于等于|不小于/g, ">=");
         text = text.replace(/小于等于|不大于/g, "<=");
+        protectedInfinityConcepts.forEach((term, index) => {
+          text = text.replace(`__INFINITY_CONCEPT_${index}__`, term);
+        });
         text = text.replace(/大于/g, ">");
         text = text.replace(/小于/g, "<");
         text = text.replace(/等于/g, "=");
@@ -7898,6 +10261,14 @@
       function speechTextForMessage(message) {
         if (!message || message.role !== "assistant" || message.loading) {
           return "";
+        }
+        const unverifiedSolutionIntent = SOLUTION_INTENTS.has(
+          String(message.intent || "").trim().toLowerCase(),
+        ) && !isVerifiedSolutionMessage(message);
+        if (unverifiedSolutionIntent) {
+          return speechFriendlyMathText(
+            solutionFailureTextForMessage(message),
+          );
         }
         const parts = [];
         if (message.text) {
@@ -8482,17 +10853,42 @@
         };
 
         let manualText = chatInput.value.trim();
-        pendingQuestionImages.forEach((item) => {
-          const insertedText = String(item.insertedText || "").trim();
-          if (insertedText) {
-            manualText = manualText.replace(insertedText, "");
-          }
-        });
+        const insertedItems = pendingQuestionImages.filter(
+          (item) => String(item.insertedText || "").trim(),
+        );
+        // A single recognized image lives in the composer as ordinary,
+        // editable text. Send that exact current text once, even when the
+        // user corrected a symbol or added an instruction around it.
+        const useComposerAsSingleOcr = insertedItems.length === 1;
+        if (!useComposerAsSingleOcr) {
+          pendingQuestionImages.forEach((item) => {
+            const insertedText = String(item.insertedText || "").trim();
+            if (insertedText) {
+              manualText = manualText.replace(insertedText, "");
+            }
+          });
+        }
         manualText = manualText.replace(/\n{3,}/g, "\n\n").trim();
         if (manualText) {
-          addRequest(manualText, "text", false, "manual");
+          addRequest(
+            manualText,
+            useComposerAsSingleOcr ? "ocr" : "text",
+            useComposerAsSingleOcr,
+            "manual",
+          );
         }
         pendingQuestionImages.forEach((item) => {
+          if (useComposerAsSingleOcr && insertedItems.includes(item)) {
+            return;
+          }
+          const insertedText = String(item.insertedText || "").trim();
+          const unchangedInsertion =
+            insertedText && chatInput.value.includes(insertedText);
+          if (insertedText && !unchangedInsertion) {
+            // The edited text already remains in manualText above. Do not
+            // submit the stale OCR original as a second question.
+            return;
+          }
           recognizedQuestionTexts(item).forEach((text) => {
             addRequest(text, "ocr", true, `image:${item.id}`);
           });
@@ -8521,13 +10917,21 @@
         sendButton.disabled =
           requestInFlight
           || (!hasText && !hasRecognizedImage && !hasPendingImage);
-        sendButton.textContent = requestInFlight
+        sendButtonLabel.textContent = requestInFlight
           ? "计算中"
           : "发送";
+        setMorphIcon(
+          sendButtonIcon,
+          requestInFlight ? MORPH_ICONS.loader : MORPH_ICONS.arrowUp,
+        );
         sendButton.setAttribute("aria-busy", String(requestInFlight));
         imageUploadButton.disabled =
           requestInFlight
           || pendingQuestionImages.length >= MAX_QUESTION_IMAGE_COUNT;
+        setMorphIcon(
+          imageUploadIcon,
+          recognizing ? MORPH_ICONS.loader : MORPH_ICONS.image,
+        );
         if (recognizing) {
           imageUploadButton.dataset.loading = "true";
         } else {
@@ -8596,10 +11000,26 @@
 
       function setRequestState(active) {
         requestInFlight = active;
+        document.querySelectorAll("[data-teaching-action]").forEach((button) => {
+          button.disabled = active;
+        });
+        composerModeControl
+          .querySelectorAll("[data-composer-mode]")
+          .forEach((button) => {
+            button.disabled = active;
+          });
+        composerModeControl.setAttribute(
+          "aria-disabled",
+          String(active),
+        );
         syncComposerState();
       }
 
-      function responseToMessage(data, sourceUserMessageId = "") {
+      function responseToMessage(
+        data,
+        sourceUserMessageId = "",
+        fallbackMode = composerMode,
+      ) {
         const calculation = data.calculation || {};
         let resultLabel = "";
         let resultValue = "";
@@ -8628,7 +11048,11 @@
           id: makeId(),
           role: "assistant",
           text: String(data.reply || "这次没有得到可用的计算结果。"),
+          status: String(data.status || "").trim().toLowerCase(),
           intent: String(data.intent || ""),
+          mode: ["qa", "teach"].includes(String(data.mode || ""))
+            ? String(data.mode)
+            : fallbackMode,
           formulaLatex: String(data.formula_latex || ""),
           formulaText: String(data.formula_text || ""),
           resultLabel,
@@ -8638,6 +11062,21 @@
               ? calculation.is_correct
               : null,
           plotUrl: String(calculation.plot_url || ""),
+          teaching: normalizeTeaching(data.teaching),
+          knowledgePoints: normalizeKnowledgePoints(
+            data.knowledge_points || data.knowledgePoints,
+          ),
+          calculation,
+          verified: data.verified === true,
+          verification:
+            data.verification
+            && typeof data.verification === "object"
+            && !Array.isArray(data.verification)
+              ? data.verification
+              : null,
+          verificationContext: plainObjectOrNull(
+            data.verification_context || data.verificationContext,
+          ),
           sourceUserMessageId: String(sourceUserMessageId || ""),
           createdAt: currentTime(),
         };
@@ -8922,7 +11361,9 @@
               id: makeId(),
               role: "assistant",
               text: `已用“${data.method}”完成计算。${notes}`,
+              status: String(data.status || "").trim().toLowerCase(),
               intent: "solve",
+              mode: "qa",
               formulaLatex: String(data.latex || ""),
               formulaText: String(data.result || ""),
               resultLabel: String(data.method || ""),
@@ -8931,6 +11372,23 @@
                 typeof data.is_correct === "boolean"
                   ? data.is_correct
                   : null,
+              plotUrl: "",
+              teaching: null,
+              knowledgePoints: normalizeKnowledgePoints(
+                data.knowledge_points
+                || (data.details && data.details.knowledge_points),
+              ),
+              calculation: data,
+              verified: data.verified === true,
+              verification:
+                data.verification
+                && typeof data.verification === "object"
+                && !Array.isArray(data.verification)
+                  ? data.verification
+                  : null,
+              verificationContext: plainObjectOrNull(
+                data.verification_context || data.verificationContext,
+              ),
               sourceUserMessageId: solverUserMessageId,
               createdAt: currentTime(),
             },
@@ -8953,6 +11411,19 @@
 
       async function sendMessage(rawMessage, options = {}) {
         const text = String(rawMessage || "").trim();
+        const requestedTeachingAction = String(
+          options.teachingAction || "",
+        );
+        const teachingAction = [
+          "hint",
+          "explain",
+          "skip",
+          "restart",
+        ].includes(requestedTeachingAction)
+          ? requestedTeachingAction
+          : "";
+        const isTeachingAction = Boolean(teachingAction);
+        const teachingTargetId = String(options.teachingTargetId || "");
         const source = options.source === "ocr" ? "ocr" : "text";
         const confirmedOcr = options.confirmedOcr === true;
         const confirmedOcrQuestion = confirmedOcr
@@ -8971,45 +11442,87 @@
               ),
             }))
           : [];
-        if ((!text && !attachments.length) || requestInFlight) {
+        if (
+          (!text && !attachments.length && !isTeachingAction)
+          || requestInFlight
+        ) {
           return;
         }
+        const teachingTargetIndex = isTeachingAction
+          ? messages.findIndex(
+            (message) =>
+              message.id === teachingTargetId
+              && message.role === "assistant"
+              && isVerifiedTeachingMessage(message)
+              && (
+                message.teaching?.active
+                || (
+                  teachingAction === "restart"
+                  && message.teaching?.canRestart
+                )
+              ),
+          )
+          : -1;
+        if (isTeachingAction && teachingTargetIndex === -1) {
+          return;
+        }
+        const teachingTargetSnapshot = isTeachingAction
+          ? messages[teachingTargetIndex]
+          : null;
         stopVoiceInteraction();
-        window.clearTimeout(knowledgeDebounceId);
-        lastSubmittedKnowledgeText = text;
-        renderQuestionKnowledge(text, { source: "submit" });
+        if (!isTeachingAction) {
+          window.clearTimeout(knowledgeDebounceId);
+          lastSubmittedKnowledgeText = text;
+          renderQuestionKnowledgePending();
+        }
         const history = requestHistory();
+        const requestMode = composerMode;
 
-        const userMessageId = makeId();
-        messages.push({
-          id: userMessageId,
-          role: "user",
-          text,
-          formulaLatex: "",
-          formulaText: "",
-          resultLabel: "",
-          resultValue: "",
-          verdict: null,
-          attachments,
-          createdAt: currentTime(),
-        });
+        const userMessageId = isTeachingAction
+          ? String(teachingTargetSnapshot?.sourceUserMessageId || "")
+          : makeId();
+        if (!isTeachingAction) {
+          messages.push({
+            id: userMessageId,
+            role: "user",
+            text,
+            mode: requestMode,
+            formulaLatex: "",
+            formulaText: "",
+            resultLabel: "",
+            resultValue: "",
+            verdict: null,
+            attachments,
+            createdAt: currentTime(),
+          });
+        }
 
         const loadingId = makeId();
-        messages.push({
-          id: loadingId,
-          role: "assistant",
-          text: "",
-          formulaLatex: "",
-          formulaText: "",
-          resultLabel: "",
-          resultValue: "",
-          verdict: null,
-          createdAt: currentTime(),
-          loading: true,
-        });
+        if (isTeachingAction) {
+          messages[teachingTargetIndex] = {
+            ...teachingTargetSnapshot,
+            teachingPending: true,
+          };
+        } else {
+          messages.push({
+            id: loadingId,
+            role: "assistant",
+            text: "",
+            formulaLatex: "",
+            formulaText: "",
+            resultLabel: "",
+            resultValue: "",
+            verdict: null,
+            mode: requestMode,
+            createdAt: currentTime(),
+            loading: true,
+          });
+        }
 
-        chatInput.value = "";
-        resizeInput();
+        if (!isTeachingAction) {
+          chatInput.value = "";
+          resizeInput();
+        }
         setRequestState(true);
         renderMessages();
         saveMessages();
@@ -9018,6 +11531,28 @@
         const timeoutId = window.setTimeout(
           () => controller.abort(),
           REQUEST_TIMEOUT_MS,
+        );
+        const slowNoticeId = window.setTimeout(
+          () => {
+            if (!isTeachingAction) {
+              updateLoadingDetail(
+                loadingId,
+                "网络较慢，仍在处理，请稍候。",
+              );
+            }
+          },
+          SLOW_REQUEST_NOTICE_MS,
+        );
+        const verySlowNoticeId = window.setTimeout(
+          () => {
+            if (!isTeachingAction) {
+              updateLoadingDetail(
+                loadingId,
+                "仍在等待计算服务，最长大约 45 秒；完成前请不要重复发送。",
+              );
+            }
+          },
+          VERY_SLOW_REQUEST_NOTICE_MS,
         );
 
         try {
@@ -9048,7 +11583,17 @@
                 ? (lastRecognizedQuestion || messagePendingQuestion)
                 : messagePendingQuestion
             );
-          const cachedResponse = responseCache.get(text);
+          const hasActiveTeaching = messages.some(
+            (message) =>
+              isVerifiedTeachingMessage(message)
+              && normalizeTeaching(message.teaching)?.active === true,
+          );
+          const cachedResponse =
+            !isTeachingAction
+            && requestMode === "qa"
+            && !hasActiveTeaching
+              ? responseCache.get(responseCacheKey(text, requestMode))
+              : null;
           if (
             cachedResponse
             && cachedResponse.intent !== "ocr_confirm"
@@ -9061,10 +11606,13 @@
               (message) => message.id === loadingId,
             );
             if (cachedIndex !== -1) {
-              messages[cachedIndex] = responseToMessage(
+              const cachedMessage = responseToMessage(
                 cachedResponse,
                 userMessageId,
+                requestMode,
               );
+              messages[cachedIndex] = cachedMessage;
+              syncQuestionKnowledgeFromMessage(cachedMessage, text);
             }
             syncWrongBookAnswer(userMessageId, text);
             recordLearningActivity("question");
@@ -9083,6 +11631,8 @@
               history,
               source,
               pending_question: pendingOcrQuestion,
+              mode: requestMode,
+              teaching_action: teachingAction || undefined,
             }),
             signal: controller.signal,
           }).finally(() => window.clearTimeout(timeoutId));
@@ -9098,14 +11648,55 @@
             throw new Error(data.detail || `计算服务返回错误（${response.status}）。`);
           }
 
-          const index = messages.findIndex((message) => message.id === loadingId);
-          if (index !== -1) {
-            messages[index] = responseToMessage(data, userMessageId);
+          if (isTeachingAction) {
+            const index = messages.findIndex(
+              (message) => message.id === teachingTargetId,
+            );
+            if (data.teaching && index !== -1) {
+              const updated = responseToMessage(
+                data,
+                userMessageId,
+                requestMode,
+              );
+              updated.id = teachingTargetId;
+              messages[index] = updated;
+            } else if (index !== -1) {
+              const target = messages[index];
+              if (target.teaching) {
+                messages[index] = {
+                  ...target,
+                  teachingPending: false,
+                  teaching: {
+                    ...target.teaching,
+                    active: false,
+                    canRestart: false,
+                  },
+                };
+              }
+              messages.push(
+                responseToMessage(data, userMessageId, requestMode),
+              );
+            }
+          } else {
+            const index = messages.findIndex(
+              (message) => message.id === loadingId,
+            );
+            if (index !== -1) {
+              const answerMessage = responseToMessage(
+                data,
+                userMessageId,
+                requestMode,
+              );
+              messages[index] = answerMessage;
+              syncQuestionKnowledgeFromMessage(answerMessage, text);
+            }
           }
-          syncWrongBookAnswer(userMessageId, text);
-          recordLearningActivity("question");
-          if (data.intent !== "ocr_confirm") {
-            cacheResponse(text, data);
+          if (!isTeachingAction) {
+            syncWrongBookAnswer(userMessageId, text);
+            recordLearningActivity("question");
+          }
+          if (!isTeachingAction && data.intent !== "ocr_confirm") {
+            cacheResponse(text, data, requestMode);
           }
           if (
             data.intent !== "ocr_confirm"
@@ -9116,15 +11707,21 @@
           }
           renderSuggestions(data.suggestions);
         } catch (error) {
-          const index = messages.findIndex((message) => message.id === loadingId);
-          if (index !== -1) {
-            messages[index] = {
-              id: loadingId,
+          const message =
+            error.name === "AbortError"
+              ? "这次等待时间有点长，已停止等待。可以再发一次同一题，系统会复用已有结果。"
+              : error.message || "计算服务暂时不可用，请稍后重试。";
+          if (isTeachingAction) {
+            const index = messages.findIndex(
+              (message) => message.id === teachingTargetId,
+            );
+            if (index !== -1) {
+              messages[index] = teachingTargetSnapshot;
+            }
+            messages.push({
+              id: makeId(),
               role: "assistant",
-              text:
-                error.name === "AbortError"
-                  ? "这次等待时间有点长，已停止等待。可以再发一次同一题，系统会复用已有结果。"
-                  : error.message || "计算服务暂时不可用，请稍后重试。",
+              text: message,
               intent: "error",
               formulaLatex: "",
               formulaText: "",
@@ -9132,7 +11729,26 @@
               resultValue: "",
               verdict: null,
               createdAt: currentTime(),
-            };
+            });
+          } else {
+            const index = messages.findIndex(
+              (message) => message.id === loadingId,
+            );
+            if (index !== -1) {
+              messages[index] = {
+                id: loadingId,
+                role: "assistant",
+                text: message,
+                intent: "error",
+                formulaLatex: "",
+                formulaText: "",
+                resultLabel: "",
+                resultValue: "",
+                verdict: null,
+                createdAt: currentTime(),
+              };
+            }
+            renderQuestionKnowledgeBlocked("解题服务未完成");
           }
           renderSuggestions(DEFAULT_SUGGESTIONS);
         } finally {
@@ -9167,6 +11783,18 @@
           );
           button.setAttribute("aria-expanded", String(!nextCollapsed));
         });
+        setMorphIcon(
+          sidebarRailToggleIcon,
+          nextCollapsed ? MORPH_ICONS.chevronRight : MORPH_ICONS.chevronLeft,
+        );
+        setMorphIcon(
+          sidebarTopToggleIcon,
+          nextCollapsed ? MORPH_ICONS.chevronRight : MORPH_ICONS.chevronLeft,
+        );
+        setMorphIcon(
+          sidebarHeaderToggleIcon,
+          nextCollapsed ? MORPH_ICONS.panelLeftOpen : MORPH_ICONS.panelLeftClose,
+        );
       }
 
       function setSidebarWidth(width, persist = true) {
@@ -9178,6 +11806,7 @@
           "--sidebar-width",
           `${nextWidth}px`,
         );
+        sidebarResizer.setAttribute("aria-valuenow", String(nextWidth));
         if (persist) {
           try {
             window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(nextWidth));
@@ -9185,6 +11814,62 @@
             // The current width still applies without storage.
           }
         }
+      }
+
+      function setComposerMode(mode, persist = true) {
+        if (requestInFlight && persist) {
+          return;
+        }
+        const nextMode = mode === "teach" ? "teach" : "qa";
+        const modeChanged = composerMode !== nextMode;
+        composerMode = nextMode;
+        composerModeControl
+          .querySelectorAll("[data-composer-mode]")
+          .forEach((button) => {
+            button.setAttribute(
+              "aria-pressed",
+              String(button.dataset.composerMode === nextMode),
+            );
+          });
+        if (persist) {
+          try {
+            window.localStorage.setItem(COMPOSER_MODE_KEY, nextMode);
+          } catch (error) {
+            // The selected mode still applies for the current page.
+          }
+        }
+        if (
+          persist
+          && modeChanged
+          && nextMode === "qa"
+        ) {
+          deactivateTeachingMessages();
+          resetTeachingServerState();
+          renderMessages();
+          saveMessages();
+        }
+      }
+
+      function deactivateTeachingMessages(collection = messages) {
+        collection.forEach((message) => {
+          if (!message.teaching) {
+            return;
+          }
+          message.teaching = {
+            ...message.teaching,
+            active: false,
+            canRestart: false,
+          };
+        });
+      }
+
+      function resetTeachingServerState() {
+        fetch("/demo/api/teaching/reset", {
+          method: "POST",
+          headers: {"X-Demo-Session": demoSessionId},
+        }).catch(() => {
+          // Submitting another teaching question creates a fresh session.
+        });
       }
 
       function setTheme(theme) {
@@ -9196,6 +11881,10 @@
         );
         themeLabel.textContent =
           nextTheme === "dark" ? "切换浅色主题" : "切换深色主题";
+        setMorphIcon(
+          themeMorphIcon,
+          nextTheme === "dark" ? MORPH_ICONS.moon : MORPH_ICONS.sun,
+        );
         try {
           window.localStorage.setItem(THEME_KEY, nextTheme);
         } catch (error) {
@@ -9271,6 +11960,10 @@
           "title",
           nextCollapsed ? "展开会话列表" : "收起会话列表",
         );
+        setMorphIcon(
+          conversationPanelToggleIcon,
+          nextCollapsed ? MORPH_ICONS.chevronRight : MORPH_ICONS.chevronLeft,
+        );
       }
 
       function selectConversation(conversationId) {
@@ -9284,14 +11977,16 @@
         if (!conversation) {
           return;
         }
+        resetTeachingServerState();
         activeConversationId = conversation.id;
         messages = conversation.messages.length
           ? normalizeMessages(conversation.messages)
           : [welcomeMessage()];
+        deactivateTeachingMessages();
         responseCache.clear();
         window.clearTimeout(knowledgeDebounceId);
         lastSubmittedKnowledgeText = latestUserQuestion();
-        renderQuestionKnowledge(lastSubmittedKnowledgeText);
+        syncQuestionKnowledgeFromConversation();
         try {
           window.localStorage.setItem(
             ACTIVE_CONVERSATION_KEY,
@@ -9396,6 +12091,21 @@
       });
 
       messageList.addEventListener("click", (event) => {
+        const teachingButton = event.target.closest("[data-teaching-action]");
+        if (teachingButton) {
+          const targetMessage = teachingButton.closest("[data-message-id]");
+          if (
+            targetMessage
+            && !requestInFlight
+            && composerMode === "teach"
+          ) {
+            sendMessage(teachingButton.dataset.teachingAction, {
+              teachingAction: teachingButton.dataset.teachingAction,
+              teachingTargetId: targetMessage.dataset.messageId,
+            });
+          }
+          return;
+        }
         const explainButton = event.target.closest(
           '[data-message-action="explain-step"]',
         );
@@ -9621,10 +12331,23 @@
         setSidebarCollapsed(savedState, false);
       };
 
+      const handleConversationPanelMediaChange = (event) => {
+        setConversationPanelCollapsed(event.matches);
+      };
+
       if (sidebarMedia.addEventListener) {
         sidebarMedia.addEventListener("change", handleSidebarMediaChange);
       } else {
         sidebarMedia.addListener(handleSidebarMediaChange);
+      }
+
+      if (conversationPanelMedia.addEventListener) {
+        conversationPanelMedia.addEventListener(
+          "change",
+          handleConversationPanelMediaChange,
+        );
+      } else {
+        conversationPanelMedia.addListener(handleConversationPanelMediaChange);
       }
 
       function syncAppViewportHeight() {
@@ -9660,6 +12383,27 @@
         submitComposer();
       });
 
+      composerModeControl.addEventListener("click", (event) => {
+        const modeButton = event.target.closest("[data-composer-mode]");
+        if (modeButton && !requestInFlight) {
+          setComposerMode(modeButton.dataset.composerMode);
+        }
+      });
+
+      inputGuide.addEventListener("toggle", () => {
+        setMorphIcon(
+          inputGuideChevron,
+          inputGuide.open ? MORPH_ICONS.chevronUp : MORPH_ICONS.chevronDown,
+        );
+      });
+
+      inputGuide.addEventListener("click", (event) => {
+        const exampleButton = event.target.closest("[data-input-example]");
+        if (exampleButton) {
+          fillInputExample(exampleButton);
+        }
+      });
+
       voiceInputButton.addEventListener("click", () => {
         if (voiceInputListening) {
           stopVoiceInput({
@@ -9672,9 +12416,13 @@
 
       chatInput.addEventListener("input", () => {
         resizeInput();
+        rememberMathInputSelection();
         queueQuestionKnowledgeUpdate(chatInput.value);
         syncComposerState();
       });
+      for (const eventName of ["focus", "click", "keyup", "select"]) {
+        chatInput.addEventListener(eventName, rememberMathInputSelection);
+      }
       chatInput.addEventListener("keydown", (event) => {
         if (
           event.key === "Enter"
@@ -9686,6 +12434,64 @@
           chatForm.requestSubmit();
         }
       });
+
+      mathToolbar.addEventListener("pointerdown", rememberMathInputSelection);
+      mathToolbar.addEventListener("click", (event) => {
+        const button = event.target.closest(".math-tool-button");
+        if (
+          button &&
+          button !== mathLimitsToggle &&
+          button !== mathCustomLimitToggle
+        ) {
+          insertMathSymbol(button);
+        }
+      });
+
+      mathLimitsToggle.addEventListener("click", () => {
+        setMathLimitsOpen(
+          mathLimitsToggle.getAttribute("aria-expanded") !== "true",
+        );
+      });
+
+      mathInsertDefinite.addEventListener("click", insertDefiniteIntegral);
+
+      mathCustomLimitToggle.addEventListener("click", () => {
+        setMathCustomLimitOpen(
+          mathCustomLimitToggle.getAttribute("aria-expanded") !== "true",
+        );
+      });
+
+      mathInsertLimit.addEventListener("click", insertCustomLimit);
+
+      for (const field of [mathLowerLimit, mathUpperLimit]) {
+        field.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            insertDefiniteIntegral();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setMathLimitsOpen(false);
+            chatInput.focus();
+          }
+        });
+      }
+
+      for (const field of [
+        mathLimitVariable,
+        mathLimitPoint,
+        mathLimitDirection,
+      ]) {
+        field.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            insertCustomLimit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setMathCustomLimitOpen(false);
+            chatInput.focus();
+          }
+        });
+      }
 
       imageUploadButton.addEventListener("click", () => {
         imageFileInput.click();
@@ -9817,11 +12623,16 @@
       }
 
       let savedTheme = "light";
+      let savedComposerMode = "qa";
       let savedSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
       let savedSidebarCollapsed = false;
       try {
         savedTheme =
           window.localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+        savedComposerMode =
+          window.localStorage.getItem(COMPOSER_MODE_KEY) === "teach"
+            ? "teach"
+            : "qa";
         savedSidebarWidth =
           Number(window.localStorage.getItem(SIDEBAR_WIDTH_KEY)) ||
           DEFAULT_SIDEBAR_WIDTH;
@@ -9831,8 +12642,10 @@
         // Defaults apply when browser storage is unavailable.
       }
       setTheme(savedTheme);
+      setComposerMode(savedComposerMode, false);
       setSidebarWidth(savedSidebarWidth, false);
-      setSuggestionsCollapsed(compactComposerMedia.matches);
+      setSuggestionsCollapsed(false);
+      setConversationPanelCollapsed(conversationPanelMedia.matches);
       setSidebarCollapsed(
         sidebarMedia.matches ? true : savedSidebarCollapsed,
         false,
@@ -9840,7 +12653,7 @@
       populateSolverChapters();
       setToolboxTab("wrongbook");
       lastSubmittedKnowledgeText = latestUserQuestion();
-      renderQuestionKnowledge(lastSubmittedKnowledgeText);
+      syncQuestionKnowledgeFromConversation();
       renderWrongBook();
       renderLearningProgress();
       saveMessages();
@@ -9849,7 +12662,9 @@
       resizeInput();
       syncComposerState();
       syncAppViewportHeight();
-      chatForm.dataset.voiceAvailable = String(Boolean(BrowserSpeechRecognition));
+      const voiceAvailable = String(Boolean(BrowserSpeechRecognition));
+      chatForm.dataset.voiceAvailable = voiceAvailable;
+      composerRow.dataset.voiceAvailable = voiceAvailable;
       voiceInputButton.hidden = !BrowserSpeechRecognition;
       syncSpeechButtons();
     })();

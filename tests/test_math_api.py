@@ -49,8 +49,63 @@ class MathApiSmokeTest(unittest.TestCase):
     def test_health_reports_current_version(self):
         payload = self.request("/health")
         self.assertEqual("ok", payload["status"])
-        self.assertEqual("0.6.7", payload["version"])
+        self.assertEqual("0.6.11", payload["version"])
         self.assertIn("api_key_enabled", payload)
+
+    def test_spoken_chinese_expression_is_normalized_by_api(self):
+        payload = self.request(
+            "/verify-query",
+            {"expression": "x的平方", "variable": "", "candidate": ""},
+        )
+
+        self.assertEqual("x**2", payload["expression"])
+        self.assertEqual("2*x", payload["derivative"])
+        self.assertIsNone(payload["candidate"])
+
+    def test_coze_blank_optional_parameters_fall_back_to_defaults(self):
+        integral = self.request(
+            "/integrate-query",
+            {
+                "expression": "根号下x",
+                "variable": "",
+                "lower": "",
+                "upper": "",
+                "candidate": "",
+            },
+        )
+        self.assertEqual("x", integral["variable"])
+        self.assertIsNone(integral["candidate"])
+
+        limit = self.request(
+            "/limit-query",
+            {
+                "expression": "sinx除以x",
+                "variable": "",
+                "point": "",
+                "direction": "",
+                "candidate": "",
+            },
+        )
+        self.assertEqual("1", limit["limit"])
+        self.assertEqual("x", limit["variable"])
+        self.assertEqual("0", limit["point"])
+
+        plot = self.request(
+            "/plot-query",
+            {
+                "expression": "sinx",
+                "variable": "",
+                "x_min": "",
+                "x_max": "",
+                "y_min": "",
+                "y_max": "",
+                "samples": "",
+                "width": "",
+                "height": "",
+            },
+        )
+        self.assertEqual("x", plot["variable"])
+        self.assertIn("<svg", plot["svg"])
 
     def test_derivative_result_and_candidate_check(self):
         correct = self.request(
@@ -180,6 +235,45 @@ class MathApiSmokeTest(unittest.TestCase):
             },
         )
         self.assertEqual("收敛", query_payload["result"])
+
+    def test_parametric_tangent_normal_solve_endpoint_contract(self):
+        payload = self.request(
+            "/solve",
+            json_payload={
+                "chapter": "derivatives",
+                "topic": "parametric_tangent_normal",
+                "inputs": {
+                    "x_expression": "sin(t)",
+                    "y_expression": "cos(2*t)",
+                    "parameter": "t",
+                    "parameter_value": "pi/4",
+                },
+            },
+        )
+
+        self.assertEqual("ok", payload["status"])
+        self.assertIs(True, payload["verified"])
+        self.assertIs(True, payload["verification"]["passed"])
+        self.assertEqual(
+            "parametric_tangent_normal",
+            payload["verification"]["kind"],
+        )
+        self.assertIn("(sqrt(2)/2, 0)", payload["result"])
+
+        missing_parameter = self.request(
+            "/solve",
+            json_payload={
+                "chapter": "derivatives",
+                "topic": "parametric_tangent_normal",
+                "inputs": {
+                    "x_expression": "sin(t)",
+                    "y_expression": "cos(2*t)",
+                    "parameter": "t",
+                },
+            },
+            expected_status=400,
+        )
+        self.assertIn("parameter_value", missing_parameter["detail"])
 
     def test_function_plot_endpoint(self):
         payload = self.request(

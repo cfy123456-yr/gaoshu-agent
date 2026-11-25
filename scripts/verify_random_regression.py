@@ -24,7 +24,7 @@ from verify_deployment import VerificationError, expect, request_json
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_SEED = 20260928
-EXPECTED_VERSION = "0.6.7"
+EXPECTED_VERSION = "0.6.11"
 X = sympy.Symbol("x", real=True)
 N = sympy.Symbol("n", integer=True, positive=True)
 Y = sympy.Symbol("y", real=True)

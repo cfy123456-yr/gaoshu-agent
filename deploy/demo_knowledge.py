@@ -24,6 +24,10 @@ _MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _LATEX_COMMAND_RE = re.compile(r"\\[a-zA-Z]+")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
+_CONCEPT_HINT_RE = re.compile(r"(?:定义|概念|含义|是什么)")
+_DEFINITION_QUERY_RE = re.compile(
+    r"(?P<subject>.+?)(?:的)?(?:定义|概念|含义)$"
+)
 _COMPACT_DROP_RE = re.compile(
     r"[\s`~!@#$%^&*()+=\[\]{}\\|;:',.<>/?\""
     r"\u3000-\u303f\uff01-\uff65]+"
@@ -49,6 +53,7 @@ _QUERY_STOP_PHRASES = (
 _TOPIC_EXPANSIONS = (
     (("derivative",), ("导数", "求导", "微分")),
     (("integral",), ("积分", "原函数")),
+    (("积分的定义", "积分定义", "积分的概念"), ("定积分", "概念", "黎曼和")),
     (("limit",), ("极限", "洛必达")),
     (("series",), ("级数", "收敛")),
     (("differential equation",), ("微分方程", "通解", "特解")),
@@ -109,6 +114,17 @@ def normalize_text(value: object) -> str:
     return _WHITESPACE_RE.sub(" ", text).strip()
 
 
+def _extract_definition_subject(normalized_query: str) -> str:
+    match = _DEFINITION_QUERY_RE.search(normalized_query)
+    if match is None:
+        return ""
+    subject = match.group("subject").strip().removesuffix("的").strip()
+    compact_subject = _compact_text(subject)
+    if len(compact_subject) < 2 or len(compact_subject) > 20:
+        return ""
+    return compact_subject
+
+
 def _compact_text(value: object) -> str:
     return _COMPACT_DROP_RE.sub("", normalize_text(value))
 
@@ -125,14 +141,13 @@ def _clean_markdown(value: str) -> str:
 
 
 def _iter_markdown_files(root: Path) -> Iterable[Path]:
-    for directory_name in ("knowledge", "knowledge_tongji"):
-        directory = root / directory_name
-        if not directory.is_dir():
+    directory = root / "knowledge"
+    if not directory.is_dir():
+        return
+    for path in sorted(directory.glob("*.md")):
+        if path.name.startswith("00_"):
             continue
-        for path in sorted(directory.glob("*.md")):
-            if path.name.startswith("00_"):
-                continue
-            yield path
+        yield path
 
 
 def _parse_markdown_file(
@@ -239,11 +254,22 @@ class KnowledgeBase:
             for unit in units
         }
         total_weight = max(sum(unit_weights.values()), 1.0)
+        definition_subject = _extract_definition_subject(normalized_query)
         scored: list[tuple[float, KnowledgeSection, tuple[str, ...]]] = []
 
         for section in self.sections:
             raw_score = 0.0
             matched_terms: list[str] = []
+
+            if _CONCEPT_HINT_RE.search(normalized_query):
+                concept_path = f"{section.normalized_title} {section.normalized_path}"
+                if "概念" in concept_path or "定义" in concept_path:
+                    raw_score += 65.0
+                    if (
+                        definition_subject
+                        and definition_subject in section.compact_title
+                    ):
+                        raw_score += 220.0
 
             if exact_query and len(exact_query) >= 3:
                 if exact_query in section.compact_title:

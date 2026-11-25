@@ -39,7 +39,7 @@ class HealthCheckTest(unittest.TestCase):
                 RuntimeError("cold start"),
                 {
                     "status": "ok",
-                    "version": "0.6.7",
+                    "version": "0.6.11",
                     "uptime_seconds": 12.5,
                 },
             ],

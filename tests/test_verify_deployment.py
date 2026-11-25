@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import re
 import unittest
+from unittest.mock import patch
 
 from scripts.verify_deployment import (
     DEMO_REQUIRED_MARKERS,
     VerificationError,
     assert_demo_page_markers,
     assert_model_health,
+    verify_ocr_url_api,
 )
 
 
@@ -81,7 +84,7 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             VerificationError,
-            f"演示页缺少必需标记：{missing_marker}",
+            re.escape(f"演示页缺少必需标记：{missing_marker}"),
         ):
             assert_demo_page_markers(page)
 
@@ -100,7 +103,7 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             VerificationError,
-            f"演示页缺少必需标记：{missing_marker}",
+            re.escape(f"演示页缺少必需标记：{missing_marker}"),
         ):
             assert_demo_page_markers(page)
 
@@ -109,6 +112,59 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         with self.assertRaisesRegex(VerificationError, "缺少聊天接口调用"):
             assert_demo_page_markers(page)
+
+    def test_accepts_remote_image_ocr_contract(self) -> None:
+        responses = (
+            {"detail": "缺少 image_url 参数。"},
+            {"detail": "图片链接不能指向本机地址。"},
+            {"detail": "图片链接不能指向本机、内网或保留地址。"},
+            {"detail": "图片链接返回的内容不是图片。"},
+            {
+                "provider": "vision",
+                "requires_confirmation": True,
+                "text": "∫ x^2 dx",
+            },
+        )
+
+        with patch(
+            "scripts.verify_deployment.request_json",
+            side_effect=responses,
+        ) as request_json:
+            verify_ocr_url_api(
+                "https://example.test",
+                "https://images.example/question.png",
+                timeout=20.0,
+            )
+
+        self.assertEqual(5, request_json.call_count)
+        recognized_call = request_json.call_args_list[-1]
+        self.assertEqual(45.0, recognized_call.kwargs["timeout"])
+
+    def test_rejects_remote_image_ocr_without_dx(self) -> None:
+        responses = (
+            {"detail": "缺少 image_url 参数。"},
+            {"detail": "图片链接不能指向本机地址。"},
+            {"detail": "图片链接不能指向本机、内网或保留地址。"},
+            {"detail": "图片链接返回的内容不是图片。"},
+            {
+                "provider": "vision",
+                "requires_confirmation": True,
+                "text": "∫ xexdx",
+            },
+        )
+
+        with (
+            patch(
+                "scripts.verify_deployment.request_json",
+                side_effect=responses,
+            ),
+            self.assertRaisesRegex(VerificationError, "平方、积分变量和 dx"),
+        ):
+            verify_ocr_url_api(
+                "https://example.test",
+                "https://images.example/question.png",
+                timeout=20.0,
+            )
 
 
 if __name__ == "__main__":

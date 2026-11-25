@@ -9,6 +9,46 @@ from unittest.mock import patch
 from deploy import demo_windows_ocr
 
 
+class WindowsOcrFallbackConfigurationTests(unittest.TestCase):
+    def test_defaults_to_enabled_on_windows(self):
+        self.assertTrue(
+            demo_windows_ocr._read_windows_ocr_fallback(
+                None,
+                platform="win32",
+            )
+        )
+        self.assertTrue(
+            demo_windows_ocr._read_windows_ocr_fallback(
+                "",
+                platform="win32",
+            )
+        )
+
+    def test_defaults_to_disabled_off_windows(self):
+        self.assertFalse(
+            demo_windows_ocr._read_windows_ocr_fallback(
+                None,
+                platform="linux",
+            )
+        )
+
+    def test_explicit_false_disables_on_windows(self):
+        self.assertFalse(
+            demo_windows_ocr._read_windows_ocr_fallback(
+                "false",
+                platform="win32",
+            )
+        )
+
+    def test_explicit_true_enables_off_windows(self):
+        self.assertTrue(
+            demo_windows_ocr._read_windows_ocr_fallback(
+                "true",
+                platform="linux",
+            )
+        )
+
+
 class WindowsOcrPowerShellTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

@@ -17,10 +17,22 @@ from deploy.demo_math_text import normalize_math_text
 
 load_dotenv()
 
-WINDOWS_OCR_FALLBACK = os.getenv(
-    "WINDOWS_OCR_FALLBACK",
-    "false",
-).strip().lower() in {"1", "true", "yes", "on"}
+
+def _read_windows_ocr_fallback(
+    value: str | None,
+    *,
+    platform: str | None = None,
+) -> bool:
+    """Read the local OCR switch, enabling it by default on Windows."""
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return (platform or sys.platform) == "win32"
+    return normalized in {"1", "true", "yes", "on"}
+
+
+WINDOWS_OCR_FALLBACK = _read_windows_ocr_fallback(
+    os.getenv("WINDOWS_OCR_FALLBACK"),
+)
 WINDOWS_OCR_TIMEOUT_SECONDS = max(
     5.0,
     min(90.0, float(os.getenv("WINDOWS_OCR_TIMEOUT_SECONDS", "30") or 30)),

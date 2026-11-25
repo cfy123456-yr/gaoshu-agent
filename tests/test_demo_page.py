@@ -1,16 +1,19 @@
+import importlib.util
 import io
 import itertools
 import json
 import struct
 import unittest
+from pathlib import Path
 from urllib.error import HTTPError
-from unittest.mock import patch
+from unittest.mock import ANY, MagicMock, patch
 
 from deploy import (
     demo_chat,
     demo_coze_ocr,
     demo_math_text,
     demo_question_blocks,
+    demo_remote_image,
     demo_session,
     demo_vision,
     demo_windows_ocr,
@@ -23,15 +26,35 @@ class DemoPageTest(unittest.TestCase):
         self.client = wsgi_app.application.test_client()
         wsgi_app._chat_response_cache.clear()
         wsgi_app._ocr_response_cache.clear()
+        wsgi_app.teaching_sessions.clear()
         wsgi_app.rate_limiter.requests.clear()
         self.session_counter = itertools.count(1)
 
-    def chat(self, message, history=None, session=None):
+    def chat(
+        self,
+        message,
+        history=None,
+        session=None,
+        mode=None,
+        *,
+        teaching_action=None,
+        source=None,
+        pending_question=None,
+    ):
         session_id = session or next(self.session_counter)
         headers = {"X-Demo-Session": f"test-session-{session_id}"}
+        payload = {"message": message, "history": history or []}
+        if mode is not None:
+            payload["mode"] = mode
+        if teaching_action is not None:
+            payload["teaching_action"] = teaching_action
+        if source is not None:
+            payload["source"] = source
+        if pending_question is not None:
+            payload["pending_question"] = pending_question
         return self.client.post(
             "/demo/api/chat",
-            json={"message": message, "history": history or []},
+            json=payload,
             headers=headers,
         )
 
@@ -46,6 +69,23 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('id="messageList"', html)
         self.assertIn("/static/katex/katex.min.css", html)
         self.assertIn("/static/katex/katex.min.js", html)
+        self.assertIn("/static/morphicons/element.js", html)
+        self.assertIn("defineMorphIcon();", html)
+        self.assertIn("<morph-icon", html)
+        self.assertIn("function setMorphIcon(target, iconPath)", html)
+        self.assertIn('target.setAttribute("icon", iconPath)', html)
+        self.assertIn("function createMorphIcon(iconPath, options = {})", html)
+        self.assertIn("createMorphIcon(MORPH_ICONS.close", html)
+        self.assertIn('aria-label="选择题目图片"', html)
+        self.assertIn('id="suggestions"\n          role="group"', html)
+        self.assertIn('aria-valuemin="220"', html)
+        self.assertIn('aria-valuemax="420"', html)
+        self.assertIn(
+            'sidebarResizer.setAttribute("aria-valuenow", String(nextWidth));',
+            html,
+        )
+        self.assertIn('id="messageList"\n          aria-label=', html)
+        self.assertIn('tabindex="0"\n        ></main>', html)
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertNotIn("serviceStatus", html)
         self.assertNotIn("serviceStatusText", html)
@@ -56,6 +96,149 @@ class DemoPageTest(unittest.TestCase):
         self.assertNotIn('fetch("/demo/api/health"', html)
         self.assertIn('fetch("/demo/api/chat"', html)
 
+    def test_demo_page_exposes_accessible_math_input_toolbar(self):
+        html = self.client.get("/demo").get_data(as_text=True)
+
+        self.assertIn('id="mathToolbar"', html)
+        self.assertIn('aria-label="插入数学符号"', html)
+        self.assertIn('id="mathLimitsToggle"', html)
+        self.assertIn('id="mathLimitsPanel"', html)
+        self.assertIn('id="mathLowerLimit"', html)
+        self.assertIn('id="mathUpperLimit"', html)
+        self.assertIn('id="mathCustomLimitToggle"', html)
+        self.assertIn('id="mathCustomLimitPanel"', html)
+        self.assertIn('id="mathLimitVariable"', html)
+        self.assertIn('id="mathLimitPoint"', html)
+        self.assertIn('id="mathLimitDirection"', html)
+        self.assertIn('id="mathInsertLimit"', html)
+        self.assertIn('class="math-tool-group"', html)
+        self.assertIn('data-math-insert="lim_{x→0} "', html)
+        self.assertIn('data-math-wrap-end="^{2}"', html)
+        self.assertIn('data-math-wrap-end="^{n}"', html)
+        self.assertIn('data-math-wrap-start="√("', html)
+        self.assertIn('data-math-wrap-start="∛("', html)
+        self.assertIn('data-math-insert="()/()"', html)
+        self.assertIn('data-math-insert="d/dx "', html)
+        self.assertIn('data-math-insert="e^{x}"', html)
+        self.assertIn('data-math-insert="∞"', html)
+        self.assertIn('data-math-insert="≠"', html)
+        self.assertIn("function insertMathInputText(text, options = {})", html)
+        self.assertIn('chatInput.setRangeText(insertion, start, end, "end")', html)
+        self.assertIn("function insertDefiniteIntegral()", html)
+        self.assertIn("function setMathCustomLimitOpen(open)", html)
+        self.assertIn("function insertCustomLimit()", html)
+        self.assertIn(
+            "`∫_{${lower}}^{${upper}} ${integrand} dx`",
+            html,
+        )
+        self.assertIn(
+            "`lim_{${variable}→${point}${directionSuffix}} ${expression}`",
+            html,
+        )
+
+    def test_demo_page_exposes_clickable_standard_input_examples(self):
+        html = self.client.get("/demo").get_data(as_text=True)
+
+        self.assertIn('id="inputGuide"', html)
+        self.assertIn('id="inputGuideText"', html)
+        self.assertIn('aria-label="规范输入示例"', html)
+        self.assertIn(
+            'aria-describedby="inputGuideText voiceStatus"',
+            html,
+        )
+        self.assertIn(
+            "自然语言也能识别；点击示例填入后",
+            html,
+        )
+        self.assertIn(
+            'data-input-example="当 x 从 0 到 pi 时 sin(x) 的定积分"',
+            html,
+        )
+        self.assertIn(
+            'data-input-example="极限 x→0 sin(x)/x"',
+            html,
+        )
+        self.assertIn(
+            'data-input-example="求 z=x^2*y 在点 (1,2) 处对 x 的偏导数"',
+            html,
+        )
+        self.assertIn(
+            'data-input-example="y的导数减y等于0"',
+            html,
+        )
+        self.assertIn(
+            'data-input-example="一般项 1/n^2 是否收敛"',
+            html,
+        )
+        self.assertIn("function fillInputExample(button)", html)
+        self.assertIn("chatInput.value = example;", html)
+        self.assertIn(
+            "chatInput.setSelectionRange(example.length, example.length);",
+            html,
+        )
+        self.assertIn(
+            'event.target.closest("[data-input-example]")',
+            html,
+        )
+        self.assertIn(
+            "inputGuide.open ? MORPH_ICONS.chevronUp : MORPH_ICONS.chevronDown",
+            html,
+        )
+        self.assertIn(".input-guide-icon svg,", html)
+        self.assertIn(".input-guide-chevron svg {", html)
+        self.assertIn("width: 14px;", html)
+        self.assertIn("flex: 0 0 14px;", html)
+
+    def test_demo_page_loads_with_pythonanywhere_dynamic_loader(self):
+        module_path = Path(__file__).resolve().parents[1] / "deploy" / "wsgi_app.py"
+        spec = importlib.util.spec_from_file_location(
+            "dynamic_pythonanywhere_wsgi_test",
+            module_path,
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        client = module.application.test_client()
+        response = client.get("/demo")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("/static/katex/katex.min.css", response.get_data(as_text=True))
+        static_response = client.get("/static/morphicons/element.js")
+        try:
+            self.assertEqual(200, static_response.status_code)
+        finally:
+            static_response.close()
+
+    def test_demo_page_morphicon_assets_are_served(self):
+        for filename in (
+            "element.js",
+            "controller-CXZuwJ_M.js",
+            "spring-CFHloqPP.js",
+            "normalize-CYnN3Npw.js",
+            "dom.js",
+        ):
+            with self.subTest(filename=filename):
+                response = self.client.get(f"/static/morphicons/{filename}")
+                try:
+                    self.assertEqual(200, response.status_code)
+                finally:
+                    response.close()
+
+    def test_chat_logs_do_not_include_raw_message(self):
+        private_message = "PRIVATE-QUESTION-7f31"
+
+        with (
+            patch.object(demo_chat, "GENERAL_CHAT_API_KEY", ""),
+            self.assertLogs(wsgi_app.application.logger, level="WARNING") as logs,
+        ):
+            response = self.chat(private_message, session="privacy")
+
+        self.assertEqual(200, response.status_code)
+        log_output = "\n".join(logs.output)
+        self.assertNotIn(private_message, log_output)
+        self.assertIn("message_length=", log_output)
+
     def test_demo_page_supports_browser_voice_input_and_answer_speech(self):
         response = self.client.get("/demo")
 
@@ -63,7 +246,10 @@ class DemoPageTest(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('id="voiceInputButton"', html)
         self.assertIn('id="voiceStatus"', html)
-        self.assertIn('aria-describedby="voiceStatus"', html)
+        self.assertIn(
+            'aria-describedby="inputGuideText voiceStatus"',
+            html,
+        )
         self.assertIn(
             "window.SpeechRecognition || window.webkitSpeechRecognition || null",
             html,
@@ -82,6 +268,10 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn('data-message-action="speak-answer"', html)
         self.assertIn(
             "voiceInputButton.hidden = !BrowserSpeechRecognition",
+            html,
+        )
+        self.assertIn(
+            "composerRow.dataset.voiceAvailable = voiceAvailable",
             html,
         )
         self.assertIn('window.addEventListener("pagehide", stopVoiceInteraction)', html)
@@ -134,13 +324,78 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("function renderQuestionKnowledge(", html)
         self.assertIn("function queueQuestionKnowledgeUpdate(", html)
         self.assertIn("queueQuestionKnowledgeUpdate(chatInput.value)", html)
-        self.assertIn("renderQuestionKnowledge(text, { source: \"submit\" })", html)
+        self.assertIn("function renderQuestionKnowledgePending()", html)
+        self.assertIn("function renderQuestionKnowledgeBlocked(", html)
+        self.assertIn("function syncQuestionKnowledgeFromMessage(", html)
+        self.assertIn("function syncQuestionKnowledgeFromConversation(", html)
+        self.assertIn("function isVerifiedTeachingMessage(", html)
+        self.assertIn('source: "solution"', html)
         self.assertIn("renderQuestionKnowledge(\"\")", html)
         self.assertIn('aria-live="polite"', html)
         self.assertNotIn("FORMULA_COLLECTION", html)
         self.assertNotIn("formulaCardGrid", html)
         self.assertNotIn("formulaSearchInput", html)
         self.assertNotIn("renderFormulaCards", html)
+
+    def test_verified_solution_knowledge_has_one_server_owned_source(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn(
+            "function solutionKnowledgeFor(message) {",
+            html,
+        )
+        self.assertIn(
+            "return normalizeKnowledgePoints(message && message.knowledgePoints)\n"
+            "          .slice(0, 4);",
+            html,
+        )
+        self.assertNotIn(
+            "localMatchedQuestionKnowledge(sourceUserMessage.text)",
+            html,
+        )
+        self.assertNotIn(
+            "先明确已知条件、目标量和所求形式；计算后再用代入、量纲或边界情况检查结果。",
+            html,
+        )
+        self.assertIn("if (viewModel.knowledge.length) {", html)
+        self.assertIn(
+            "return remoteMatches.length ? remoteMatches : localMatches;",
+            html,
+        )
+
+    def test_unverified_solution_never_renders_raw_reply(self):
+        response = self.client.get("/demo")
+
+        self.assertEqual(200, response.status_code)
+        html = response.get_data(as_text=True)
+        self.assertIn(
+            "function solutionFailureTextForMessage(message) {",
+            html,
+        )
+        self.assertIn(
+            "自动求解未通过统一验算，已停止后续流程。",
+            html,
+        )
+        self.assertIn(
+            "const displayText = unverifiedSolutionIntent",
+            html,
+        )
+        self.assertIn(
+            "? solutionFailureTextForMessage(message)",
+            html,
+        )
+        self.assertIn(
+            "renderRichMessageText(text, displayText);",
+            html,
+        )
+        self.assertIn(
+            "return speechFriendlyMathText(\n"
+            "            solutionFailureTextForMessage(message),\n"
+            "          );",
+            html,
+        )
 
     def test_demo_page_keeps_only_two_sidebar_entries(self):
         response = self.client.get("/demo")
@@ -231,7 +486,7 @@ class DemoPageTest(unittest.TestCase):
         self.assertRegex(
             html,
             r'id="imageFileInput"\s+type="file"\s+accept="[^"]+"\s+'
-            r'multiple',
+            r'aria-label="[^"]+"\s+multiple',
         )
         self.assertIn("const MAX_QUESTION_IMAGE_COUNT = 4", html)
         self.assertIn(
@@ -286,7 +541,7 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual(200, response.status_code)
         html = response.get_data(as_text=True)
-        self.assertIn("今天的草稿纸", html)
+        self.assertIn("写下你的题目", html)
         self.assertIn(
             "嗨，我是知微 👋 今天哪道高数题卡住了？"
             "文字、拍照都行，我们一步步来。",
@@ -312,6 +567,14 @@ class DemoPageTest(unittest.TestCase):
         for icon in ("camera", "check", "book"):
             self.assertIn(f'icon: "{icon}"', html)
         self.assertIn('element("span", "suggestion-label", suggestion.label)', html)
+        self.assertRegex(
+            html,
+            r"\.suggestion-label\s*\{[^}]*min-width:\s*max-content;",
+        )
+        self.assertRegex(
+            html,
+            r"\.suggestions-toggle\s*\{[^}]*white-space:\s*nowrap;",
+        )
         self.assertIn("function renderSolutionSteps(container, message)", html)
         self.assertIn('"solution-step-list"', html)
         self.assertIn("`第${index + 1}步`", html)
@@ -384,6 +647,26 @@ class DemoPageTest(unittest.TestCase):
         for intent in ("verify", "integrate", "limit", "solve", "plot"):
             self.assertIn(f'"{intent}"', html)
         self.assertIn("function messageCanJoinWrongBook(message)", html)
+        self.assertIn("function isVerifiedSolutionMessage(message)", html)
+        self.assertIn("message.verified !== true", html)
+        self.assertIn("verification.passed !== true", html)
+        self.assertIn("!Array.isArray(checks)", html)
+        self.assertIn("!checks.length", html)
+        self.assertIn("Object.keys(calculation).length", html)
+        self.assertIn(
+            "if (!answer || !isVerifiedSolutionMessage(answer)) {",
+            html,
+        )
+        self.assertIn(
+            "if (!isVerifiedSolutionMessage(message)) {",
+            html,
+        )
+        self.assertIn("function solutionKnowledgeFor(message)", html)
+        self.assertIn(
+            "return normalizeKnowledgePoints(message && message.knowledgePoints)",
+            html,
+        )
+        self.assertIn(".slice(0, 4);", html)
         self.assertIn(
             '!WRONG_BOOK_ELIGIBLE_INTENTS.has(String(answer.intent || ""))',
             html,
@@ -417,9 +700,14 @@ class DemoPageTest(unittest.TestCase):
             html,
         )
         self.assertIn(
-            "setSuggestionsCollapsed(compactComposerMedia.matches)",
+            "setSuggestionsCollapsed(false)",
             html,
         )
+        self.assertIn(
+            'const conversationPanelMedia = window.matchMedia("(max-width: 1120px)")',
+            html,
+        )
+        self.assertIn("grid-template-areas:", html)
 
     def test_demo_page_exposes_learning_progress_import_export(self):
         response = self.client.get("/demo")
@@ -585,6 +873,255 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertIn("选择", response.get_json()["detail"])
+
+    def test_demo_ocr_url_requires_an_image_url(self):
+        response = self.client.post("/demo/api/ocr-url", json={})
+
+        self.assertEqual(400, response.status_code)
+        self.assertIn("image_url", response.get_json()["detail"])
+
+    def test_demo_ocr_url_rejects_private_and_local_targets(self):
+        for image_url in (
+            "file:///etc/passwd",
+            "http://localhost/a.png",
+            "http://127.0.0.1/a.png",
+            "http://10.0.0.8/a.png",
+            "http://169.254.169.254/latest/meta-data",
+            "http://[::1]/a.png",
+            "https://example.com:8443/a.png",
+        ):
+            with self.subTest(image_url=image_url):
+                response = self.client.post(
+                    "/demo/api/ocr-url",
+                    json={"image_url": image_url},
+                )
+                self.assertEqual(400, response.status_code)
+                self.assertNotIn("latest/meta-data", response.get_json()["detail"])
+
+    def test_remote_image_fetch_rejects_non_image_content(self):
+        class FakeResponse:
+            headers = {"Content-Type": "text/html"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def read(self, _limit):
+                return b"<html>not an image</html>"
+
+        with (
+            patch.object(
+                demo_remote_image,
+                "validate_remote_image_url",
+                return_value="https://images.example/a.png",
+            ),
+            patch.object(
+                demo_remote_image,
+                "build_opener",
+                return_value=MagicMock(
+                    open=MagicMock(return_value=FakeResponse())
+                ),
+            ),
+        ):
+            with self.assertRaises(demo_remote_image.RemoteImageError) as raised:
+                demo_remote_image.fetch_remote_image(
+                    "https://images.example/a.png"
+                )
+
+        self.assertIn("不是图片", str(raised.exception))
+
+    def test_demo_ocr_url_accepts_query_parameter_and_runs_vision_ocr(self):
+        with (
+            patch.object(
+                wsgi_app,
+                "validate_remote_image_url",
+                return_value="https://images.example/question.png",
+            ) as validate,
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_url",
+                return_value="计算不定积分 ∫ x e^(x^2) dx",
+            ) as transcribe,
+        ):
+            response = self.client.get(
+                "/demo/api/ocr-url",
+                query_string={
+                    "image_url": "https://images.example/question.png"
+                },
+                headers={"X-Demo-Session": "test-ocr-url-query"},
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("vision", payload["provider"])
+        self.assertIn("∫ x e^(x^2) dx", payload["text"])
+        self.assertTrue(payload["requires_confirmation"])
+        validate.assert_called_once_with("https://images.example/question.png")
+        transcribe.assert_called_once_with(
+            "https://images.example/question.png",
+            timeout_seconds=ANY,
+        )
+
+    def test_demo_ocr_url_falls_back_to_binary_vision(self):
+        with (
+            patch.object(
+                wsgi_app,
+                "validate_remote_image_url",
+                return_value="https://images.example/question.png",
+            ),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_url",
+                side_effect=demo_vision.VisionUpstreamError(
+                    "视觉服务超时。"
+                ),
+            ),
+            patch.object(
+                wsgi_app,
+                "fetch_remote_image",
+                return_value=(b"png-bytes", "image/png"),
+            ),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_image",
+                return_value="计算积分 ∫ x e^(x^2) dx",
+            ) as binary,
+            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
+        ):
+            response = self.client.post(
+                "/demo/api/ocr-url",
+                json={
+                    "image_url": "https://images.example/question.png"
+                },
+            )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("vision", response.get_json()["provider"])
+        binary.assert_called_once_with(
+            b"png-bytes",
+            "image/png",
+            timeout_seconds=ANY,
+        )
+
+    def test_demo_ocr_url_falls_back_to_coze_with_original_url(self):
+        with (
+            patch.object(
+                wsgi_app,
+                "validate_remote_image_url",
+                return_value="https://images.example/question.png",
+            ),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_url",
+                side_effect=demo_vision.VisionUpstreamError(
+                    "视觉服务超时。"
+                ),
+            ),
+            patch.object(
+                wsgi_app,
+                "fetch_remote_image",
+                return_value=(b"png-bytes", "image/png"),
+            ),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_image",
+                side_effect=demo_vision.VisionUpstreamError(
+                    "二进制视觉失败。"
+                ),
+            ),
+            patch.object(wsgi_app, "coze_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_coze_question_image_url",
+                return_value="∫ x e^(x^2) dx",
+            ) as coze,
+        ):
+            response = self.client.post(
+                "/demo/api/ocr-url",
+                json={
+                    "image_url": "https://images.example/question.png"
+                },
+            )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("coze", response.get_json()["provider"])
+        coze.assert_called_once_with(
+            "https://images.example/question.png",
+            timeout_seconds=ANY,
+        )
+
+    def test_demo_ocr_url_maps_upstream_failure_to_server_error(self):
+        with (
+            patch.object(
+                wsgi_app,
+                "validate_remote_image_url",
+                return_value="https://images.example/question.png",
+            ),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_url",
+                side_effect=demo_vision.VisionUpstreamError(
+                    "视觉服务超时。"
+                ),
+            ),
+            patch.object(
+                wsgi_app,
+                "fetch_remote_image",
+                side_effect=demo_remote_image.RemoteImageError(
+                    "暂时无法下载图片，请稍后重试。",
+                    status_code=502,
+                ),
+            ),
+            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
+        ):
+            response = self.client.post(
+                "/demo/api/ocr-url",
+                json={
+                    "image_url": "https://images.example/question.png"
+                },
+            )
+
+        self.assertEqual(502, response.status_code)
+        self.assertIn("视觉服务超时", response.get_json()["detail"])
+        self.assertIn("暂时无法下载图片", response.get_json()["detail"])
+
+    def test_demo_ocr_url_maps_unreadable_image_to_client_error(self):
+        with (
+            patch.object(
+                wsgi_app,
+                "validate_remote_image_url",
+                return_value="https://example.com/",
+            ),
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_url",
+                side_effect=demo_vision.VisionInputError(
+                    "图片链接不是可读取的图片。"
+                ),
+            ),
+            patch.object(
+                wsgi_app,
+                "fetch_remote_image",
+                side_effect=demo_remote_image.RemoteImageError(
+                    "图片链接返回的内容不是图片。"
+                ),
+            ),
+            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
+        ):
+            response = self.client.post(
+                "/demo/api/ocr-url",
+                json={"image_url": "https://example.com/"},
+            )
+
+        self.assertEqual(400, response.status_code)
+        self.assertIn("不是图片", response.get_json()["detail"])
 
     def test_ocr_question_validator_accepts_short_arithmetic(self):
         for question in ("1+1", "2+2", "8/2"):
@@ -1411,7 +1948,11 @@ class DemoPageTest(unittest.TestCase):
         cases = (
             ("x\u00b2", "x^2"),
             ("x\u2081", "x_1"),
+            ("\u221a2", "sqrt(2)"),
+            ("\u221a2x", "sqrt(2)*x"),
             ("\u221ax", "sqrt(x)"),
+            ("\u221a(x+1)", "sqrt(x+1)"),
+            ("y=-2\u221a2x+2", "y=-2sqrt(2)*x+2"),
             ("x\u21920", "x->0"),
             ("\u03c0", "pi"),
             ("\u221e", "oo"),
@@ -1493,6 +2034,47 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("数字 0 与字母 O/o", prompt)
         self.assertIn("疑似", prompt)
 
+    def test_direct_vision_adapter_sends_remote_image_url(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def read(self, size=-1):
+                return json.dumps(
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "∫ x^2 dx",
+                                }
+                            }
+                        ]
+                    }
+                ).encode("utf-8")
+
+        with (
+            patch.object(demo_vision, "VISION_API_URL", "https://vision.test/chat"),
+            patch.object(demo_vision, "VISION_API_KEY", "vision-token"),
+            patch.object(demo_vision, "VISION_MODEL", "vision-model"),
+            patch.object(
+                demo_vision,
+                "urlopen",
+                return_value=FakeResponse(),
+            ) as vision_urlopen,
+        ):
+            text = demo_vision.transcribe_question_image_url(
+                "https://images.example/question.png"
+            )
+
+        self.assertEqual("∫ x^2 dx", text)
+        request = vision_urlopen.call_args.args[0]
+        payload = json.loads(request.data)
+        image_reference = payload["messages"][0]["content"][1]["image_url"]["url"]
+        self.assertEqual("https://images.example/question.png", image_reference)
+
     def test_coze_ocr_prompt_accepts_basic_arithmetic(self):
         self.assertIn("基础算术", demo_coze_ocr.COZE_OCR_PROMPT)
         self.assertIn("不要因为题目简单", demo_coze_ocr.COZE_OCR_PROMPT)
@@ -1509,6 +2091,7 @@ class DemoPageTest(unittest.TestCase):
 
     def test_direct_vision_adapter_distinguishes_http_failures(self):
         cases = (
+            (400, "参数无效"),
             (401, "鉴权失败"),
             (403, "免费额度"),
             (429, "请求过于频繁"),
@@ -1617,17 +2200,31 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("1", payload["limit"])
         self.assertIs(True, payload["is_correct"])
 
-    def test_query_candidate_must_be_ignored_when_blank(self):
+    def test_demo_knowledge_accepts_coze_query_parameters(self):
+        response = self.client.post(
+            "/demo/api/knowledge",
+            query_string={
+                "query": "定积分的定义",
+                "limit": "3",
+            },
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("定积分的定义", payload["query"])
+        self.assertEqual("knowledge/05_定积分.md", payload["results"][0]["source"])
+
+    def test_query_optional_fields_accept_coze_blank_strings(self):
         cases = (
             (
                 "/verify-query",
-                {"expression": "x^2", "variable": "x", "candidate": ""},
+                {"expression": "x的平方", "variable": "", "candidate": ""},
             ),
             (
                 "/integrate-query",
                 {
-                    "expression": "x^2",
-                    "variable": "x",
+                    "expression": "根号下x",
+                    "variable": "",
                     "lower": "",
                     "upper": "",
                     "candidate": "",
@@ -1636,9 +2233,9 @@ class DemoPageTest(unittest.TestCase):
             (
                 "/limit-query",
                 {
-                    "expression": "sin(x)/x",
-                    "variable": "x",
-                    "point": "0",
+                    "expression": "sinx除以x",
+                    "variable": "",
+                    "point": "",
                     "direction": "",
                     "candidate": "",
                 },
@@ -1652,6 +2249,27 @@ class DemoPageTest(unittest.TestCase):
                 payload = response.get_json()
                 self.assertIsNone(payload["candidate"])
                 self.assertIsNone(payload["is_correct"])
+
+        plot = self.client.post(
+            "/plot-query",
+            query_string={
+                "expression": "sinx",
+                "variable": "",
+                "x_min": "",
+                "x_max": "",
+                "y_min": "",
+                "y_max": "",
+                "samples": "",
+                "width": "",
+                "height": "",
+            },
+        )
+
+        self.assertEqual(200, plot.status_code)
+        plot_payload = plot.get_json()
+        self.assertEqual("sin(x)", plot_payload["expression"])
+        self.assertEqual("x", plot_payload["variable"])
+        self.assertIn("<svg", plot_payload["svg"])
 
     def test_demo_calculates_extended_chapter_solve(self):
         response = self.client.post(
@@ -1709,6 +2327,53 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual(200, image.status_code)
         self.assertEqual("image/svg+xml", image.mimetype)
         self.assertIn("<svg", image.get_data(as_text=True))
+
+    def test_demo_chat_solves_derivative_and_integral_applications(self):
+        cases = (
+            (
+                "求切线 y=x^2 在 x=1 处",
+                "切线方程",
+                "Eq(y, 2*x - 1)",
+            ),
+            (
+                "求极值 x^2-2x",
+                "极值判定",
+                None,
+            ),
+            (
+                "求单调区间 x^2-2x",
+                "单调区间分析",
+                None,
+            ),
+            (
+                "求曲线 y=x^2 与 x 轴在 0 到 1 之间围成的面积",
+                "平面图形面积",
+                "1/3",
+            ),
+            (
+                "求曲线 y=x 绕 x 轴旋转一周所得旋转体体积，x 从 0 到 1",
+                "旋转体体积（绕x轴）",
+                "pi/3",
+            ),
+            (
+                "求曲线 y=(2/3)x^(3/2) 从 x=0 到 x=1 的弧长",
+                "平面曲线弧长",
+                "-2/3 + 4*sqrt(2)/3",
+            ),
+        )
+        for message, method, result in cases:
+            with self.subTest(message=message):
+                response = self.chat(message)
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("solve", payload["intent"])
+                self.assertEqual(method, payload["calculation"]["method"])
+                if result is not None:
+                    self.assertEqual(result, payload["calculation"]["result"])
+                self.assertIn("**题目理解**", payload["reply"])
+                self.assertIn("**最终答案**", payload["reply"])
+
     def test_demo_chat_solves_series_convergence(self):
         cases = (
             ("判断级数 1/n^2 收敛", "收敛"),
@@ -1796,14 +2461,21 @@ class DemoPageTest(unittest.TestCase):
 
                 self.assertEqual(200, response.status_code)
                 payload = response.get_json()
-                self.assertIn(payload["intent"], {"solve", "calculation"})
-                calculation = payload.get("calculation")
-                if calculation is None:
-                    self.skipTest(
-                        "Legacy explicit curve/surface solver is optional for this release."
-                    )
+                self.assertEqual("solve", payload["intent"])
+                calculation = payload["calculation"]
                 self.assertEqual(method, calculation["method"])
                 self.assertEqual(expected, calculation["result"])
+                headings = (
+                    "题目理解",
+                    "解题思路",
+                    "详细计算步骤",
+                    "最终答案",
+                )
+                positions = [
+                    payload["reply"].index(heading)
+                    for heading in headings
+                ]
+                self.assertEqual(sorted(positions), positions)
 
     def test_demo_chat_solves_differential_equation(self):
         response = self.chat("解微分方程 y'-y=0")
@@ -2081,6 +2753,181 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("$f'(x)=", payload["reply"])
         self.assertIn("$f(x)=-1$", payload["reply"])
 
+    def test_demo_chat_verifies_parametric_tangent_normal_positive_case(self):
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+
+        response = self.chat(question, session="p0-parametric-positive")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("ok", payload["status"])
+        self.assertEqual("solve", payload["intent"])
+        self.assertIs(True, payload["verified"])
+        self.assertIs(True, payload["verification"]["passed"])
+        self.assertGreaterEqual(len(payload["verification"]["checks"]), 5)
+        self.assertTrue(
+            all(
+                check["passed"] is True
+                for check in payload["verification"]["checks"]
+            )
+        )
+        self.assertEqual(
+            "parametric_tangent_normal",
+            payload["verification"]["kind"],
+        )
+        self.assertEqual(
+            "parametric_tangent_normal",
+            payload["calculation"]["topic"],
+        )
+        self.assertIn("(sqrt(2)/2, 0)", payload["calculation"]["result"])
+        self.assertIn(
+            "y = -2*sqrt(2)*x + 2",
+            payload["calculation"]["result"],
+        )
+        self.assertIn(
+            "y = sqrt(2)*x/4 - 1/4",
+            payload["calculation"]["result"],
+        )
+        self.assertEqual(4, len(payload["knowledge_points"]))
+
+    def test_demo_chat_six_missing_condition_cases_are_blocked(self):
+        questions = (
+            "求参数方程 x=sin(t), y=cos(2t) 的切线方程和法线方程",
+            "求函数的极值",
+            "求函数的最大值",
+            "求积分",
+            "求微分方程的通解",
+            "求极限",
+        )
+        general_success = {
+            "status": "ok",
+            "intent": "general",
+            "reply": "这是不应出现的通用模型成功回答。",
+            "formula_latex": "",
+            "formula_text": "",
+            "calculation": None,
+        }
+
+        with patch.object(
+            demo_chat,
+            "_build_general_chat_response",
+            return_value=general_success,
+        ) as general_chat:
+            responses = [
+                self.chat(question, session=f"p0-negative-{index}")
+                for index, question in enumerate(questions, start=1)
+            ]
+
+        self.assertEqual(6, len(responses))
+        for question, response in zip(questions, responses):
+            with self.subTest(question=question):
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertNotEqual("ok", payload["status"])
+                self.assertIsNone(payload["calculation"])
+                self.assertIsNot(True, payload.get("verified"))
+                self.assertFalse(payload.get("knowledge_points") or [])
+                self.assertNotIn("**最终答案**", payload["reply"])
+        general_chat.assert_not_called()
+
+    def test_demo_teaching_blocks_all_six_missing_condition_cases(self):
+        questions = (
+            "求参数方程 x=sin(t), y=cos(2t) 的切线方程和法线方程",
+            "求函数的极值",
+            "求函数的最大值",
+            "求积分",
+            "求微分方程的通解",
+            "求极限",
+        )
+
+        for index, question in enumerate(questions, start=1):
+            with self.subTest(question=question):
+                response = self.chat(
+                    question,
+                    session=f"p0-teaching-negative-{index}",
+                    mode="teach",
+                )
+
+                self.assertEqual(200, response.status_code)
+                payload = response.get_json()
+                self.assertEqual("error", payload["status"])
+                self.assertIn(
+                    payload["intent"],
+                    {"teaching_failed", "teaching_unavailable"},
+                )
+                self.assertIsNone(payload["calculation"])
+                self.assertNotIn("teaching", payload)
+                self.assertFalse(payload.get("knowledge_points") or [])
+                self.assertNotIn("**最终答案**", payload["reply"])
+
+    def test_demo_chat_repeated_submissions_are_stable_across_sessions(self):
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+        payloads = []
+        for index in range(1, 6):
+            response = self.chat(
+                question,
+                session=f"p0-repeat-across-{index}",
+            )
+            self.assertEqual(200, response.status_code)
+            payloads.append(response.get_json())
+
+        baseline = payloads[0]
+        self.assertEqual("ok", baseline["status"])
+        self.assertIs(True, baseline["verified"])
+        for payload in payloads[1:]:
+            self.assertEqual(baseline["calculation"], payload["calculation"])
+            self.assertEqual(baseline["reply"], payload["reply"])
+            self.assertEqual(
+                baseline["verification"],
+                payload["verification"],
+            )
+            self.assertEqual(
+                baseline["knowledge_points"],
+                payload["knowledge_points"],
+            )
+
+    def test_demo_chat_ocr_confirmation_matches_manual_parametric_solution(
+        self,
+    ):
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+        manual = self.chat(
+            question,
+            session="p0-manual-ocr-baseline",
+            source="text",
+        ).get_json()
+        ocr_confirmation = self.chat(
+            question,
+            session="p0-ocr-confirmation-path",
+            source="ocr",
+        ).get_json()
+        confirmed = self.chat(
+            "确认",
+            session="p0-ocr-confirmation-path",
+            source="ocr",
+        ).get_json()
+
+        self.assertEqual("ocr_confirm", ocr_confirmation["intent"])
+        self.assertEqual(question, ocr_confirmation["formula_text"])
+        self.assertNotIn("。。", ocr_confirmation["reply"])
+        self.assertEqual("ok", manual["status"])
+        self.assertEqual("ok", confirmed["status"])
+        self.assertEqual(manual["calculation"], confirmed["calculation"])
+        self.assertEqual(manual["reply"], confirmed["reply"])
+        self.assertEqual(manual["verification"], confirmed["verification"])
+        self.assertEqual(
+            manual["knowledge_points"],
+            confirmed["knowledge_points"],
+        )
+
     def test_demo_chat_calculates_limit(self):
         response = self.client.post(
             "/demo/api/chat",
@@ -2107,10 +2954,11 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("oo", payload["calculation"]["limit"])
 
     def test_demo_chat_requests_missing_information(self):
-        response = self.client.post(
-            "/demo/api/chat",
-            json={"message": "今天天气怎么样"},
-        )
+        with patch.object(demo_chat, "GENERAL_CHAT_API_KEY", ""):
+            response = self.client.post(
+                "/demo/api/chat",
+                json={"message": "今天天气怎么样"},
+            )
 
         self.assertEqual(200, response.status_code)
         payload = response.get_json()
@@ -2148,6 +2996,543 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("general", payload["intent"])
         self.assertEqual("这是普通问答的回答。", payload["reply"])
         self.assertIsNone(payload["calculation"])
+        self.assertEqual("qa", payload["mode"])
+
+    def test_demo_chat_accepts_teaching_mode(self):
+        response = self.chat("求导 x^2", mode="teach")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("teach", payload["mode"])
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertIsNone(payload["calculation"])
+        self.assertEqual(1, payload["teaching"]["current"])
+        self.assertEqual(1, payload["teaching"]["total"])
+        self.assertTrue(payload["teaching"]["active"])
+        self.assertNotIn("2*x", response.get_data(as_text=True))
+        self.assertNotIn("steps", payload["teaching"])
+
+    def test_demo_teaching_parametric_tangent_normal_starts_with_seven_steps(self):
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+
+        response = self.chat(question, mode="teach")
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("ok", payload["status"])
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertIsNone(payload["calculation"])
+        self.assertEqual(1, payload["teaching"]["current"])
+        self.assertEqual(7, payload["teaching"]["total"])
+        self.assertEqual("先求 dx/dt", payload["teaching"]["step_title"])
+        self.assertIn("dx/dt", payload["teaching"]["prompt"])
+        self.assertNotIn("-2*sqrt(2)", response.get_data(as_text=True))
+        self.assertNotIn("knowledge_points", payload)
+
+    def test_demo_teaching_parametric_tangent_normal_completes_all_steps(self):
+        session = "teaching-parametric-tangent-normal"
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+        answers = (
+            "cos(t)",
+            "-2*sin(2*t)",
+            "(sqrt(2)/2, 0)",
+            "-2*sqrt(2)",
+            "sqrt(2)/4",
+            "y = -2*sqrt(2)*x + 2",
+            "y = sqrt(2)*x/4 - 1/4",
+        )
+
+        started = self.chat(question, session=session, mode="teach")
+        self.assertEqual(200, started.status_code)
+        self.assertEqual(1, started.get_json()["teaching"]["current"])
+
+        payload = {}
+        for index, answer in enumerate(answers, start=1):
+            response = self.chat(
+                answer,
+                session=session,
+                mode="teach",
+                teaching_action="answer",
+            )
+            self.assertEqual(200, response.status_code)
+            payload = response.get_json()
+            self.assertEqual("correct", payload["teaching"]["feedback_state"])
+            if index < len(answers):
+                self.assertEqual("teaching_step", payload["intent"])
+                self.assertEqual(index + 1, payload["teaching"]["current"])
+                self.assertIsNone(payload["calculation"])
+
+        self.assertEqual("solve", payload["intent"])
+        self.assertEqual("complete", payload["teaching"]["phase"])
+        self.assertFalse(payload["teaching"]["active"])
+        self.assertEqual(
+            "parametric_tangent_normal",
+            payload["calculation"]["topic"],
+        )
+        self.assertIn("(sqrt(2)/2, 0)", payload["calculation"]["result"])
+        self.assertEqual(4, len(payload["knowledge_points"]))
+        self.assertEqual(
+            "参数方程求导",
+            payload["knowledge_points"][0]["title"],
+        )
+
+    def test_demo_teaching_accepts_reordered_equivalent_equations(self):
+        session = "teaching-reordered-equations"
+        question = (
+            "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "
+            "处的切线方程和法线方程。"
+        )
+
+        self.chat(question, session=session, mode="teach")
+        for answer in (
+            "cos(t)",
+            "-2*sin(2*t)",
+            "(sqrt(2)/2, 0)",
+            "-2*sqrt(2)",
+            "sqrt(2)/4",
+        ):
+            response = self.chat(
+                answer,
+                session=session,
+                mode="teach",
+                teaching_action="answer",
+            )
+            self.assertEqual("correct", response.get_json()["teaching"]["feedback_state"])
+
+        wrong_tangent = self.chat(
+            "y = -2*sqrt(2)*x + 3",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        self.assertEqual("wrong", wrong_tangent["teaching"]["feedback_state"])
+        self.assertEqual(6, wrong_tangent["teaching"]["current"])
+
+        reordered_tangent = self.chat(
+            "2√2x + y - 2 = 0",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        self.assertEqual("correct", reordered_tangent["teaching"]["feedback_state"])
+        self.assertEqual(7, reordered_tangent["teaching"]["current"])
+
+        reordered_normal = self.chat(
+            "4y = √2x - 1",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        self.assertEqual("correct", reordered_normal["teaching"]["feedback_state"])
+        self.assertEqual("complete", reordered_normal["teaching"]["phase"])
+
+    def test_demo_teaching_stops_when_auto_solve_fails(self):
+        def failed_solve(message, history=None, mode="qa"):
+            return {
+                "status": "error",
+                "intent": "solve",
+                "reply": "自动求解暂时没有完成。",
+                "formula_latex": "",
+                "formula_text": "",
+                "calculation": None,
+            }
+
+        with patch.object(
+            wsgi_app,
+            "build_chat_response",
+            side_effect=failed_solve,
+        ):
+            response = self.chat(
+                "求参数方程切线",
+                session="teaching-solve-failure",
+                mode="teach",
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("error", payload["status"])
+        self.assertEqual("teaching_failed", payload["intent"])
+        self.assertIsNone(payload["calculation"])
+        self.assertNotIn("teaching", payload)
+        self.assertNotIn("knowledge_points", payload)
+        self.assertIn("系统已停止后续教学步骤和知识点生成", payload["reply"])
+
+    def test_demo_teaching_stops_when_calculation_payload_is_missing(self):
+        def incomplete_solve(message, history=None, mode="qa"):
+            return {
+                "status": "ok",
+                "intent": "solve",
+                "reply": "求解完成。",
+                "formula_latex": "",
+                "formula_text": "",
+                "calculation": None,
+            }
+
+        with patch.object(
+            wsgi_app,
+            "build_chat_response",
+            side_effect=incomplete_solve,
+        ):
+            response = self.chat(
+                "求参数方程切线",
+                session="teaching-calculation-missing",
+                mode="teach",
+            )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("error", payload["status"])
+        self.assertEqual("teaching_failed", payload["intent"])
+        self.assertIsNone(payload["calculation"])
+        self.assertNotIn("teaching", payload)
+        self.assertNotIn("knowledge_points", payload)
+
+    def test_demo_teaching_wrong_answer_hints_without_revealing(self):
+        session = "teaching-wrong"
+        started = self.chat("求导 x^2", session=session, mode="teach")
+
+        wrong = self.chat(
+            "3*x",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        )
+
+        self.assertEqual(200, wrong.status_code)
+        payload = wrong.get_json()
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertEqual(1, payload["teaching"]["current"])
+        self.assertEqual(1, payload["teaching"]["attempts"])
+        self.assertEqual("wrong", payload["teaching"]["feedback_state"])
+        self.assertTrue(payload["teaching"]["hint"])
+        self.assertNotIn("2*x", wrong.get_data(as_text=True))
+        self.assertIsNone(payload["calculation"])
+        self.assertTrue(started.get_json()["teaching"]["active"])
+
+    def test_demo_teaching_correct_answer_completes_and_reveals_solution(self):
+        session = "teaching-correct"
+        self.chat("求导 x^2", session=session, mode="teach")
+
+        completed = self.chat(
+            "2x",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        )
+
+        self.assertEqual(200, completed.status_code)
+        payload = completed.get_json()
+        self.assertEqual("verify", payload["intent"])
+        self.assertEqual("complete", payload["teaching"]["phase"])
+        self.assertFalse(payload["teaching"]["active"])
+        self.assertTrue(payload["teaching"]["can_restart"])
+        self.assertEqual("2*x", payload["calculation"]["derivative"])
+        self.assertIn("**详细计算步骤**", payload["reply"])
+        self.assertIn("**最终答案**", payload["reply"])
+
+    def test_demo_teaching_supports_hint_explain_skip_and_restart(self):
+        session = "teaching-actions"
+        self.chat("积分 0 到 1 x^2", session=session, mode="teach")
+
+        hinted = self.chat(
+            "hint",
+            session=session,
+            mode="teach",
+            teaching_action="hint",
+        ).get_json()
+        explained = self.chat(
+            "explain",
+            session=session,
+            mode="teach",
+            teaching_action="explain",
+        ).get_json()
+        skipped = self.chat(
+            "skip",
+            session=session,
+            mode="teach",
+            teaching_action="skip",
+        ).get_json()
+        restarted = self.chat(
+            "restart",
+            session=session,
+            mode="teach",
+            teaching_action="restart",
+        ).get_json()
+
+        self.assertTrue(hinted["teaching"]["hint"])
+        self.assertTrue(explained["teaching"]["explanation"])
+        self.assertEqual(2, skipped["teaching"]["current"])
+        self.assertEqual(1, restarted["teaching"]["current"])
+        self.assertEqual(0, restarted["teaching"]["attempts"])
+        self.assertIsNone(restarted["calculation"])
+
+    def test_demo_teaching_existing_limit_rejects_nonexistent_answer(self):
+        session = "teaching-limit-exists"
+        started = self.chat(
+            "lim x→0 sin(x)/x",
+            session=session,
+            mode="teach",
+        ).get_json()
+
+        self.assertEqual("先求左极限", started["teaching"]["step_title"])
+        self.assertEqual(3, started["teaching"]["total"])
+
+        left = self.chat(
+            "极限是1",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        right = self.chat(
+            "1",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        wrong = self.chat(
+            "不存在",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("correct", left["teaching"]["feedback_state"])
+        self.assertEqual("correct", right["teaching"]["feedback_state"])
+        self.assertEqual(3, right["teaching"]["current"])
+        self.assertEqual(3, wrong["teaching"]["current"])
+        self.assertEqual("wrong", wrong["teaching"]["feedback_state"])
+        self.assertEqual(1, wrong["teaching"]["attempts"])
+        self.assertTrue(wrong["teaching"]["hint"])
+        self.assertNotIn("$1$", wrong["teaching"]["hint"])
+
+        completed = self.chat(
+            "极限是1",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("complete", completed["teaching"]["phase"])
+        self.assertEqual("limit", completed["intent"])
+        self.assertEqual("1", completed["calculation"]["limit"])
+
+    def test_demo_teaching_nonexistent_limit_rejects_numeric_answer(self):
+        session = "teaching-limit-missing"
+        started = self.chat(
+            "lim x→0 1/x",
+            session=session,
+            mode="teach",
+        ).get_json()
+
+        self.assertEqual(3, started["teaching"]["total"])
+        self.assertEqual(
+            "correct",
+            self.chat(
+                "-∞",
+                session=session,
+                mode="teach",
+                teaching_action="answer",
+            ).get_json()["teaching"]["feedback_state"],
+        )
+        self.assertEqual(
+            "correct",
+            self.chat(
+                "∞",
+                session=session,
+                mode="teach",
+                teaching_action="answer",
+            ).get_json()["teaching"]["feedback_state"],
+        )
+        wrong = self.chat(
+            "0",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("wrong", wrong["teaching"]["feedback_state"])
+        self.assertEqual(3, wrong["teaching"]["current"])
+
+        completed = self.chat(
+            "极限不存在",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("complete", completed["teaching"]["phase"])
+        self.assertIs(False, completed["calculation"]["exists"])
+
+    def test_demo_teaching_one_sided_infinite_limit_rejects_nonexistent(self):
+        session = "teaching-one-sided-infinite"
+        started = self.chat(
+            "求 x趋近于0时 1/x 的右极限",
+            session=session,
+            mode="teach",
+        ).get_json()
+
+        self.assertEqual(1, started["teaching"]["total"])
+        wrong = self.chat(
+            "不存在",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("wrong", wrong["teaching"]["feedback_state"])
+        self.assertEqual(1, wrong["teaching"]["current"])
+        self.assertEqual(1, wrong["teaching"]["attempts"])
+
+        completed = self.chat(
+            "极限是∞",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual("complete", completed["teaching"]["phase"])
+        self.assertEqual("oo", completed["calculation"]["limit"])
+
+    def test_demo_teaching_persists_progress_across_requests(self):
+        session = "teaching-progress"
+        first = self.chat(
+            "积分 0 到 1 x^2",
+            session=session,
+            mode="teach",
+        ).get_json()
+        second = self.chat(
+            "x^3/3",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+        completed = self.chat(
+            "1/3",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        ).get_json()
+
+        self.assertEqual(1, first["teaching"]["current"])
+        self.assertEqual(2, second["teaching"]["current"])
+        self.assertEqual(2, second["teaching"]["total"])
+        self.assertIsNone(second["calculation"])
+        self.assertEqual("complete", completed["teaching"]["phase"])
+        self.assertEqual("1/3", completed["calculation"]["integral"])
+
+    def test_demo_teaching_continue_is_an_answer_not_ocr_confirmation(self):
+        session = "teaching-continue"
+        self.chat("求导 x^2", session=session, mode="teach")
+
+        response = self.chat(
+            "继续",
+            session=session,
+            mode="teach",
+            pending_question="求导 x^2",
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertEqual("wrong", payload["teaching"]["feedback_state"])
+        self.assertEqual(1, payload["teaching"]["attempts"])
+
+    def test_demo_teaching_ocr_confirmation_starts_lesson(self):
+        response = self.chat(
+            "确认",
+            session="teaching-ocr",
+            mode="teach",
+            source="ocr",
+            pending_question="求导 x^2",
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertEqual(1, payload["teaching"]["current"])
+        self.assertIn("x^2", payload["teaching"]["question"])
+        self.assertIsNone(payload["calculation"])
+
+    def test_demo_teaching_can_restart_after_completion(self):
+        session = "teaching-complete-restart"
+        self.chat("求导 x^2", session=session, mode="teach")
+        self.chat(
+            "2x",
+            session=session,
+            mode="teach",
+            teaching_action="answer",
+        )
+
+        response = self.chat(
+            "restart",
+            session=session,
+            mode="teach",
+            teaching_action="restart",
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("teaching_step", payload["intent"])
+        self.assertTrue(payload["teaching"]["active"])
+        self.assertEqual(1, payload["teaching"]["current"])
+        self.assertIsNone(payload["calculation"])
+
+    def test_demo_teaching_reset_expires_active_session(self):
+        session = "teaching-reset"
+        self.chat("求导 x^2", session=session, mode="teach")
+
+        reset = self.client.post(
+            "/demo/api/teaching/reset",
+            headers={"X-Demo-Session": "test-session-teaching-reset"},
+        )
+        expired = self.chat(
+            "hint",
+            session=session,
+            mode="teach",
+            teaching_action="hint",
+        )
+
+        self.assertEqual(200, reset.status_code)
+        self.assertEqual("teaching_reset", reset.get_json()["state"])
+        self.assertEqual(200, expired.status_code)
+        self.assertEqual("teaching_expired", expired.get_json()["intent"])
+
+    def test_demo_teaching_does_not_use_response_cache(self):
+        with patch.object(
+            wsgi_app,
+            "build_chat_response",
+            wraps=wsgi_app.build_chat_response,
+        ) as build_mock:
+            first = self.chat(
+                "求导 x^2",
+                session="teaching-cache-a",
+                mode="teach",
+            )
+            second = self.chat(
+                "求导 x^2",
+                session="teaching-cache-b",
+                mode="teach",
+            )
+
+        self.assertEqual("teaching_step", first.get_json()["intent"])
+        self.assertEqual("teaching_step", second.get_json()["intent"])
+        self.assertNotIn("cached", first.get_json())
+        self.assertNotIn("cached", second.get_json())
+        self.assertEqual(2, build_mock.call_count)
+
+    def test_demo_chat_rejects_unknown_mode(self):
+        response = self.client.post(
+            "/demo/api/chat",
+            json={"message": "求导 x^2", "mode": "other"},
+        )
+
+        self.assertEqual(422, response.status_code)
 
     def test_demo_chat_keeps_math_questions_out_of_general_chat(self):
         with (
@@ -2249,10 +3634,58 @@ class DemoPageTest(unittest.TestCase):
             'const source = options.source === "ocr" ? "ocr" : "text";',
             html,
         )
+        self.assertIn(
+            "const useComposerAsSingleOcr = insertedItems.length === 1;",
+            html,
+        )
+        self.assertIn(
+            "if (insertedText && !unchangedInsertion) {",
+            html,
+        )
         self.assertIn("responseCache", html)
         self.assertIn("includes(data.intent)", html)
         self.assertIn("REQUEST_TIMEOUT_MS = 45000", html)
         self.assertIn("X-Demo-Session", html)
+        self.assertIn('id="composerMode"', html)
+        self.assertIn('aria-disabled="false"', html)
+        self.assertIn('data-composer-mode="qa"', html)
+        self.assertIn('data-composer-mode="teach"', html)
+        self.assertIn('aria-label="回答方式"', html)
+        self.assertIn("if (requestInFlight && persist)", html)
+        self.assertIn("button.disabled = active;", html)
+        self.assertIn(
+            'composerModeControl.setAttribute(\n          "aria-disabled",\n          String(active),\n        );',
+            html,
+        )
+        self.assertIn(
+            "window.localStorage.getItem(COMPOSER_MODE_KEY)",
+            html,
+        )
+        self.assertIn(
+            "function responseCacheKey(question, mode = composerMode)",
+            html,
+        )
+        self.assertIn("const requestMode = composerMode;", html)
+        self.assertIn("mode: requestMode,", html)
+        self.assertIn(
+            'stepTitle: String(value.step_title || value.stepTitle || ""),',
+            html,
+        )
+        self.assertIn(
+            "canSkip: Boolean(value.can_skip ?? value.canSkip),",
+            html,
+        )
+        self.assertIn(
+            "canRestart: Boolean(value.can_restart ?? value.canRestart),",
+            html,
+        )
+        self.assertIn(
+            'value.feedback_state ?? value.feedbackState ?? ""',
+            html,
+        )
+        self.assertIn("function parseSolutionSections(rawText)", html)
+        self.assertIn("const SOLUTION_SECTION_TITLES", html)
+        self.assertNotIn(".split(/(?<=[。！？；])(?=\\S)/u)", html)
 
     def test_demo_page_handles_mobile_viewport_and_ocr_timeout(self):
         response = self.client.get("/demo")
@@ -2289,6 +3722,8 @@ class DemoPageTest(unittest.TestCase):
             '"仍在等待计算服务，最长大约 45 秒；完成前请不要重复发送。"',
             html,
         )
+        self.assertIn("const slowNoticeId = window.setTimeout(", html)
+        self.assertIn("const verySlowNoticeId = window.setTimeout(", html)
         self.assertIn("window.clearTimeout(slowNoticeId)", html)
         self.assertIn("window.clearTimeout(verySlowNoticeId)", html)
 
@@ -2331,6 +3766,51 @@ class DemoPageTest(unittest.TestCase):
         self.assertIsNot(True, first.get_json().get("cached"))
         self.assertIs(True, second.get_json()["cached"])
         self.assertIsNot(True, other_session.get_json().get("cached"))
+
+    def test_demo_chat_cache_is_isolated_by_mode(self):
+        def fake_build(message, history, mode):
+            return {
+                "status": "ok",
+                "intent": "verify",
+                "reply": f"{mode}:{message}",
+                "formula_latex": "",
+                "formula_text": "",
+                "calculation": {
+                    "expression": "x^2",
+                    "variable": "x",
+                    "derivative": "2*x",
+                    "derivative_function": "2*x",
+                },
+                "verified": True,
+                "verification": {
+                    "passed": True,
+                    "kind": "derivative",
+                    "checks": [
+                        {
+                            "name": "derivative_contract",
+                            "passed": True,
+                        }
+                    ],
+                },
+            }
+
+        with patch.object(
+            wsgi_app,
+            "build_chat_response",
+            side_effect=fake_build,
+        ) as build_mock:
+            qa = self.chat("同一道题", session="mode-cache", mode="qa")
+            teach = self.chat("同一道题", session="mode-cache", mode="teach")
+
+        self.assertEqual(200, qa.status_code)
+        self.assertEqual(200, teach.status_code)
+        self.assertTrue(qa.get_json()["reply"].startswith("qa:"))
+        teaching_payload = teach.get_json()
+        self.assertEqual("teach", teaching_payload["mode"])
+        self.assertEqual("teaching_step", teaching_payload["intent"])
+        self.assertIsNone(teaching_payload["calculation"])
+        self.assertNotIn("cached", teaching_payload)
+        self.assertEqual(2, build_mock.call_count)
 
     def test_demo_chat_does_not_cache_history_answers(self):
         first = self.chat("我以前做过哪些题", session="history")
