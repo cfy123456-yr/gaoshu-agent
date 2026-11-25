@@ -412,6 +412,128 @@ def _verify_sequence_limit(
     return checks
 
 
+def _verified_infinitesimal_order(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    point: sympy.Expr,
+) -> tuple[int, sympy.Expr]:
+    shifted = simplify(expression.subs(variable, variable + point))
+    value = Limit(shifted, variable, 0).doit()
+    if value.is_zero is not True:
+        raise VerificationInputError(f"{expression} 在给定点不是无穷小")
+
+    for order in range(0, 17):
+        quotient = Limit(
+            shifted / variable**order,
+            variable,
+            0,
+        ).doit()
+        if (
+            quotient.is_finite is True
+            and quotient.is_zero is False
+            and quotient not in {sympy.nan, sympy.zoo}
+        ):
+            return order, simplify(quotient)
+    raise VerificationInputError(f"{expression} 的无穷小阶数无法独立确定")
+
+
+@_register("limits", "infinitesimal_comparison")
+def _verify_infinitesimal_comparison(
+    inputs: Mapping[str, Any],
+    calculation: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    variable = _symbol(_text(inputs, "variable"))
+    point = _parse(_text(inputs, "point"))
+    relation = _text(
+        inputs,
+        "kind",
+        required=False,
+        default="high_order",
+    )
+    if relation not in {"high_order", "low_order"}:
+        raise VerificationInputError("kind 只能是 high_order 或 low_order")
+    options = _mapping(inputs, "options")
+    if set(options) != {"A", "B", "C", "D"}:
+        raise VerificationInputError("options 必须完整包含 A、B、C、D")
+
+    expected_options: list[dict[str, Any]] = []
+    for label in sorted(options):
+        expression = _parse(options[label])
+        order, coefficient = _verified_infinitesimal_order(
+            expression,
+            variable,
+            point,
+        )
+        expected_options.append(
+            {
+                "label": label,
+                "expression": str(expression),
+                "order": order,
+                "leading_coefficient": str(coefficient),
+            }
+        )
+
+    target_order = (
+        max(item["order"] for item in expected_options)
+        if relation == "high_order"
+        else min(item["order"] for item in expected_options)
+    )
+    candidates = [
+        item["label"]
+        for item in expected_options
+        if item["order"] == target_order
+    ]
+    relation_text = "高阶" if relation == "high_order" else "低阶"
+    checks = [
+        verification_check(
+            "unique_infinitesimal_answer",
+            len(candidates) == 1,
+            f"{relation_text}无穷小必须有且只有一个选项",
+        )
+    ]
+    if len(candidates) != 1:
+        return checks
+
+    expected_selected = candidates[0]
+    expected_orders = {
+        item["label"]: item["order"]
+        for item in expected_options
+    }
+    details = calculation.get("details")
+    details_mapping = details if isinstance(details, Mapping) else {}
+    checks.extend(
+        [
+            verification_check(
+                "selected_option_matches",
+                _result_text(calculation) == expected_selected,
+                "最终选项必须与独立重算结果一致",
+            ),
+            verification_check(
+                "option_orders_match",
+                _objects_equal(expected_orders, details_mapping.get("orders")),
+                "A-D 每一项的无穷小阶数必须与独立复算一致",
+            ),
+            verification_check(
+                "option_derivations_match",
+                _objects_equal(
+                    expected_options,
+                    details_mapping.get("options"),
+                ),
+                "逐项首项系数和阶数必须与独立复算一致",
+            ),
+            verification_check(
+                "selected_detail_matches",
+                details_mapping.get("selected") == expected_selected,
+            ),
+            verification_check(
+                "target_order_matches",
+                details_mapping.get("target_order") == target_order,
+            ),
+        ]
+    )
+    return checks
+
+
 # Derivatives and derivative applications
 
 
@@ -568,6 +690,257 @@ def _verify_monotonicity(
         "critical_points": solve(derivative, variable),
     }
     return [_comparison_check(expected, _result_text(calculation))]
+
+
+def _verified_real_roots(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    *,
+    field: str,
+) -> list[sympy.Expr]:
+    roots = sympy.solveset(expression, variable, domain=sympy.S.Reals)
+    if roots is sympy.S.EmptySet:
+        return []
+    if not isinstance(roots, sympy.FiniteSet):
+        raise VerificationInputError(f"{field} 的实根不是有限个")
+    values = list(roots)
+    if any(root.is_real is not True or root.is_infinite for root in values):
+        raise VerificationInputError(f"{field} 含有不可排序的实根")
+    try:
+        return sorted(values, key=lambda root: float(sympy.N(root, 30)))
+    except Exception as exc:
+        raise VerificationInputError(f"{field} 的实根无法排序") from exc
+
+
+def _verified_interval_sign(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    lower: sympy.Expr,
+    upper: sympy.Expr,
+) -> int:
+    if lower == -sympy.oo:
+        sample = sympy.N(upper, 30) - 1
+    elif upper == sympy.oo:
+        sample = sympy.N(lower, 30) + 1
+    else:
+        sample = (lower + upper) / 2
+    value = sympy.N(expression.subs(variable, sample), 30)
+    if value.is_positive:
+        return 1
+    if value.is_negative:
+        return -1
+    if value.is_zero:
+        return 0
+    raise VerificationInputError("区间内导数符号无法独立判断")
+
+
+def _verified_sign_intervals(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    roots: Sequence[sympy.Expr],
+) -> list[tuple[sympy.Expr, sympy.Expr, int]]:
+    boundaries = [-sympy.oo, *roots, sympy.oo]
+    return [
+        (
+            lower,
+            upper,
+            _verified_interval_sign(expression, variable, lower, upper),
+        )
+        for lower, upper in zip(boundaries, boundaries[1:])
+    ]
+
+
+def _verified_curve_details(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+) -> dict[str, Any]:
+    first = simplify(diff(expression, variable))
+    second = simplify(diff(expression, variable, 2))
+    first_roots = _verified_real_roots(first, variable, field="一阶导数")
+    second_roots = _verified_real_roots(second, variable, field="二阶导数")
+    first_signs = _verified_sign_intervals(first, variable, first_roots)
+    second_signs = _verified_sign_intervals(second, variable, second_roots)
+
+    increasing_intervals = [
+        f"({lower}, {upper})"
+        for lower, upper, sign in first_signs
+        if sign > 0
+    ]
+    decreasing_intervals = [
+        f"({lower}, {upper})"
+        for lower, upper, sign in first_signs
+        if sign < 0
+    ]
+    second_positive_intervals = [
+        f"({lower}, {upper})"
+        for lower, upper, sign in second_signs
+        if sign > 0
+    ]
+    second_negative_intervals = [
+        f"({lower}, {upper})"
+        for lower, upper, sign in second_signs
+        if sign < 0
+    ]
+
+    local_maxima: list[dict[str, str]] = []
+    local_minima: list[dict[str, str]] = []
+    for index, root in enumerate(first_roots):
+        left_sign = first_signs[index][2]
+        right_sign = first_signs[index + 1][2]
+        value = str(simplify(expression.subs(variable, root)))
+        if left_sign > 0 and right_sign < 0:
+            local_maxima.append(
+                {"x": str(root), "y": value, "kind": "极大值"}
+            )
+        elif left_sign < 0 and right_sign > 0:
+            local_minima.append(
+                {"x": str(root), "y": value, "kind": "极小值"}
+            )
+
+    inflection_points: list[dict[str, str]] = []
+    for index, root in enumerate(second_roots):
+        left_sign = second_signs[index][2]
+        right_sign = second_signs[index + 1][2]
+        if left_sign * right_sign < 0:
+            inflection_points.append(
+                {
+                    "x": str(root),
+                    "y": str(simplify(expression.subs(variable, root))),
+                }
+            )
+
+    return {
+        "expression": str(expression),
+        "variable": str(variable),
+        "first_derivative": str(first),
+        "first_derivative_roots": [str(root) for root in first_roots],
+        "increasing_intervals": increasing_intervals,
+        "decreasing_intervals": decreasing_intervals,
+        "local_maxima": local_maxima,
+        "local_minima": local_minima,
+        "local_max": local_maxima[0] if local_maxima else None,
+        "local_min": local_minima[0] if local_minima else None,
+        "second_derivative": str(second),
+        "second_derivative_roots": [str(root) for root in second_roots],
+        "second_positive_intervals": second_positive_intervals,
+        "second_negative_intervals": second_negative_intervals,
+        "inflection_points": inflection_points,
+    }
+
+
+def _verified_curve_summary(details: Mapping[str, Any]) -> str:
+    parts: list[str] = []
+    if details["increasing_intervals"]:
+        parts.append(
+            "单调递增区间：" + "、".join(details["increasing_intervals"])
+        )
+    if details["decreasing_intervals"]:
+        parts.append(
+            "单调递减区间：" + "、".join(details["decreasing_intervals"])
+        )
+    if details["local_maxima"]:
+        parts.append(
+            "极大值："
+            + "；".join(
+                f"f({item['x']})={item['y']}"
+                for item in details["local_maxima"]
+            )
+        )
+    if details["local_minima"]:
+        parts.append(
+            "极小值："
+            + "；".join(
+                f"f({item['x']})={item['y']}"
+                for item in details["local_minima"]
+            )
+        )
+    if details["second_positive_intervals"]:
+        parts.append(
+            "二阶导数为正区间："
+            + "、".join(details["second_positive_intervals"])
+        )
+    if details["second_negative_intervals"]:
+        parts.append(
+            "二阶导数为负区间："
+            + "、".join(details["second_negative_intervals"])
+        )
+    if details["inflection_points"]:
+        parts.append(
+            "拐点："
+            + "、".join(
+                f"({item['x']}, {item['y']})"
+                for item in details["inflection_points"]
+            )
+        )
+    if parts:
+        return "；".join(parts) + "。"
+    return "函数在实数域上无对应变化区间或极值点。"
+
+
+@_register("derivatives", "curve_analysis")
+def _verify_curve_analysis(
+    inputs: Mapping[str, Any],
+    calculation: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    expression = _parse(_text(inputs, "expression"))
+    variable = _symbol(_text(inputs, "variable", required=False, default="x"))
+    expected = _verified_curve_details(expression, variable)
+    expected_summary = _verified_curve_summary(expected)
+    details = calculation.get("details")
+    actual = details if isinstance(details, Mapping) else {}
+    keys = (
+        "first_derivative",
+        "first_derivative_roots",
+        "increasing_intervals",
+        "decreasing_intervals",
+        "local_maxima",
+        "local_minima",
+        "local_max",
+        "local_min",
+        "second_derivative",
+        "second_derivative_roots",
+        "second_positive_intervals",
+        "second_negative_intervals",
+        "inflection_points",
+    )
+    checks = [
+        verification_check(
+            "curve_summary_matches",
+            _result_text(calculation) == expected_summary,
+            "最终摘要必须与独立重算的完整曲线分析一致",
+        )
+    ]
+    checks.extend(
+        verification_check(
+            f"{key}_matches",
+            _objects_equal(expected[key], actual.get(key)),
+            f"{key} 必须与独立复算一致",
+        )
+        for key in keys
+    )
+    first = _parse(expected["first_derivative"])
+    second = _parse(expected["second_derivative"])
+    checks.append(
+        verification_check(
+            "derivative_roots_residual",
+            all(
+                _expressions_equal(
+                    first.subs(variable, _parse(root)),
+                    0,
+                )
+                for root in expected["first_derivative_roots"]
+            )
+            and all(
+                _expressions_equal(
+                    second.subs(variable, _parse(root)),
+                    0,
+                )
+                for root in expected["second_derivative_roots"]
+            ),
+            "把一、二阶导数的实根分别代回后必须为零",
+        )
+    )
+    return checks
 
 
 @_register("derivatives", "extrema")

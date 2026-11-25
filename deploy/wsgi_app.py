@@ -635,6 +635,8 @@ def _teaching_start_error_response(
         "formula_latex": "",
         "formula_text": "",
         "calculation": None,
+        "knowledge_points": [],
+        "verified": False,
         "suggestions": ["修改题目后重新提交", "切换到问答模式"],
         "mode": "teach",
     }
@@ -648,6 +650,8 @@ def _teaching_expired_response() -> dict[str, Any]:
         "formula_latex": "",
         "formula_text": "",
         "calculation": None,
+        "knowledge_points": [],
+        "verified": False,
         "suggestions": ["重新提交题目"],
         "mode": "teach",
     }

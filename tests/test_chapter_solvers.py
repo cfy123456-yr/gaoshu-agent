@@ -10,6 +10,17 @@ ALL_TOPIC_CASES = {
         "point": "0",
     },
     ("limits", "sequence_limit"): {"expression": "(1+1/n)^n", "variable": "n"},
+    ("limits", "infinitesimal_comparison"): {
+        "variable": "x",
+        "point": "0",
+        "kind": "high_order",
+        "options": {
+            "A": "x^2",
+            "B": "1-cos(x)",
+            "C": "x-tan(x)",
+            "D": "ln(1+x^2)",
+        },
+    },
     ("derivatives", "derivative"): {"expression": "x^2", "variable": "x"},
     ("derivatives", "higher_derivative"): {
         "expression": "x^3",
@@ -35,6 +46,10 @@ ALL_TOPIC_CASES = {
     },
     ("derivatives", "critical_points"): {"expression": "x^2-2x", "variable": "x"},
     ("derivatives", "monotonicity"): {"expression": "x^2-2x", "variable": "x"},
+    ("derivatives", "curve_analysis"): {
+        "expression": "x^3-12*x+10",
+        "variable": "x",
+    },
     ("derivatives", "extrema"): {"expression": "x^2", "variable": "x"},
     ("derivatives", "taylor"): {
         "expression": "sin(x)",
@@ -588,6 +603,72 @@ class ChapterSolverTest(unittest.TestCase):
             {"expression": "sin(x)/x", "variable": "x", "point": "0"},
         )
         self.assertEqual("1", payload["result"])
+
+    def test_infinitesimal_comparison_orders_are_verified(self):
+        payload = self.solve(
+            "limits",
+            "infinitesimal_comparison",
+            {
+                "variable": "x",
+                "point": "0",
+                "kind": "high_order",
+                "options": {
+                    "A": "x^2",
+                    "B": "1-cos(x)",
+                    "C": "x-tan(x)",
+                    "D": "ln(1+x^2)",
+                },
+            },
+        )
+
+        self.assertEqual("C", payload["result"])
+        self.assertEqual("ok", payload["status"])
+        self.assertIs(True, payload["verified"])
+        self.assertEqual(
+            {"A": 2, "B": 2, "C": 3, "D": 2},
+            payload["details"]["orders"],
+        )
+        self.assertEqual(3, payload["details"]["target_order"])
+        self.assertEqual("C", payload["details"]["selected"])
+
+    def test_curve_analysis_returns_complete_sign_evidence(self):
+        payload = self.solve(
+            "derivatives",
+            "curve_analysis",
+            {"expression": "x^3-12*x+10", "variable": "x"},
+        )
+        details = payload["details"]
+
+        self.assertEqual("ok", payload["status"])
+        self.assertIs(True, payload["verified"])
+        self.assertEqual("3*x**2 - 12", details["first_derivative"])
+        self.assertEqual("6*x", details["second_derivative"])
+        self.assertEqual(["-2", "2"], details["first_derivative_roots"])
+        self.assertEqual(
+            ["(-oo, -2)", "(2, oo)"],
+            details["increasing_intervals"],
+        )
+        self.assertEqual(["(-2, 2)"], details["decreasing_intervals"])
+        self.assertEqual(
+            [{"x": "-2", "y": "26", "kind": "极大值"}],
+            details["local_maxima"],
+        )
+        self.assertEqual(
+            [{"x": "2", "y": "-6", "kind": "极小值"}],
+            details["local_minima"],
+        )
+        self.assertEqual(
+            ["(0, oo)"],
+            details["second_positive_intervals"],
+        )
+        self.assertEqual(
+            ["(-oo, 0)"],
+            details["second_negative_intervals"],
+        )
+        self.assertEqual(
+            [{"x": "0", "y": "10"}],
+            details["inflection_points"],
+        )
 
     def test_implicit_derivative(self):
         payload = self.solve(

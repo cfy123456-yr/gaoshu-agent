@@ -77,7 +77,7 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("function createMorphIcon(iconPath, options = {})", html)
         self.assertIn("createMorphIcon(MORPH_ICONS.close", html)
         self.assertIn('aria-label="选择题目图片"', html)
-        self.assertIn('id="suggestions"\n          role="group"', html)
+        self.assertNotIn('id="suggestions"\n          role="group"', html)
         self.assertIn('aria-valuemin="220"', html)
         self.assertIn('aria-valuemax="420"', html)
         self.assertIn(
@@ -564,17 +564,14 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("String(item.welcomeBody || welcomeParts.body)", html)
         self.assertIn('article.dataset.intent = message.intent || ""', html)
         self.assertIn("function suggestionIcon(name)", html)
-        for icon in ("camera", "check", "book"):
-            self.assertIn(f'icon: "{icon}"', html)
-        self.assertIn('element("span", "suggestion-label", suggestion.label)', html)
-        self.assertRegex(
-            html,
-            r"\.suggestion-label\s*\{[^}]*min-width:\s*max-content;",
-        )
-        self.assertRegex(
-            html,
-            r"\.suggestions-toggle\s*\{[^}]*white-space:\s*nowrap;",
-        )
+        self.assertIn("<span>历史题目</span>", html)
+        self.assertIn("解题记录", html)
+        self.assertIn("完成过的题目会保存在这里", html)
+        self.assertNotIn('id="suggestionsToggle"', html)
+        self.assertNotIn('id="suggestions"', html)
+        self.assertNotIn("拍照识题", html)
+        self.assertNotIn("批改作业", html)
+        self.assertNotIn("复习错题", html)
         self.assertIn("function renderSolutionSteps(container, message)", html)
         self.assertIn('"solution-step-list"', html)
         self.assertIn("`第${index + 1}步`", html)
@@ -699,10 +696,7 @@ class DemoPageTest(unittest.TestCase):
             'window.confirm("确认从错题集移除这道题吗？")',
             html,
         )
-        self.assertIn(
-            "setSuggestionsCollapsed(false)",
-            html,
-        )
+        self.assertNotIn("setSuggestionsCollapsed(false)", html)
         self.assertIn(
             'const conversationPanelMedia = window.matchMedia("(max-width: 1120px)")',
             html,
@@ -3106,7 +3100,8 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("teaching_failed", payload["intent"])
         self.assertIsNone(payload["calculation"])
         self.assertNotIn("teaching", payload)
-        self.assertNotIn("knowledge_points", payload)
+        self.assertEqual([], payload["knowledge_points"])
+        self.assertIs(False, payload["verified"])
         self.assertIn("系统已停止后续教学步骤和知识点生成", payload["reply"])
 
     def test_demo_teaching_stops_when_calculation_payload_is_missing(self):
@@ -3137,7 +3132,34 @@ class DemoPageTest(unittest.TestCase):
         self.assertEqual("teaching_failed", payload["intent"])
         self.assertIsNone(payload["calculation"])
         self.assertNotIn("teaching", payload)
-        self.assertNotIn("knowledge_points", payload)
+        self.assertEqual([], payload["knowledge_points"])
+        self.assertIs(False, payload["verified"])
+
+    def test_demo_teaching_blocks_missing_limit_point_without_downstream_data(
+        self,
+    ):
+        question = (
+            "当 x 趋于 时，下列哪个是其他三个的高阶无穷小 "
+            "A. x^2 B. 1-cos(x) C. x-tan(x) D. ln(1+x^2)"
+        )
+
+        response = self.chat(
+            question,
+            session="teaching-missing-limit-point",
+            mode="teach",
+        )
+
+        self.assertEqual(200, response.status_code)
+        payload = response.get_json()
+        self.assertEqual("error", payload["status"])
+        self.assertEqual("teaching_failed", payload["intent"])
+        self.assertIsNone(payload["calculation"])
+        self.assertEqual([], payload["knowledge_points"])
+        self.assertIs(False, payload["verified"])
+        self.assertNotIn("teaching", payload)
+        self.assertIn("极限点", payload["reply"])
+        self.assertIn("系统已停止后续教学步骤和知识点生成", payload["reply"])
+        self.assertNotIn("**最终答案**", payload["reply"])
 
     def test_demo_teaching_wrong_answer_hints_without_revealing(self):
         session = "teaching-wrong"

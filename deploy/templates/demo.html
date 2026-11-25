@@ -9,9 +9,9 @@
   <meta name="theme-color" content="#f3eee5">
   <meta
     name="description"
-    content="知微老师高等数学对话演示，支持求导、积分和极限计算。"
+    content="知微老师高等数学解题演示，支持求导、积分和极限计算。"
   >
-  <title>知微老师 · 高数对话演示</title>
+  <title>知微老师 · 高数解题演示</title>
   <link rel="icon" href="data:,">
   <link
     rel="stylesheet"
@@ -2904,101 +2904,6 @@
       background: var(--paper);
     }
 
-    .suggestions-toolbar {
-      display: flex;
-      justify-content: flex-end;
-      padding: 8px 2px 0;
-    }
-
-    .suggestions-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      min-height: 28px;
-      padding: 3px 8px;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      color: var(--muted);
-      background: transparent;
-      font-size: 0.7rem;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-
-    .suggestions-toggle:hover {
-      border-color: var(--line);
-      color: var(--ink);
-      background: var(--sidebar-hover);
-    }
-
-    .suggestions-toggle-icon {
-      display: block;
-      width: 14px;
-      height: 14px;
-      fill: none;
-      stroke: currentColor;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      stroke-width: 1.8;
-    }
-
-    .suggestions {
-      display: flex;
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 12px 2px 10px;
-      overflow: visible;
-    }
-
-    .composer-area[data-suggestions-collapsed="true"] .suggestions {
-      display: none;
-    }
-
-    .suggestions:empty {
-      display: none;
-    }
-
-    .suggestion {
-      display: inline-flex;
-      flex: 0 0 auto;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      max-width: 100%;
-      min-height: 30px;
-      padding: 4px 10px 4px 9px;
-      overflow: hidden;
-      border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
-      border-radius: 999px;
-      color: var(--muted);
-      background: color-mix(in srgb, var(--surface) 76%, var(--paper));
-      font-size: 0.8rem;
-      font-weight: 650;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      transition: color 0.15s ease, border-color 0.15s ease,
-        background-color 0.15s ease;
-    }
-
-    .suggestion:hover {
-      border-color: color-mix(in srgb, var(--blue) 28%, var(--line));
-      color: var(--ink);
-      background: color-mix(in srgb, var(--soft-blue) 30%, var(--surface));
-    }
-
-    .suggestion:focus-visible {
-      border-color: var(--focus-ring);
-      color: var(--ink);
-      background: color-mix(in srgb, var(--soft-blue) 30%, var(--surface));
-    }
-
-    .suggestion:active {
-      transform: none;
-    }
-
     .suggestion-icon {
       display: block;
       width: 15px;
@@ -3009,13 +2914,6 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       stroke-width: 1.8;
-    }
-
-    .suggestion-label {
-      min-width: max-content;
-      overflow: visible;
-      text-overflow: clip;
-      white-space: nowrap;
     }
 
     .composer {
@@ -3638,10 +3536,6 @@
       background-color: var(--paper);
     }
 
-      html[data-theme="dark"] .suggestion {
-        background: var(--surface);
-      }
-
       html[data-theme="dark"] .bubble {
         background: color-mix(in srgb, var(--surface) 76%, var(--paper));
       }
@@ -3708,8 +3602,7 @@
     }
 
     .toolbox-tab,
-    .quick-tool-title,
-    .suggestions-toggle {
+    .quick-tool-title {
       font-size: var(--font-sm);
     }
 
@@ -3738,7 +3631,6 @@
 
     .icon-button:disabled,
     .sidebar-rail-button:disabled,
-    .suggestion:disabled,
     .composer-image-remove:disabled {
       cursor: not-allowed;
       opacity: 0.55;
@@ -3952,19 +3844,6 @@
         padding: 0 10px max(12px, env(safe-area-inset-bottom));
       }
 
-      .suggestions {
-        flex-wrap: nowrap;
-        padding-top: 10px;
-        padding-bottom: 8px;
-        overflow-x: auto;
-        overscroll-behavior-x: contain;
-        scrollbar-width: none;
-      }
-
-      .suggestions::-webkit-scrollbar {
-        display: none;
-      }
-
       .composer-row {
         grid-template-areas:
           "input input input"
@@ -4095,8 +3974,6 @@
       .solver-field input,
       .solver-field select,
       .solver-button,
-      .suggestions-toggle,
-      .suggestion,
       .math-tool-button,
       .math-limit-field input,
       .math-limits-apply,
@@ -4151,7 +4028,7 @@
 </head>
 <body>
   <div class="app-shell" id="appShell" data-sidebar-collapsed="false">
-    <aside class="sidebar" id="sidebar" aria-label="会话与工具">
+    <aside class="sidebar" id="sidebar" aria-label="题目与工具">
       <div class="sidebar-inner">
         <nav class="sidebar-rail" aria-label="侧边栏快捷入口">
           <button
@@ -4423,16 +4300,16 @@
       tabindex="-1"
     ></button>
 
-    <aside class="conversation-panel" id="conversationPanel" aria-label="会话列表">
+    <aside class="conversation-panel" id="conversationPanel" aria-label="解题记录">
       <div class="conversation-panel-head">
-        <span class="conversation-panel-title">会话</span>
+        <span class="conversation-panel-title">解题记录</span>
         <div class="conversation-panel-actions">
           <button
             class="icon-button new-chat-icon"
             id="newChatButton"
             type="button"
-            aria-label="新建会话"
-            title="新建会话"
+            aria-label="新建题目"
+            title="新建题目"
           >
             <morph-icon
               size="18"
@@ -4449,8 +4326,8 @@
             class="icon-button"
             id="conversationPanelToggle"
             type="button"
-            aria-label="收起会话列表"
-            title="收起会话列表"
+            aria-label="收起题目记录"
+            title="收起题目记录"
           >
             <morph-icon
               id="conversationPanelToggleIcon"
@@ -4469,7 +4346,7 @@
 
       <section class="sidebar-section" aria-labelledby="historyHeading">
         <div class="section-heading" id="historyHeading">
-          <span>历史对话</span>
+          <span>历史题目</span>
           <span id="historyCount">0</span>
         </div>
         <div class="history-list" id="historyList"></div>
@@ -4506,7 +4383,7 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="clear-button" id="clearButton" type="button">清空对话</button>
+          <button class="clear-button" id="clearButton" type="button">清空本题</button>
         </div>
       </header>
 
@@ -4514,44 +4391,14 @@
         <main
           class="messages"
           id="messageList"
-          aria-label="知微老师对话记录"
+          aria-label="知微老师解题记录"
           aria-live="polite"
           tabindex="0"
         ></main>
 
       </div>
 
-      <footer class="composer-area" data-suggestions-collapsed="false">
-        <div class="suggestions-toolbar">
-          <button
-            class="suggestions-toggle"
-            id="suggestionsToggle"
-            type="button"
-            aria-controls="suggestions"
-            aria-expanded="true"
-            title="收起快捷入口"
-          >
-            <morph-icon
-              class="suggestions-toggle-icon"
-              id="suggestionsToggleIcon"
-              size="14"
-              stroke-width="1.8"
-              spring="snappy"
-              reduced-motion="user"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m6 15 6-6 6 6"></path>
-              </svg>
-            </morph-icon>
-            <span id="suggestionsToggleLabel">收起快捷入口</span>
-          </button>
-        </div>
-        <div
-          class="suggestions"
-          id="suggestions"
-          role="group"
-          aria-label="常用学习入口"
-        ></div>
+      <footer class="composer-area">
         <form class="composer" id="chatForm">
           <div class="composer-head">
             <span class="composer-title">写下你的题目</span>
@@ -5346,16 +5193,6 @@
       });
       const KNOWLEDGE_API_URL = "/demo/api/knowledge";
       const KNOWLEDGE_API_TIMEOUT_MS = 4000;
-      const DEFAULT_SUGGESTIONS = [
-        { label: "拍照识题", action: "upload", icon: "camera" },
-        {
-          label: "批改作业",
-          action: "compose",
-          icon: "check",
-          prompt: "请帮我检查这道题的做法，指出错误并给出订正思路：\n",
-        },
-        { label: "复习错题", action: "wrongbook", icon: "book" },
-      ];
       const QUESTION_KNOWLEDGE_RULES = [
         {
           id: "limits",
@@ -6222,7 +6059,6 @@
       ];
 
       const messageList = document.getElementById("messageList");
-      const suggestions = document.getElementById("suggestions");
       const chatForm = document.getElementById("chatForm");
       const inputGuide = document.getElementById("inputGuide");
       const inputGuideChevron = document.getElementById(
@@ -6274,14 +6110,6 @@
       );
       const sidebarHeaderToggleIcon = document.getElementById(
         "sidebarHeaderToggleIcon",
-      );
-      const composerArea = document.querySelector(".composer-area");
-      const suggestionsToggle = document.getElementById("suggestionsToggle");
-      const suggestionsToggleIcon = document.getElementById(
-        "suggestionsToggleIcon",
-      );
-      const suggestionsToggleLabel = document.getElementById(
-        "suggestionsToggleLabel",
       );
       const historyList = document.getElementById("historyList");
       const historyCount = document.getElementById("historyCount");
@@ -6413,7 +6241,6 @@
         window.SpeechSynthesisUtterance || null;
 
       let messages = [];
-      let currentSuggestions = [...DEFAULT_SUGGESTIONS];
       let requestInFlight = false;
       let composerMode = "qa";
       let pendingQuestionImages = [];
@@ -6599,7 +6426,7 @@
             .slice(0, MAX_CONVERSATIONS)
             .map((item) => ({
               id: String(item.id),
-              title: String(item.title || "历史对话"),
+              title: String(item.title || "历史题目"),
               renamed: Boolean(item.renamed),
               updatedAt: Number(item.updatedAt) || Date.now(),
               messages: normalizeMessages(item.messages),
@@ -6743,7 +6570,7 @@
           (message) => message.role === "user" && message.text.trim(),
         );
         if (!firstQuestion) {
-          return "新会话";
+          return "新题目";
         }
         const compact = firstQuestion.text.replace(/\s+/g, " ").trim();
         return compact.length > 22 ? `${compact.slice(0, 22)}…` : compact;
@@ -6757,7 +6584,7 @@
           (message) => message.role === "user" && message.text.trim(),
         );
         if (!firstQuestion) {
-          return conversation.title || "新会话";
+          return conversation.title || "新题目";
         }
         return firstQuestion.text.replace(/\s+/g, " ").trim();
       }
@@ -6810,7 +6637,7 @@
             element(
               "div",
               "history-empty",
-              "所有会话关闭后会保存在这里",
+              "完成过的题目会保存在这里",
             ),
           );
         } else {
@@ -6825,7 +6652,7 @@
             selectButton.type = "button";
             selectButton.setAttribute(
               "aria-label",
-              `打开会话：${conversationPreview(conversation)}`,
+              `打开题目：${conversationPreview(conversation)}`,
             );
             if (conversation.id === activeConversationId) {
               selectButton.setAttribute("aria-current", "true");
@@ -6841,7 +6668,7 @@
             renameButton.dataset.historyAction = "rename";
             renameButton.setAttribute(
               "aria-label",
-              `重命名会话：${conversationPreview(conversation)}`,
+              `重命名题目：${conversationPreview(conversation)}`,
             );
 
             const deleteButton = element("button", "history-action", "删除");
@@ -6849,7 +6676,7 @@
             deleteButton.dataset.historyAction = "delete";
             deleteButton.setAttribute(
               "aria-label",
-              `删除会话：${conversationPreview(conversation)}`,
+              `删除题目：${conversationPreview(conversation)}`,
             );
 
             actions.append(renameButton, deleteButton);
@@ -9312,87 +9139,11 @@
         renderMessages();
       }
 
-      function normalizeSuggestion(item) {
-        if (typeof item === "string") {
-          const text = item.trim();
-          return text
-            ? {
-              label: text,
-              message: text,
-              action: "ask",
-              prompt: "",
-              icon: "",
-            }
-            : null;
-        }
-        if (!item || typeof item !== "object") {
-          return null;
-        }
-        const label = String(item.label || item.message || "").trim();
-        return label
-          ? {
-            label,
-            message: String(item.message || ""),
-            action: String(item.action || "ask"),
-            prompt: String(item.prompt || ""),
-            icon: String(item.icon || ""),
-          }
-          : null;
-      }
-
       function suggestionIcon(name) {
         return createMorphIcon(MORPH_ICONS[name] || MORPH_ICONS.book, {
           className: "suggestion-icon",
           size: 15,
         });
-      }
-
-      function renderSuggestions(items) {
-        const source = Array.isArray(items) && items.length
-          ? items
-          : DEFAULT_SUGGESTIONS;
-        currentSuggestions = source
-          .slice(0, 6)
-          .map(normalizeSuggestion)
-          .filter(Boolean);
-        const fragment = document.createDocumentFragment();
-        currentSuggestions.forEach((suggestion) => {
-          const button = element("button", "suggestion");
-          button.type = "button";
-          button.dataset.suggestionAction = suggestion.action;
-          button.append(
-            suggestionIcon(suggestion.icon),
-            element("span", "suggestion-label", suggestion.label),
-          );
-          if (suggestion.message) {
-            button.dataset.message = suggestion.message;
-          }
-          if (suggestion.prompt) {
-            button.dataset.prompt = suggestion.prompt;
-          }
-          fragment.append(button);
-        });
-        suggestions.replaceChildren(fragment);
-      }
-
-      function setSuggestionsCollapsed(collapsed) {
-        const nextCollapsed = Boolean(collapsed);
-        composerArea.dataset.suggestionsCollapsed = String(nextCollapsed);
-        suggestionsToggle.setAttribute(
-          "aria-expanded",
-          String(!nextCollapsed),
-        );
-        suggestionsToggle.setAttribute(
-          "title",
-          nextCollapsed ? "展开快捷入口" : "收起快捷入口",
-        );
-        setMorphIcon(
-          suggestionsToggleIcon,
-          nextCollapsed ? MORPH_ICONS.chevronDown : MORPH_ICONS.chevronUp,
-        );
-        suggestionsToggleLabel.textContent = nextCollapsed
-          ? "展开快捷入口"
-          : "收起快捷入口";
       }
 
       function resizeInput() {
@@ -11616,7 +11367,6 @@
             }
             syncWrongBookAnswer(userMessageId, text);
             recordLearningActivity("question");
-            renderSuggestions(cachedResponse.suggestions);
             return;
           }
 
@@ -11705,7 +11455,6 @@
           ) {
             lastRecognizedQuestion = "";
           }
-          renderSuggestions(data.suggestions);
         } catch (error) {
           const message =
             error.name === "AbortError"
@@ -11750,7 +11499,6 @@
             }
             renderQuestionKnowledgeBlocked("解题服务未完成");
           }
-          renderSuggestions(DEFAULT_SUGGESTIONS);
         } finally {
           window.clearTimeout(timeoutId);
           window.clearTimeout(slowNoticeId);
@@ -11913,7 +11661,6 @@
         window.clearTimeout(knowledgeDebounceId);
         lastSubmittedKnowledgeText = "";
         renderQuestionKnowledge("");
-        renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
         if (sidebarMedia.matches) {
@@ -11934,7 +11681,6 @@
         window.clearTimeout(knowledgeDebounceId);
         lastSubmittedKnowledgeText = "";
         renderQuestionKnowledge("");
-        renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         saveMessages();
         chatInput.focus();
@@ -11954,11 +11700,11 @@
         conversationPanel.dataset.collapsed = String(nextCollapsed);
         conversationPanelToggle.setAttribute(
           "aria-label",
-          nextCollapsed ? "展开会话列表" : "收起会话列表",
+          nextCollapsed ? "展开题目记录" : "收起题目记录",
         );
         conversationPanelToggle.setAttribute(
           "title",
-          nextCollapsed ? "展开会话列表" : "收起会话列表",
+          nextCollapsed ? "展开题目记录" : "收起题目记录",
         );
         setMorphIcon(
           conversationPanelToggleIcon,
@@ -11995,7 +11741,6 @@
         } catch (error) {
           // The selected conversation is still active in memory.
         }
-        renderSuggestions(DEFAULT_SUGGESTIONS);
         renderMessages();
         renderHistory();
         if (sidebarMedia.matches) {
@@ -12011,7 +11756,7 @@
         if (!conversation) {
           return;
         }
-        const nextTitle = window.prompt("重命名会话", conversation.title);
+        const nextTitle = window.prompt("重命名题目", conversation.title);
         if (nextTitle === null) {
           return;
         }
@@ -12528,55 +12273,6 @@
         addQuestionImages(imageFiles);
       });
 
-      suggestions.addEventListener("click", (event) => {
-        const button = event.target.closest(".suggestion");
-        if (button) {
-          const action = button.dataset.suggestionAction || "ask";
-          if (action === "upload") {
-            imageFileInput.click();
-            return;
-          }
-          if (action === "wrongbook") {
-            setToolboxTab("wrongbook");
-            if (sidebarMedia.matches) {
-              setSidebarCollapsed(false);
-            }
-            window.requestAnimationFrame(() => {
-              document
-                .querySelector(".toolbox-tab[aria-selected='true']")
-                ?.focus();
-            });
-            return;
-          }
-          if (action === "compose") {
-            const prompt = button.dataset.prompt || "";
-            if (prompt && !chatInput.value.trim()) {
-              chatInput.value = prompt;
-            }
-            resizeInput();
-            queueQuestionKnowledgeUpdate(chatInput.value);
-            syncComposerState();
-            chatInput.focus();
-            chatInput.setSelectionRange(
-              chatInput.value.length,
-              chatInput.value.length,
-            );
-            return;
-          }
-          chatInput.value = button.dataset.message || "";
-          resizeInput();
-          queueQuestionKnowledgeUpdate(chatInput.value);
-          syncComposerState();
-          chatForm.requestSubmit();
-        }
-      });
-
-      suggestionsToggle.addEventListener("click", () => {
-        setSuggestionsCollapsed(
-          composerArea.dataset.suggestionsCollapsed !== "true",
-        );
-      });
-
       clearButton.addEventListener("click", clearCurrentConversation);
       window.addEventListener("pagehide", stopVoiceInteraction);
       window.addEventListener("beforeunload", stopVoiceInteraction);
@@ -12644,7 +12340,6 @@
       setTheme(savedTheme);
       setComposerMode(savedComposerMode, false);
       setSidebarWidth(savedSidebarWidth, false);
-      setSuggestionsCollapsed(false);
       setConversationPanelCollapsed(conversationPanelMedia.matches);
       setSidebarCollapsed(
         sidebarMedia.matches ? true : savedSidebarCollapsed,
@@ -12657,7 +12352,6 @@
       renderWrongBook();
       renderLearningProgress();
       saveMessages();
-      renderSuggestions(DEFAULT_SUGGESTIONS);
       renderMessages();
       resizeInput();
       syncComposerState();

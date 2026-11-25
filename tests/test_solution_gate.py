@@ -26,6 +26,16 @@ INCOMPLETE_MATH_QUESTIONS = (
     "求微分方程的通解",
     "求极限",
 )
+CURVE_ANALYSIS_QUESTION = (
+    "求函数 y = x^3 - 12x + 10 的单调区间,极值点,凹凸区间,拐点。"
+)
+INFINITESIMAL_COMPARISON_QUESTION = (
+    "2. 当 x -> 0 时,下列函数哪一个 是其他三个的高阶无穷小( )\n"
+    "A. x^2\n"
+    "B. 1 - cos(x)\n"
+    "C. x - tan(x)\n"
+    "D. ln(1+x^2)"
+)
 
 
 class SolutionGateContractTest(unittest.TestCase):
@@ -444,6 +454,74 @@ class UnifiedDisplayGateTest(unittest.TestCase):
         self.assertIs(True, manual.get("verified"))
         self.assertIs(True, confirmed.get("verified"))
 
+    def test_curve_analysis_manual_and_confirmed_paths_are_complete(self):
+        manual = demo_chat.build_chat_response(CURVE_ANALYSIS_QUESTION)
+        confirmed = demo_chat._solve_confirmed_question(
+            CURVE_ANALYSIS_QUESTION
+        )
+
+        for payload in (manual, confirmed):
+            self.assertEqual("ok", payload["status"])
+            self.assertEqual("solve", payload["intent"])
+            self.assertIs(True, payload["verified"])
+            self.assertEqual(
+                "curve_analysis",
+                payload["calculation"]["topic"],
+            )
+            self.assertIn("单调递增区间", payload["reply"])
+            self.assertIn("极大值", payload["reply"])
+            self.assertIn("拐点", payload["reply"])
+            self.assertIn(
+                "一阶导数与单调区间的判定",
+                payload["knowledge_points"],
+            )
+            for heading in (
+                "**题目理解**",
+                "**解题思路**",
+                "**详细计算步骤**",
+                "**最终答案**",
+            ):
+                self.assertIn(heading, payload["reply"])
+
+        self.assertEqual(manual["calculation"], confirmed["calculation"])
+        self.assertEqual(manual["reply"], confirmed["reply"])
+        self.assertEqual(
+            manual["knowledge_points"],
+            confirmed["knowledge_points"],
+        )
+
+    def test_infinitesimal_comparison_manual_and_confirmed_paths_are_complete(
+        self,
+    ):
+        manual = demo_chat.build_chat_response(
+            INFINITESIMAL_COMPARISON_QUESTION
+        )
+        confirmed = demo_chat._solve_confirmed_question(
+            INFINITESIMAL_COMPARISON_QUESTION
+        )
+
+        for payload in (manual, confirmed):
+            self.assertEqual("ok", payload["status"])
+            self.assertEqual("solve", payload["intent"])
+            self.assertIs(True, payload["verified"])
+            self.assertEqual("C", payload["calculation"]["result"])
+            self.assertEqual(
+                {"A": 2, "B": 2, "C": 3, "D": 2},
+                payload["calculation"]["details"]["orders"],
+            )
+            self.assertIn("选项 C", payload["reply"])
+            self.assertIn(
+                "无穷小阶数的定义",
+                payload["knowledge_points"],
+            )
+
+        self.assertEqual(manual["calculation"], confirmed["calculation"])
+        self.assertEqual(manual["reply"], confirmed["reply"])
+        self.assertEqual(
+            manual["knowledge_points"],
+            confirmed["knowledge_points"],
+        )
+
     def test_natural_language_core_requests_are_verified_and_repeatable(self):
         cases = (
             (
@@ -564,6 +642,111 @@ class UnifiedDisplayGateTest(unittest.TestCase):
         self.assertIsNone(payload.get("calculation"))
         self.assertFalse(payload.get("knowledge_points") or [])
         self.assertNotIn("**最终答案**", payload.get("reply", ""))
+
+    def test_new_topics_reject_missing_required_conditions(self):
+        cases = (
+            (
+                "求函数的单调区间、极值点、凹凸区间和拐点",
+                "expression",
+            ),
+            (
+                "当 x 趋于 时，下列哪个是其他三个的高阶无穷小 "
+                "A. x^2 B. 1-cos(x) C. x-tan(x) D. ln(1+x^2)",
+                "point",
+            ),
+            (
+                "当 x -> 0 时，下列哪个是其他三个的高阶无穷小 "
+                "A. x^2 B. 1-cos(x) C. x-tan(x)",
+                "options",
+            ),
+        )
+
+        for question, missing_field in cases:
+            with self.subTest(question=question):
+                with patch.object(
+                    demo_chat,
+                    "_build_general_chat_response",
+                    return_value=None,
+                ):
+                    payload = demo_chat.build_chat_response(question)
+
+                self.assertEqual("needs_input", payload["status"])
+                self.assertEqual("solve", payload["intent"])
+                self.assertIsNone(payload.get("calculation"))
+                self.assertIsNot(True, payload.get("verified"))
+                self.assertFalse(payload.get("knowledge_points") or [])
+                self.assertEqual(
+                    [missing_field],
+                    payload.get("missing_fields"),
+                )
+                self.assertNotIn("**最终答案**", payload.get("reply", ""))
+
+    def test_confirmed_failure_text_has_no_unrelated_topic_requirements(self):
+        unknown = demo_chat._needs_input(
+            "我还没识别出具体要计算的内容。",
+            intent="unknown",
+        )
+        with (
+            patch.object(
+                demo_chat,
+                "_math_response",
+                return_value=unknown,
+            ),
+            patch.object(
+                demo_chat,
+                "_build_general_chat_response",
+                return_value=None,
+            ),
+        ):
+            payload = demo_chat._solve_confirmed_question(
+                "这是一道暂时无法归类的题目"
+            )
+
+        self.assertEqual("error", payload["status"])
+        self.assertNotIn("参数方程", payload["reply"])
+        self.assertIn("没有识别出可验证的题型", payload["reply"])
+
+    def test_new_topic_tampering_cannot_pass_solution_gate(self):
+        curve = demo_chat.build_chat_response(CURVE_ANALYSIS_QUESTION)
+        tampered_curve = copy.deepcopy(curve)
+        tampered_curve["calculation"]["details"]["local_maxima"][0]["y"] = "25"
+        self.assertFalse(is_verified_solution(tampered_curve))
+
+        infinitesimal = demo_chat.build_chat_response(
+            INFINITESIMAL_COMPARISON_QUESTION
+        )
+        tampered_infinitesimal = copy.deepcopy(infinitesimal)
+        tampered_infinitesimal["calculation"]["details"]["orders"]["C"] = 2
+        self.assertFalse(is_verified_solution(tampered_infinitesimal))
+
+    def test_new_topics_are_stable_across_repeated_submissions(self):
+        for question in (
+            CURVE_ANALYSIS_QUESTION,
+            INFINITESIMAL_COMPARISON_QUESTION,
+        ):
+            with self.subTest(question=question):
+                payloads = [
+                    demo_chat.build_chat_response(question)
+                    for _ in range(3)
+                ]
+                baseline = payloads[0]
+                self.assertEqual("ok", baseline["status"])
+                self.assertIs(True, baseline["verified"])
+
+                for payload in payloads[1:]:
+                    self.assertEqual(
+                        baseline["calculation"],
+                        payload["calculation"],
+                    )
+                    self.assertEqual(baseline["reply"], payload["reply"])
+                    self.assertEqual(
+                        baseline["verification"],
+                        payload["verification"],
+                    )
+                    self.assertEqual(
+                        baseline["knowledge_points"],
+                        payload["knowledge_points"],
+                    )
 
     def test_repeated_submission_is_stable(self):
         payloads = [

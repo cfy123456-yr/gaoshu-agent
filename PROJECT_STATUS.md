@@ -1,6 +1,6 @@
 # 知微高数项目状态
 
-更新时间：2026-11-25（Asia/Shanghai）
+更新时间：2026-11-26（Asia/Shanghai）
 
 ## 当前事实
 
@@ -29,8 +29,45 @@
 | 本地启动方式 | `scripts/start-demo.cmd` 使用 PowerShell 7；优先 Uvicorn，不可用时自动降级到 Flask WSGI |
 | 扣子知识库 | ID `7687143690564796426`，13 个同济大学教材文件、496 个分段 |
 | 扣子工作流 | 五条计算工作流均已发布，已移除旧 `X-API-Key` 请求头 |
-| 最近完整测试 | `312` 项，`312` 项通过，结果为 `OK` |
-| 版本入库状态 | `0.6.11` 已加入中文数学归一化、同济教材知识库、安全图片 URL 视觉 OCR、统一 solution gate 和 PythonAnywhere 动态加载修复；本轮源码整理随本次提交入库，并由同提交的 GitHub Actions 复核 |
+| 最近完整测试 | `326` 项，`326` 项通过，结果为 `OK` |
+| 版本入库状态 | `0.6.11` 已加入中文数学归一化、同济教材知识库、安全图片 URL 视觉 OCR、统一 solution gate、确定性曲线分析/无穷小比较求解与 PythonAnywhere 动态加载修复 |
+
+## 2026-11-26 公网求解修复与图片识别复核
+
+- 使用用户截图直接请求公网 `/demo/api/ocr`，两张题图均由
+  `dashscope/qwen3-vl-plus` 正确识别，返回
+  `state=awaiting_ocr_confirmation`。因此本轮失败点不是视觉 OCR，而是生产环境仍在
+  运行旧求解代码。
+- 修复前，曲线题确认后返回 `status=error`，提示
+  `expression contains unsupported characters`；无穷小比较题确认后未通过结果验证，
+  耗时约 `31.69s`。这证明需要同步发布求解器、独立验证器和统一展示门禁，不能只调整
+  OCR 提示词。
+- 已通过单文件发布脚本上传并回读以下运行文件，最后一并 Reload：
+  - `app/chapter_solvers.py`：`111237` 字节，SHA256
+    `CAC2BD136A902C78CAB03F30E8327CB080B788967CD4B0DAAA3B9ADC92DA0E6D`
+  - `app/chapter_verification.py`：`82500` 字节，SHA256
+    `F5310239429F4D0F3BE50D8A84D202380535D9485C8AF811AB2786017E394877`
+  - `deploy/demo_chat.py`：`177597` 字节，SHA256
+    `464AA66E37ADDE65448D5300A2E27E28D25A40F0FC9488939E317096181BB6C2`
+  - `deploy/wsgi_app.py`：`45062` 字节，SHA256
+    `D7D42DC6989D34DBED5AFFC25A5776EB72FC04B28BB0551E1960F8F1013A1F05`
+  - `deploy/templates/demo.html`：`397094` 字节，SHA256
+    `AF110435D515D26AB6A9B7B2DFC58DA948FF23ED5E47A3C1621FFAF18434060B`
+- 远端回读哈希全部一致；Reload 返回 HTTP `200`，公网 `/demo` 返回 HTTP `200`，
+  页面新标记验证通过。
+- 曲线综合分析公网回归通过：`status=ok`、`verified=true`，极大值
+  `f(-2)=26`、极小值 `f(2)=-6`、拐点 `(0,10)`。
+- 无穷小比较公网回归通过：`status=ok`、`verified=true`，答案 `C`，各选项阶数
+  `A=2、B=2、C=3、D=2`。
+- 两张截图题的“OCR 确认后求解”与“手动输入同一识别文本求解”在 `calculation`、
+  `reply` 和验证结果上完全一致。
+- 失败门禁公网回归通过：缺少参数点 `t0` 时返回 `needs_input`，不再产生
+  `calculation` 或知识点；教学模式遇到“求极限”这类缺条件输入时返回
+  `teaching_failed`，不生成教学步骤。
+- 教学模式公网回归通过：错误答案只返回提示并停留当前步骤，不泄露答案；正确答案
+  完成后才返回 `verified=true` 的完整解答。
+- 发布前完整测试实测 `326/326` 通过；公网健康接口仍报告服务版本 `0.6.11`，
+  视觉链路为 `dashscope/qwen3-vl-plus`。
 
 ## 2026-11-25 P0 核心修复
 

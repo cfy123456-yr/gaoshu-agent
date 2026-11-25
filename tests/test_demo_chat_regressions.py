@@ -58,6 +58,39 @@ class DemoChatRegressionTest(unittest.TestCase):
         self.assertEqual("x**2", payload["calculation"]["expression"])
         self.assertEqual("1/3", payload["calculation"]["integral"])
 
+    def test_integral_reply_includes_substitution_and_verification(self):
+        payload = demo_chat.build_chat_response(
+            "计算不定积分 ∫ x e^(x^2) dx"
+        )
+        reply = payload["reply"]
+
+        self.assertEqual("ok", payload["status"])
+        self.assertEqual("integrate", payload["intent"])
+        self.assertIs(True, payload["verified"])
+        self.assertIn("令 $u=x^{2}$", reply)
+        self.assertIn("du=2 x", reply)
+        self.assertIn(r"\int e^{u}", reply)
+        self.assertIn(r"\frac{e^{x^{2}}}{2}", reply)
+        self.assertIn("验算", reply)
+        self.assertIn("与被积函数一致", reply)
+
+        headings = ("题目理解", "解题思路", "详细计算步骤", "最终答案")
+        positions = [reply.index(heading) for heading in headings]
+        self.assertEqual(sorted(positions), positions)
+
+    def test_integral_reply_does_not_collapse_to_only_the_result(self):
+        payload = demo_chat.build_chat_response("积分 x^2")
+        reply = payload["reply"]
+        detailed_steps = reply.split("**详细计算步骤**", 1)[1].split(
+            "**最终答案**",
+            1,
+        )[0]
+
+        self.assertGreaterEqual(detailed_steps.count("\n"), 3)
+        self.assertIn("幂函数积分", detailed_steps)
+        self.assertIn("代入公式", detailed_steps)
+        self.assertIn("验算", detailed_steps)
+
     def test_parametric_tangent_normal_solution_is_repeatable(self):
         question = (
             "求曲线 {x = sin(t), y = cos(2*t)} 在当 t = pi/4 "

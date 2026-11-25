@@ -43,7 +43,7 @@ MAX_INPUT_FIELDS = 32
 MAX_VECTOR_LENGTH = 8
 
 SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
-    "limits": frozenset({"limit", "sequence_limit"}),
+    "limits": frozenset({"limit", "sequence_limit", "infinitesimal_comparison"}),
     "derivatives": frozenset(
         {
             "derivative",
@@ -54,6 +54,7 @@ SUPPORTED_TOPICS: dict[str, frozenset[str]] = {
             "mean_value",
             "critical_points",
             "monotonicity",
+            "curve_analysis",
             "extrema",
             "taylor",
             "curvature",
@@ -1038,6 +1039,239 @@ def _monotonicity(view: _InputView) -> dict[str, Any]:
     }
 
 
+def _finite_real_roots(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    *,
+    field: str,
+) -> list[sympy.Expr]:
+    root_set = sympy.solveset(
+        expression,
+        variable,
+        domain=sympy.S.Reals,
+    )
+    if root_set is sympy.S.EmptySet:
+        return []
+    if not isinstance(root_set, sympy.FiniteSet):
+        raise SolveError(f"{field} 的实根不是有限个，暂不支持完整曲线分析")
+
+    roots = list(root_set)
+    for root in roots:
+        if root.is_real is not True or root.is_infinite:
+            raise SolveError(f"{field} 含有无法排序的实根")
+    try:
+        return sorted(roots, key=lambda root: float(sympy.N(root, 30)))
+    except Exception as exc:
+        raise SolveError(f"{field} 的实根无法稳定排序") from exc
+
+
+def _sign_on_interval(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    lower: sympy.Expr,
+    upper: sympy.Expr,
+) -> int:
+    if lower == -sympy.oo:
+        sample = sympy.N(upper, 30) - 1
+    elif upper == sympy.oo:
+        sample = sympy.N(lower, 30) + 1
+    else:
+        sample = (lower + upper) / 2
+    value = sympy.N(
+        expression.subs(variable, sample),
+        30,
+    )
+    if value.is_positive:
+        return 1
+    if value.is_negative:
+        return -1
+    if value.is_zero:
+        return 0
+    raise SolveError("无法稳定判断区间内的导数符号")
+
+
+def _sign_intervals(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    roots: Sequence[sympy.Expr],
+) -> list[tuple[sympy.Expr, sympy.Expr, int]]:
+    boundaries = [-sympy.oo, *roots, sympy.oo]
+    return [
+        (
+            lower,
+            upper,
+            _sign_on_interval(expression, variable, lower, upper),
+        )
+        for lower, upper in zip(boundaries, boundaries[1:])
+    ]
+
+
+def _interval_text(lower: sympy.Expr, upper: sympy.Expr) -> str:
+    return f"({lower}, {upper})"
+
+
+def _curve_extrema_text(item: Mapping[str, Any]) -> str:
+    return f"f({item['x']})={item['y']}"
+
+
+def _curve_analysis_summary(details: Mapping[str, Any]) -> str:
+    parts: list[str] = []
+    if details["increasing_intervals"]:
+        parts.append(
+            "单调递增区间：" + "、".join(details["increasing_intervals"])
+        )
+    if details["decreasing_intervals"]:
+        parts.append(
+            "单调递减区间：" + "、".join(details["decreasing_intervals"])
+        )
+    if details["local_maxima"]:
+        parts.append(
+            "极大值："
+            + "；".join(
+                _curve_extrema_text(item)
+                for item in details["local_maxima"]
+            )
+        )
+    if details["local_minima"]:
+        parts.append(
+            "极小值："
+            + "；".join(
+                _curve_extrema_text(item)
+                for item in details["local_minima"]
+            )
+        )
+    if details["second_positive_intervals"]:
+        parts.append(
+            "二阶导数为正区间："
+            + "、".join(details["second_positive_intervals"])
+        )
+    if details["second_negative_intervals"]:
+        parts.append(
+            "二阶导数为负区间："
+            + "、".join(details["second_negative_intervals"])
+        )
+    if details["inflection_points"]:
+        parts.append(
+            "拐点："
+            + "、".join(
+                f"({item['x']}, {item['y']})"
+                for item in details["inflection_points"]
+            )
+        )
+    if parts:
+        return "；".join(parts) + "。"
+    return "函数在实数域上无对应变化区间或极值点。"
+
+
+@_solver(method="函数曲线综合分析")
+def _curve_analysis(view: _InputView) -> dict[str, Any]:
+    expression = _parse_expression(view.text("expression"), "expression")
+    variable = _parse_symbol(
+        view.text("variable", required=False, default="x"),
+        "variable",
+    )
+    extra_symbols = expression.free_symbols - {variable}
+    if extra_symbols:
+        names = "、".join(sorted(str(item) for item in extra_symbols))
+        raise SolveError(f"曲线分析只支持一个自变量，当前还含有：{names}")
+
+    first = simplify(diff(expression, variable))
+    second = simplify(diff(expression, variable, 2))
+    first_roots = _finite_real_roots(first, variable, field="一阶导数")
+    second_roots = _finite_real_roots(second, variable, field="二阶导数")
+    first_signs = _sign_intervals(first, variable, first_roots)
+    second_signs = _sign_intervals(second, variable, second_roots)
+
+    increasing_intervals = [
+        _interval_text(lower, upper)
+        for lower, upper, sign in first_signs
+        if sign > 0
+    ]
+    decreasing_intervals = [
+        _interval_text(lower, upper)
+        for lower, upper, sign in first_signs
+        if sign < 0
+    ]
+    second_positive_intervals = [
+        _interval_text(lower, upper)
+        for lower, upper, sign in second_signs
+        if sign > 0
+    ]
+    second_negative_intervals = [
+        _interval_text(lower, upper)
+        for lower, upper, sign in second_signs
+        if sign < 0
+    ]
+
+    local_maxima: list[dict[str, str]] = []
+    local_minima: list[dict[str, str]] = []
+    for index, root in enumerate(first_roots):
+        left_sign = first_signs[index][2]
+        right_sign = first_signs[index + 1][2]
+        if left_sign > 0 and right_sign < 0:
+            local_maxima.append(
+                {
+                    "x": str(root),
+                    "y": str(simplify(expression.subs(variable, root))),
+                    "kind": "极大值",
+                }
+            )
+        elif left_sign < 0 and right_sign > 0:
+            local_minima.append(
+                {
+                    "x": str(root),
+                    "y": str(simplify(expression.subs(variable, root))),
+                    "kind": "极小值",
+                }
+            )
+
+    inflection_points: list[dict[str, str]] = []
+    for index, root in enumerate(second_roots):
+        left_sign = second_signs[index][2]
+        right_sign = second_signs[index + 1][2]
+        if left_sign * right_sign < 0:
+            inflection_points.append(
+                {
+                    "x": str(root),
+                    "y": str(simplify(expression.subs(variable, root))),
+                }
+            )
+
+    details: dict[str, Any] = {
+        "expression": str(expression),
+        "variable": str(variable),
+        "first_derivative": str(first),
+        "first_derivative_roots": [str(root) for root in first_roots],
+        "increasing_intervals": increasing_intervals,
+        "decreasing_intervals": decreasing_intervals,
+        "local_maxima": local_maxima,
+        "local_minima": local_minima,
+        "local_max": local_maxima[0] if local_maxima else None,
+        "local_min": local_minima[0] if local_minima else None,
+        "second_derivative": str(second),
+        "second_derivative_roots": [str(root) for root in second_roots],
+        "second_positive_intervals": second_positive_intervals,
+        "second_negative_intervals": second_negative_intervals,
+        "inflection_points": inflection_points,
+        "knowledge_points": [
+            "一阶导数与单调区间的判定",
+            "驻点、极值点与极值计算",
+            "二阶导数与凹凸区间",
+            "拐点及其坐标计算",
+        ],
+    }
+    return {
+        "result": _curve_analysis_summary(details),
+        "latex": rf"f'({variable})={latex(first)},\quad f''({variable})={latex(second)}",
+        "details": details,
+        "notes": [
+            "先求一阶导数，按实根划分区间并判断单调性",
+            "再用一阶导数符号变化判定极大值或极小值",
+            "最后求二阶导数，按符号变化确定拐点",
+        ],
+    }
+
+
 @_solver(method="极值判定")
 def _extrema(view: _InputView) -> dict[str, Any]:
     expression = _parse_expression(view.text("expression"), "expression")
@@ -1068,6 +1302,113 @@ def _extrema(view: _InputView) -> dict[str, Any]:
         "result": classified,
         "latex": latex(Matrix(points)) if points else "",
         "notes": ["二阶导数大于零为极小值，小于零为极大值"],
+    }
+
+
+def _infinitesimal_order(
+    expression: sympy.Expr,
+    variable: sympy.Symbol,
+    point: sympy.Expr,
+) -> tuple[int, sympy.Expr]:
+    shifted = simplify(expression.subs(variable, variable + point))
+    value = Limit(shifted, variable, 0).doit()
+    if value.is_zero is not True:
+        raise SolveError(f"{expression} 在给定点不是无穷小")
+
+    for order in range(0, 17):
+        quotient = Limit(
+            shifted / variable**order,
+            variable,
+            0,
+        ).doit()
+        if (
+            quotient.is_finite is True
+            and quotient.is_zero is False
+            and quotient not in {sympy.nan, sympy.zoo}
+        ):
+            return order, simplify(quotient)
+    raise SolveError(f"{expression} 的无穷小阶数不是可确定的整数阶")
+
+
+@_solver(method="无穷小阶数比较")
+def _infinitesimal_comparison(view: _InputView) -> dict[str, Any]:
+    variable = _parse_symbol(view.text("variable"), "variable")
+    point = _parse_expression(view.text("point"), "point")
+    relation = view.text(
+        "kind",
+        required=False,
+        default="high_order",
+    )
+    if relation not in {"high_order", "low_order"}:
+        raise SolveError("kind 只能是 high_order 或 low_order")
+    options = view.mapping("options") or {}
+    required_labels = {"A", "B", "C", "D"}
+    if set(options) != required_labels:
+        raise MissingInputError(
+            "options",
+            "请补充完整的 A、B、C、D 四个选项，且不要加入其他选项",
+        )
+
+    computed: list[dict[str, Any]] = []
+    for label in sorted(options):
+        expression_value = _parse_expression(
+            options[label],
+            f"options.{label}",
+        )
+        order, coefficient = _infinitesimal_order(
+            expression_value,
+            variable,
+            point,
+        )
+        computed.append(
+            {
+                "label": label,
+                "expression": str(expression_value),
+                "order": order,
+                "leading_coefficient": str(coefficient),
+            }
+        )
+
+    target_order = (
+        max(item["order"] for item in computed)
+        if relation == "high_order"
+        else min(item["order"] for item in computed)
+    )
+    candidates = [
+        item["label"]
+        for item in computed
+        if item["order"] == target_order
+    ]
+    if len(candidates) != 1:
+        relation_text = "高阶" if relation == "high_order" else "低阶"
+        raise SolveError(f"{relation_text}无穷小选项不唯一，题目答案无法唯一确定")
+    selected = candidates[0]
+    details = {
+        "variable": str(variable),
+        "point": str(point),
+        "relation": relation,
+        "options": computed,
+        "orders": {
+            item["label"]: item["order"]
+            for item in computed
+        },
+        "selected": selected,
+        "target_order": target_order,
+        "knowledge_points": [
+            "无穷小阶数的定义",
+            "泰勒展开或等价无穷小比较",
+            "高阶无穷小的判定",
+        ],
+    }
+    relation_text = "高阶" if relation == "high_order" else "低阶"
+    return {
+        "result": selected,
+        "latex": rf"\boxed{{{selected}}}",
+        "details": details,
+        "notes": [
+            f"逐项比较变量趋近 {point} 时的无穷小阶数",
+            f"唯一取到最大阶数的一项就是其他三项的{relation_text}无穷小",
+        ],
     }
 
 
@@ -2705,6 +3046,7 @@ def _power_radius(view: _InputView) -> dict[str, Any]:
 _SOLVERS = {
     ("limits", "limit"): _limit,
     ("limits", "sequence_limit"): _sequence_limit,
+    ("limits", "infinitesimal_comparison"): _infinitesimal_comparison,
     ("derivatives", "derivative"): _derivative,
     ("derivatives", "higher_derivative"): _higher_derivative,
     ("derivatives", "differential"): _differential,
@@ -2713,6 +3055,7 @@ _SOLVERS = {
     ("derivatives", "mean_value"): _mean_value,
     ("derivatives", "critical_points"): _critical_points,
     ("derivatives", "monotonicity"): _monotonicity,
+    ("derivatives", "curve_analysis"): _curve_analysis,
     ("derivatives", "extrema"): _extrema,
     ("derivatives", "taylor"): _taylor,
     ("derivatives", "curvature"): _curvature,

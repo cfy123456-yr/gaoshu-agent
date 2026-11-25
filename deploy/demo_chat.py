@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, ValidationError
-from sympy import E, Matrix, diff, latex, limit, simplify, solve, symbols
+from sympy import E, Matrix, Pow, diff, exp, integrate, latex, limit, simplify, solve, symbols
 
 from app.chapter_solvers import MissingInputError, SolveError, solve_chapter
 from app.main import (
@@ -318,6 +318,29 @@ _EXTENDED_CHAPTER_HINTS = {
         "suggestions": [
             "x=sin(t), y=cos(2*t) 在 t=pi/4 处的切线方程和法线方程",
             "参数方程 x=t^2, y=t^3 在 t=1 处的切线和法线",
+        ],
+    },
+    ("derivatives", "curve_analysis"): {
+        "missing": (
+            "请写出完整显式函数以及需要分析的项目，例如"
+            "“求函数 y=x^3-12x+10 的单调区间、极值点、"
+            "凹凸区间和拐点”。"
+        ),
+        "suggestions": [
+            "求函数 y=x^3-12x+10 的单调区间、极值点、凹凸区间和拐点",
+        ],
+    },
+    ("limits", "infinitesimal_comparison"): {
+        "missing": (
+            "请写明自变量、极限点、高阶或低阶比较关系，并给出完整 A-D 选项，"
+            "例如“当 x->0 时，下列哪个是其他三个的高阶无穷小："
+            "A. x^2 B. 1-cos(x) C. x-tan(x) D. ln(1+x^2)”。"
+        ),
+        "suggestions": [
+            (
+                "当 x->0 时，下列哪个是其他三个的高阶无穷小："
+                "A. x^2 B. 1-cos(x) C. x-tan(x) D. ln(1+x^2)"
+            ),
         ],
     },
     ("vectors", "dot"): {
@@ -776,8 +799,97 @@ def _extract_pointwise_partial_request(
     return expression, variable, point
 
 
+def _extract_curve_analysis_inputs(message: str) -> dict[str, Any]:
+    """Extract an explicit y=f(x) expression without requirement text."""
+    match = re.search(
+        r"(?:\by\s*=\s*|f\s*\(\s*(?P<variable>[A-Za-z])\s*\)\s*=\s*)"
+        r"(?P<expression>.+?)"
+        r"(?=\s*(?:的\s*)?"
+        r"(?:单调区间|极值点|凹凸区间|拐点|求|$)|[，,;；。])",
+        message,
+    )
+    if match is None:
+        return {}
+
+    expression = _strip_expression_tail(match.group("expression"))
+    if not expression:
+        return {}
+    return {
+        "expression": expression,
+        "variable": match.group("variable") or "x",
+    }
+
+
+def _extract_infinitesimal_comparison_inputs(
+    message: str,
+) -> dict[str, Any]:
+    """Extract only the infinitesimal fields explicitly present in a question."""
+    inputs: dict[str, Any] = {}
+    if "低阶无穷小" in message:
+        inputs["kind"] = "low_order"
+    elif "高阶无穷小" in message:
+        inputs["kind"] = "high_order"
+
+    variable_match = re.search(
+        r"(?<![A-Za-z0-9_])(?P<variable>[A-Za-z])"
+        r"\s*(?:->|趋于)",
+        message,
+    )
+    if variable_match is not None:
+        inputs["variable"] = variable_match.group("variable")
+
+    point_match = re.search(
+        r"(?<![A-Za-z0-9_])(?P<variable>[A-Za-z])"
+        r"\s*(?:->|趋于)\s*"
+        r"(?P<point>.*?)"
+        r"(?=\s*(?:时|，|,|下列|以下|$))",
+        message,
+    )
+    if point_match is not None:
+        inputs["variable"] = point_match.group("variable")
+        point = _strip_expression_tail(point_match.group("point"))
+        if point:
+            inputs["point"] = point
+
+    option_marker = re.compile(
+        r"(?<![A-Za-z0-9_])(?P<label>[A-D])"
+        r"\s*(?:[.、:：)]\s*|\s+)",
+        re.IGNORECASE,
+    )
+    markers = list(option_marker.finditer(message))
+    options: dict[str, str] = {}
+    for index, marker in enumerate(markers):
+        end = (
+            markers[index + 1].start()
+            if index + 1 < len(markers)
+            else len(message)
+        )
+        expression = message[marker.end() : end].strip(" ，,；;")
+        expression = _strip_expression_tail(expression)
+        if expression:
+            options[marker.group("label").upper()] = expression
+    if options:
+        inputs["options"] = options
+    return inputs
+
+
 def _resolve_extended_chapter(message: str) -> tuple[str, str, dict[str, Any]] | None:
     compact = message.strip()
+
+    curve_features = ("单调区间", "极值点", "凹凸区间", "拐点")
+    if sum(feature in compact for feature in curve_features) >= 2:
+        return (
+            "derivatives",
+            "curve_analysis",
+            _extract_curve_analysis_inputs(compact),
+        )
+
+    if "高阶无穷小" in compact or "低阶无穷小" in compact:
+        return (
+            "limits",
+            "infinitesimal_comparison",
+            _extract_infinitesimal_comparison_inputs(compact),
+        )
 
     parametric_tangent_normal = _extract_parametric_tangent_normal(compact)
     if parametric_tangent_normal is not None:
@@ -2156,10 +2268,11 @@ def _solve_confirmed_question(
     fallback["status"] = "error"
     fallback["intent"] = "solve"
     fallback["reply"] = (
-        "已经读取到题目，但题型识别或确定性求解阶段没有完成，"
-        "因此不会继续生成教学步骤或知识点建议。"
-        "请保留参数方程、参数点以及切线/法线、积分、极限等具体要求，"
-        "修改题干后重新发送；如果原题含多个小问，请先发送当前要计算的那一问。"
+        "已经读取到题目，但没有识别出可验证的题型，或题干仍缺少关键条件，"
+        "因此不会继续生成最终答案、教学步骤或知识点建议。"
+        "请明确写出函数表达式或方程、自变量与极限点、积分上下限、"
+        "选择题完整 A-D 选项等对应信息后重新发送；"
+        "如果原题含多个小问，请先发送当前要计算的那一问。"
     )
     return fallback
 
@@ -2557,6 +2670,20 @@ def _build_extended_chapter_response(
         solution_sections = _format_parametric_tangent_normal_solution(
             details
         )
+    elif (
+        chapter == "derivatives"
+        and topic == "curve_analysis"
+        and isinstance(details, dict)
+    ):
+        solution_sections = _format_curve_analysis_solution(details)
+    elif (
+        chapter == "limits"
+        and topic == "infinitesimal_comparison"
+        and isinstance(details, dict)
+    ):
+        solution_sections = _format_infinitesimal_comparison_solution(
+            details
+        )
     if solution_sections is None:
         solution_sections = _format_generic_chapter_solution(
             method=method,
@@ -2817,6 +2944,280 @@ def _format_parametric_tangent_normal_solution(
         f"切点为 {point_text}；"
         f"切线方程为 $ {tangent_latex} $；"
         f"法线方程为 $ {normal_latex} $。"
+    )
+    return understanding, strategy, "\n".join(step_lines), conclusion
+
+
+def _format_interval_latex(value: str) -> str:
+    return (
+        str(value)
+        .replace("-oo", r"-\infty")
+        .replace("oo", r"+\infty")
+    )
+
+
+def _format_curve_analysis_solution(
+    details: dict[str, Any],
+) -> tuple[str, str, str, str] | None:
+    required_keys = (
+        "expression",
+        "variable",
+        "first_derivative",
+        "first_derivative_roots",
+        "increasing_intervals",
+        "decreasing_intervals",
+        "local_maxima",
+        "local_minima",
+        "second_derivative",
+        "second_derivative_roots",
+        "second_positive_intervals",
+        "second_negative_intervals",
+        "inflection_points",
+    )
+    if any(key not in details for key in required_keys):
+        return None
+
+    variable = str(details["variable"])
+    expression_latex = _to_latex(str(details["expression"]))
+    first_latex = _to_latex(str(details["first_derivative"]))
+    second_latex = _to_latex(str(details["second_derivative"]))
+    first_roots = [str(item) for item in details["first_derivative_roots"]]
+    second_roots = [str(item) for item in details["second_derivative_roots"]]
+
+    understanding = (
+        f"已知函数 $y={expression_latex}$，自变量为 ${variable}$。"
+        "本题要求综合分析一阶导数与二阶导数的符号变化，"
+        "求出单调区间、极值点与极值、凹凸区间和拐点。"
+    )
+    strategy = (
+        "先用 $f'(x)=0$ 的实根划分定义域，并根据一阶导数在各区间的正负"
+        "判断单调性；再利用一阶导数在驻点两侧的符号变化判定极大值或极小值。"
+        "随后求 $f''(x)$，用二阶导数的正负判断凹凸区间，"
+        "并用二阶导数两侧异号的点确定拐点。"
+    )
+
+    step_lines: list[str] = []
+    roots_text = "、".join(f"${_to_latex(root)}$" for root in first_roots)
+    if roots_text:
+        step_lines.append(
+            f"1. 求一阶导数，得到 $f'({variable})={first_latex}$；"
+            f"令 $f'({variable})=0$，实根为 {roots_text}。"
+        )
+    else:
+        step_lines.append(
+            f"1. 求一阶导数，得到 $f'({variable})={first_latex}$；"
+            f"方程 $f'({variable})=0$ 在实数域内没有根。"
+        )
+
+    sign_parts: list[str] = []
+    if details["increasing_intervals"]:
+        sign_parts.append(
+            "单调递增区间为 "
+            + "、".join(
+                f"${_format_interval_latex(item)}$"
+                for item in details["increasing_intervals"]
+            )
+        )
+    if details["decreasing_intervals"]:
+        sign_parts.append(
+            "单调递减区间为 "
+            + "、".join(
+                f"${_format_interval_latex(item)}$"
+                for item in details["decreasing_intervals"]
+            )
+        )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 按一阶导数实根划分区间并判断符号："
+        + "；".join(sign_parts)
+        + "。"
+    )
+
+    extrema_parts: list[str] = []
+    for item in details["local_maxima"]:
+        extrema_parts.append(
+            f"$x={_to_latex(str(item['x']))}$ 为极大值点，"
+            f"$f({_to_latex(str(item['x']))})="
+            f"{_to_latex(str(item['y']))}$"
+        )
+    for item in details["local_minima"]:
+        extrema_parts.append(
+            f"$x={_to_latex(str(item['x']))}$ 为极小值点，"
+            f"$f({_to_latex(str(item['x']))})="
+            f"{_to_latex(str(item['y']))}$"
+        )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 根据驻点两侧一阶导数的符号变化，"
+        + ("；".join(extrema_parts) if extrema_parts else "无局部极值点")
+        + "。"
+    )
+
+    second_roots_text = "、".join(
+        f"${_to_latex(root)}$" for root in second_roots
+    )
+    if second_roots_text:
+        step_lines.append(
+            f"{len(step_lines) + 1}. 求二阶导数，得到 "
+            f"$f''({variable})={second_latex}$；"
+            f"令 $f''({variable})=0$，实根为 {second_roots_text}。"
+        )
+    else:
+        step_lines.append(
+            f"{len(step_lines) + 1}. 求二阶导数，得到 "
+            f"$f''({variable})={second_latex}$；"
+            f"方程 $f''({variable})=0$ 在实数域内没有根。"
+        )
+
+    concavity_parts: list[str] = []
+    if details["second_positive_intervals"]:
+        concavity_parts.append(
+            "$f''>0$ 的区间为 "
+            + "、".join(
+                f"${_format_interval_latex(item)}$"
+                for item in details["second_positive_intervals"]
+            )
+        )
+    if details["second_negative_intervals"]:
+        concavity_parts.append(
+            "$f''<0$ 的区间为 "
+            + "、".join(
+                f"${_format_interval_latex(item)}$"
+                for item in details["second_negative_intervals"]
+            )
+        )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 根据二阶导数符号判断凹凸性："
+        + "；".join(concavity_parts)
+        + "。"
+    )
+
+    inflection_text = "、".join(
+        f"$\\left({_to_latex(str(item['x']))},"
+        f"{_to_latex(str(item['y']))}\\right)$"
+        for item in details["inflection_points"]
+    )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 检查二阶导数在零点两侧是否异号，"
+        + (
+            f"得到拐点 {inflection_text}"
+            if inflection_text
+            else "没有拐点"
+        )
+        + "。"
+    )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 将驻点代回原函数复核函数值，"
+        "并将一、二阶导数的实根分别代回导数式，验算均为零。"
+    )
+
+    conclusion_parts: list[str] = []
+    if details["increasing_intervals"]:
+        conclusion_parts.append(
+            "单调递增区间："
+            + "、".join(details["increasing_intervals"])
+        )
+    if details["decreasing_intervals"]:
+        conclusion_parts.append(
+            "单调递减区间："
+            + "、".join(details["decreasing_intervals"])
+        )
+    for item in details["local_maxima"]:
+        conclusion_parts.append(
+            f"极大值：$f({_to_latex(str(item['x']))})="
+            f"{_to_latex(str(item['y']))}$"
+        )
+    for item in details["local_minima"]:
+        conclusion_parts.append(
+            f"极小值：$f({_to_latex(str(item['x']))})="
+            f"{_to_latex(str(item['y']))}$"
+        )
+    if details["second_positive_intervals"]:
+        conclusion_parts.append(
+            "二阶导数为正区间："
+            + "、".join(details["second_positive_intervals"])
+        )
+    if details["second_negative_intervals"]:
+        conclusion_parts.append(
+            "二阶导数为负区间："
+            + "、".join(details["second_negative_intervals"])
+        )
+    if details["inflection_points"]:
+        conclusion_parts.append("拐点：" + inflection_text)
+    conclusion = "；".join(conclusion_parts) + "。"
+    return understanding, strategy, "\n".join(step_lines), conclusion
+
+
+def _format_infinitesimal_comparison_solution(
+    details: dict[str, Any],
+) -> tuple[str, str, str, str] | None:
+    required_keys = (
+        "variable",
+        "point",
+        "relation",
+        "options",
+        "selected",
+        "target_order",
+    )
+    if any(key not in details for key in required_keys):
+        return None
+    options = details["options"]
+    if not isinstance(options, list) or not options:
+        return None
+
+    variable = str(details["variable"])
+    variable_latex = _to_latex(variable)
+    point_latex = _to_latex(str(details["point"]))
+    relation = str(details["relation"])
+    relation_text = "高阶" if relation == "high_order" else "低阶"
+    target_order = int(details["target_order"])
+    selected = str(details["selected"])
+
+    understanding = (
+        f"本题研究 ${variable_latex}\\to {point_latex}$ 时的无穷小比较。"
+        f"四个选项都是无穷小，要求找出其他三个的{relation_text}无穷小。"
+    )
+    strategy = (
+        "把每一项在极限点附近展开为首个非零项，比较其幂次。"
+        "若 $u(x)\\sim a x^n$、$v(x)\\sim b x^m$，则阶数越大的无穷小趋于零越快。"
+        f"本题应选择唯一具有{'最大' if relation == 'high_order' else '最小'}"
+        "阶数的选项。"
+    )
+
+    step_lines = [
+        (
+            f"1. 以 ${variable_latex}\\to {point_latex}$ 为基准，"
+            "将每一项写成 $a x^n+o(x^n)$ 的形式，其中 $n$ 为无穷小阶数。"
+        )
+    ]
+    for item in options:
+        label = str(item["label"])
+        expression_latex = _to_latex(str(item["expression"]))
+        coefficient_latex = _to_latex(
+            str(item["leading_coefficient"])
+        )
+        order = int(item["order"])
+        step_lines.append(
+            f"{len(step_lines) + 1}. 选项 {label}："
+            f"${expression_latex}={coefficient_latex}"
+            f"\\,x^{{{order}}}+o(x^{{{order}}})$，阶数为 ${order}$。"
+        )
+
+    order_summary = "，".join(
+        f"{item['label']} 为 {item['order']} 阶"
+        for item in options
+    )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 逐项比较可得：{order_summary}。"
+        f"目标阶数为 ${target_order}$，唯一符合条件的是选项 {selected}。"
+    )
+    step_lines.append(
+        f"{len(step_lines) + 1}. 重新计算各项极限商，"
+        f"确认选项 {selected} 的阶数唯一，结果通过独立验算。"
+    )
+
+    conclusion = (
+        f"各选项阶数依次为 {order_summary}；"
+        f"因此其他三个的{relation_text}无穷小是选项 {selected}，"
+        f"答案为 $\\boxed{{{selected}}}$。"
     )
     return understanding, strategy, "\n".join(step_lines), conclusion
 
@@ -3231,6 +3632,145 @@ def _format_math_solution_reply(
     )
 
 
+def _format_integral_steps(
+    *,
+    expression: str,
+    variable: str,
+    integral: str,
+    lower: str | None,
+    upper: str | None,
+) -> str:
+    """Build readable integral steps and keep a verification line."""
+    try:
+        expression_value = parse_math_expression(expression)
+        variable_value = symbols(variable)
+    except Exception:
+        return (
+            rf"$F({variable})={_to_latex(integral)}+C$。"
+            "\n\n最后对所得原函数求导，检查是否等于被积函数。"
+        )
+
+    antiderivative_value = integrate(expression_value, variable_value)
+    antiderivative_latex = latex(antiderivative_value)
+    expression_latex = _to_latex(expression)
+
+    verification_passed = False
+    try:
+        verification_passed = simplify(
+            diff(antiderivative_value, variable_value) - expression_value
+        ) == 0
+    except Exception:
+        verification_passed = False
+
+    verification_line = (
+        rf"验算：$\frac{{d}}{{d{variable}}}\left({antiderivative_latex}\right)"
+        rf"={expression_latex}$，与被积函数一致。"
+        if verification_passed
+        else "所得原函数还需要继续验算，不能只凭公式外观判定正确。"
+    )
+
+    if lower is not None and upper is not None:
+        lower_latex = _to_latex(lower)
+        upper_latex = _to_latex(upper)
+        try:
+            lower_value = parse_math_expression(lower)
+            upper_value = parse_math_expression(upper)
+            upper_result = simplify(
+                antiderivative_value.subs(variable_value, upper_value)
+            )
+            lower_result = simplify(
+                antiderivative_value.subs(variable_value, lower_value)
+            )
+            evaluation_latex = latex(simplify(upper_result - lower_result))
+        except Exception:
+            evaluation_latex = _to_latex(integral)
+        return "\n".join(
+            (
+                rf"1. 先求原函数：$F({variable})={antiderivative_latex}$。",
+                (
+                    rf"2. 代入积分上下限："
+                    rf"$F({upper_latex})-F({lower_latex})={evaluation_latex}$。"
+                ),
+                rf"3. 所以定积分的值为 ${evaluation_latex}$。",
+                f"4. {verification_line}",
+            )
+        )
+
+    exponential_factor = None
+    for factor in expression_value.as_ordered_factors():
+        if factor.func == exp:
+            exponential_factor = factor
+            break
+
+    if exponential_factor is not None:
+        exponent = exponential_factor.args[0]
+        derivative = simplify(diff(exponent, variable_value))
+        if derivative != 0:
+            remaining = simplify(expression_value / exponential_factor)
+            ratio = simplify(remaining / derivative)
+            recomposed = simplify(
+                expression_value - ratio * derivative * exponential_factor
+            )
+            if not ratio.has(variable_value) and recomposed == 0:
+                exponent_latex = latex(exponent)
+                derivative_latex = latex(derivative)
+                ratio_latex = latex(ratio)
+                integral_latex = _to_latex(integral)
+                ratio_integral = (
+                    r"\int e^{u}\,du"
+                    if ratio == 1
+                    else rf"{ratio_latex}\int e^{{u}}\,du"
+                )
+                primitive_in_u = (
+                    r"e^{u}+C"
+                    if ratio == 1
+                    else rf"{ratio_latex}e^{{u}}+C"
+                )
+                return "\n".join(
+                    (
+                        rf"1. 令 $u={exponent_latex}$。",
+                        rf"2. 则 $du={derivative_latex}\,d{variable}$，"
+                        rf"把被积式整理为 ${ratio_integral}$。",
+                        rf"3. 对 $u$ 积分：${primitive_in_u}$。",
+                        rf"4. 回代 $u={exponent_latex}$："
+                        rf"$\int {expression_latex}\,d{variable}"
+                        rf"={integral_latex}+C$。",
+                        f"5. {verification_line}",
+                    )
+                )
+
+    if isinstance(expression_value, Pow) and expression_value.base == variable_value:
+        exponent = expression_value.exp
+        if exponent != -1:
+            exponent_latex = latex(exponent)
+            next_exponent_latex = latex(exponent + 1)
+            integral_latex = _to_latex(integral)
+            return "\n".join(
+                (
+                    rf"1. 识别为幂函数积分，使用公式 "
+                    rf"$\int {variable}^n\,d{variable}"
+                    rf"=\frac{{{variable}^{{n+1}}}}{{n+1}}+C$。",
+                    rf"2. 这里 $n={exponent_latex}$，所以 "
+                    rf"$n+1={next_exponent_latex}$。",
+                    rf"3. 代入公式："
+                    rf"$\int {expression_latex}\,d{variable}"
+                    rf"={integral_latex}+C$。",
+                    f"4. {verification_line}",
+                )
+            )
+
+    return "\n".join(
+        (
+            rf"1. 将被积函数整理为可积形式：${expression_latex}$。",
+            rf"2. 求得的原函数为 $F({variable})={antiderivative_latex}$。",
+            rf"3. 因此不定积分为 "
+            rf"$\int {expression_latex}\,d{variable}"
+            rf"={_to_latex(integral)}+C$。",
+            f"4. {verification_line}",
+        )
+    )
+
+
 def _build_derivative_response(message: str) -> dict[str, Any]:
     parsed = _parse_derivative(message)
     if parsed is None:
@@ -3511,11 +4051,15 @@ def _build_integral_response(message: str) -> dict[str, Any]:
             "先求出原函数，并通过原函数的导数是否等于被积函数"
             "来检查结果，最后补上任意常数 $C$。"
         )
-        steps = (
-            rf"$\int {expression_latex}\,d{result['variable']}"
-            rf"={result['integral_latex']}+C$。"
-        )
         conclusion_value = f"${result['integral_latex']}+C$"
+
+    steps = _format_integral_steps(
+        expression=result["expression"],
+        variable=result["variable"],
+        integral=result["integral"],
+        lower=lower,
+        upper=upper,
+    )
 
     if result["candidate"] is None:
         conclusion = f"{result_label}结果是 {conclusion_value}。"
