@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import re
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from scripts.verify_deployment import (
     DEMO_REQUIRED_MARKERS,
+    DEFAULT_OCR_IMAGE_URL,
     VerificationError,
     assert_demo_page_markers,
     assert_model_health,
@@ -14,6 +16,23 @@ from scripts.verify_deployment import (
 
 
 class VerifyDeploymentTests(unittest.TestCase):
+    def test_default_ocr_fixture_is_versioned_in_repository(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parent
+            / "fixtures"
+            / "ocr-deployment-regression.png"
+        )
+
+        self.assertTrue(fixture.is_file())
+        self.assertTrue(fixture.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertEqual(
+            DEFAULT_OCR_IMAGE_URL,
+            (
+                "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/"
+                "main/tests/fixtures/ocr-deployment-regression.png"
+            ),
+        )
+
     @staticmethod
     def model_health() -> dict[str, object]:
         return {
@@ -138,7 +157,7 @@ class VerifyDeploymentTests(unittest.TestCase):
 
         self.assertEqual(5, request_json.call_count)
         recognized_call = request_json.call_args_list[-1]
-        self.assertEqual(45.0, recognized_call.kwargs["timeout"])
+        self.assertEqual(70.0, recognized_call.kwargs["timeout"])
 
     def test_rejects_remote_image_ocr_without_dx(self) -> None:
         responses = (

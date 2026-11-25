@@ -932,17 +932,22 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertIn("不是图片", str(raised.exception))
 
-    def test_demo_ocr_url_accepts_query_parameter_and_runs_vision_ocr(self):
+    def test_demo_ocr_url_downloads_image_before_running_vision_ocr(self):
         with (
             patch.object(
                 wsgi_app,
                 "validate_remote_image_url",
                 return_value="https://images.example/question.png",
             ) as validate,
+            patch.object(
+                wsgi_app,
+                "fetch_remote_image",
+                return_value=(b"png-bytes", "image/png"),
+            ) as fetch,
             patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
             patch.object(
                 wsgi_app,
-                "transcribe_vision_question_url",
+                "transcribe_vision_question_image",
                 return_value="计算不定积分 ∫ x e^(x^2) dx",
             ) as transcribe,
         ):
@@ -960,115 +965,57 @@ class DemoPageTest(unittest.TestCase):
         self.assertIn("∫ x e^(x^2) dx", payload["text"])
         self.assertTrue(payload["requires_confirmation"])
         validate.assert_called_once_with("https://images.example/question.png")
+        fetch.assert_called_once_with("https://images.example/question.png")
         transcribe.assert_called_once_with(
-            "https://images.example/question.png",
-            timeout_seconds=ANY,
+            b"png-bytes",
+            "image/png",
         )
 
-    def test_demo_ocr_url_falls_back_to_binary_vision(self):
+    def test_demo_ocr_url_reuses_binary_ocr_cache(self):
         with (
             patch.object(
                 wsgi_app,
                 "validate_remote_image_url",
                 return_value="https://images.example/question.png",
             ),
-            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
-            patch.object(
-                wsgi_app,
-                "transcribe_vision_question_url",
-                side_effect=demo_vision.VisionUpstreamError(
-                    "视觉服务超时。"
-                ),
-            ),
             patch.object(
                 wsgi_app,
                 "fetch_remote_image",
                 return_value=(b"png-bytes", "image/png"),
-            ),
+            ) as fetch,
+            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
             patch.object(
                 wsgi_app,
                 "transcribe_vision_question_image",
                 return_value="计算积分 ∫ x e^(x^2) dx",
             ) as binary,
-            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
         ):
-            response = self.client.post(
+            first = self.client.post(
+                "/demo/api/ocr-url",
+                json={
+                    "image_url": "https://images.example/question.png"
+                },
+            )
+            second = self.client.post(
                 "/demo/api/ocr-url",
                 json={
                     "image_url": "https://images.example/question.png"
                 },
             )
 
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("vision", response.get_json()["provider"])
-        binary.assert_called_once_with(
-            b"png-bytes",
-            "image/png",
-            timeout_seconds=ANY,
-        )
+        self.assertEqual(200, first.status_code)
+        self.assertEqual(200, second.status_code)
+        self.assertFalse(first.get_json()["cache_hit"])
+        self.assertTrue(second.get_json()["cache_hit"])
+        self.assertEqual(2, fetch.call_count)
+        binary.assert_called_once_with(b"png-bytes", "image/png")
 
-    def test_demo_ocr_url_falls_back_to_coze_with_original_url(self):
+    def test_demo_ocr_url_maps_download_failure_before_ocr(self):
         with (
             patch.object(
                 wsgi_app,
                 "validate_remote_image_url",
                 return_value="https://images.example/question.png",
-            ),
-            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
-            patch.object(
-                wsgi_app,
-                "transcribe_vision_question_url",
-                side_effect=demo_vision.VisionUpstreamError(
-                    "视觉服务超时。"
-                ),
-            ),
-            patch.object(
-                wsgi_app,
-                "fetch_remote_image",
-                return_value=(b"png-bytes", "image/png"),
-            ),
-            patch.object(
-                wsgi_app,
-                "transcribe_vision_question_image",
-                side_effect=demo_vision.VisionUpstreamError(
-                    "二进制视觉失败。"
-                ),
-            ),
-            patch.object(wsgi_app, "coze_ocr_configured", return_value=True),
-            patch.object(
-                wsgi_app,
-                "transcribe_coze_question_image_url",
-                return_value="∫ x e^(x^2) dx",
-            ) as coze,
-        ):
-            response = self.client.post(
-                "/demo/api/ocr-url",
-                json={
-                    "image_url": "https://images.example/question.png"
-                },
-            )
-
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("coze", response.get_json()["provider"])
-        coze.assert_called_once_with(
-            "https://images.example/question.png",
-            timeout_seconds=ANY,
-        )
-
-    def test_demo_ocr_url_maps_upstream_failure_to_server_error(self):
-        with (
-            patch.object(
-                wsgi_app,
-                "validate_remote_image_url",
-                return_value="https://images.example/question.png",
-            ),
-            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
-            patch.object(
-                wsgi_app,
-                "transcribe_vision_question_url",
-                side_effect=demo_vision.VisionUpstreamError(
-                    "视觉服务超时。"
-                ),
             ),
             patch.object(
                 wsgi_app,
@@ -1078,7 +1025,10 @@ class DemoPageTest(unittest.TestCase):
                     status_code=502,
                 ),
             ),
-            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_image",
+            ) as transcribe,
         ):
             response = self.client.post(
                 "/demo/api/ocr-url",
@@ -1088,23 +1038,15 @@ class DemoPageTest(unittest.TestCase):
             )
 
         self.assertEqual(502, response.status_code)
-        self.assertIn("视觉服务超时", response.get_json()["detail"])
         self.assertIn("暂时无法下载图片", response.get_json()["detail"])
+        transcribe.assert_not_called()
 
-    def test_demo_ocr_url_maps_unreadable_image_to_client_error(self):
+    def test_demo_ocr_url_rejects_non_image_before_ocr(self):
         with (
             patch.object(
                 wsgi_app,
                 "validate_remote_image_url",
                 return_value="https://example.com/",
-            ),
-            patch.object(wsgi_app, "vision_ocr_configured", return_value=True),
-            patch.object(
-                wsgi_app,
-                "transcribe_vision_question_url",
-                side_effect=demo_vision.VisionInputError(
-                    "图片链接不是可读取的图片。"
-                ),
             ),
             patch.object(
                 wsgi_app,
@@ -1113,7 +1055,10 @@ class DemoPageTest(unittest.TestCase):
                     "图片链接返回的内容不是图片。"
                 ),
             ),
-            patch.object(wsgi_app, "coze_ocr_configured", return_value=False),
+            patch.object(
+                wsgi_app,
+                "transcribe_vision_question_image",
+            ) as transcribe,
         ):
             response = self.client.post(
                 "/demo/api/ocr-url",
@@ -1122,6 +1067,7 @@ class DemoPageTest(unittest.TestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertIn("不是图片", response.get_json()["detail"])
+        transcribe.assert_not_called()
 
     def test_ocr_question_validator_accepts_short_arithmetic(self):
         for question in ("1+1", "2+2", "8/2"):

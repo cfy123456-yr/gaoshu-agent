@@ -57,7 +57,6 @@ from deploy.demo_coze_ocr import (
     coze_ocr_configured,
     coze_ocr_mode,
     transcribe_question_image,
-    transcribe_question_image_url as transcribe_coze_question_image_url,
 )
 from deploy.demo_knowledge import (
     DEFAULT_RESULT_LIMIT,
@@ -91,15 +90,12 @@ from deploy.demo_vision import (
     MAX_IMAGE_BYTES,
     SUPPORTED_IMAGE_TYPES,
     VISION_MODEL,
-    VISION_TIMEOUT_SECONDS,
     VisionConfigurationError,
-    VisionInputError,
     VisionUpstreamError,
     audit_leading_question_number as audit_vision_leading_question_number,
     audit_question_count as audit_vision_question_count,
     image_matches_type,
     transcribe_question_image as transcribe_vision_question_image,
-    transcribe_question_image_url as transcribe_vision_question_url,
     vision_ocr_configured,
     vision_provider,
 )
@@ -129,27 +125,6 @@ _chat_response_cache: dict[
 _OCR_CACHE_TTL_SECONDS = 600
 _OCR_CACHE_MAX_ENTRIES = 128
 _ocr_response_cache: dict[str, tuple[float, dict[str, Any]]] = {}
-_OCR_URL_DIRECT_TIMEOUT_SECONDS = max(
-    3.0,
-    min(
-        20.0,
-        float(os.getenv("OCR_URL_DIRECT_TIMEOUT_SECONDS", "12") or 12),
-    ),
-)
-_OCR_URL_TOTAL_TIMEOUT_SECONDS = max(
-    15.0,
-    min(
-        90.0,
-        float(os.getenv("OCR_URL_TOTAL_TIMEOUT_SECONDS", "55") or 55),
-    ),
-)
-_OCR_URL_COZE_RESERVE_SECONDS = max(
-    3.0,
-    min(
-        20.0,
-        float(os.getenv("OCR_URL_COZE_RESERVE_SECONDS", "10") or 10),
-    ),
-)
 _SUSPICIOUS_SINGLE_NUMBER_RE = re.compile(
     r"^\s*1\s*[.、．)]\s+(?P<body>[0-9A-Za-z+\-*/^().,\s]+)\s*$"
 )
@@ -725,9 +700,6 @@ def demo_ocr_url():
     except RemoteImageError as exc:
         return jsonify({"detail": str(exc)}), exc.status_code
 
-    if vision_ocr_configured() or coze_ocr_configured():
-        return _process_demo_ocr_url(validated_url, session_id, started_at)
-
     try:
         image_data, mime_type = fetch_remote_image(validated_url)
     except RemoteImageError as exc:
@@ -737,193 +709,6 @@ def demo_ocr_url():
         mime_type,
         session_id,
         started_at,
-    )
-
-
-def _process_demo_ocr_url(
-    image_url: str,
-    session_id: str,
-    started_at: float,
-):
-    cache_key = hashlib.sha256(f"url\0{image_url}".encode("utf-8")).hexdigest()
-    cached = _cached_ocr_response(cache_key)
-    if cached is not None:
-        text = str(cached.get("text", "")).strip()
-        payload = _cached_ocr_payload(cached, text)
-        if not _ocr_payload_has_usable_text(payload):
-            demo_sessions.mark_ocr_failure(session_id)
-            return jsonify(_ocr_failure_response()), 422
-        _remember_or_clear_ocr_question(session_id, payload)
-        return jsonify(
-            {
-                **payload,
-                "state": _ocr_response_state(payload),
-                "requires_confirmation": not payload["selection_required"],
-                "cache_hit": True,
-                "elapsed_ms": _elapsed_milliseconds(started_at),
-            }
-        )
-
-    errors: list[str] = []
-    text = ""
-    provider = ""
-    image_data = b""
-    mime_type = ""
-    upstream_failure = False
-    deadline_exhausted = False
-
-    if vision_ocr_configured():
-        direct_timeout = _ocr_url_remaining_seconds(
-            started_at,
-            reserve_seconds=0,
-            cap=_OCR_URL_DIRECT_TIMEOUT_SECONDS,
-        )
-        if direct_timeout is None:
-            deadline_exhausted = True
-        else:
-            try:
-                text = transcribe_vision_question_url(
-                    image_url,
-                    timeout_seconds=direct_timeout,
-                )
-                provider = "vision"
-            except VisionInputError as exc:
-                errors.append(str(exc))
-            except VisionConfigurationError as exc:
-                upstream_failure = True
-                errors.append(str(exc))
-            except VisionUpstreamError as exc:
-                upstream_failure = True
-                errors.append(str(exc))
-                application.logger.warning(
-                    "Vision URL OCR failed: %s",
-                    exc,
-                    exc_info=True,
-                )
-
-    if not text and not deadline_exhausted:
-        download_timeout = _ocr_url_remaining_seconds(
-            started_at,
-            reserve_seconds=_OCR_URL_COZE_RESERVE_SECONDS,
-            cap=12.0,
-        )
-        if download_timeout is None:
-            deadline_exhausted = True
-        else:
-            try:
-                image_data, mime_type = fetch_remote_image(
-                    image_url,
-                    timeout_seconds=download_timeout,
-                )
-            except RemoteImageError as exc:
-                if exc.status_code >= 500:
-                    upstream_failure = True
-                errors.append(str(exc))
-            else:
-                if vision_ocr_configured():
-                    binary_timeout = _ocr_url_remaining_seconds(
-                        started_at,
-                        reserve_seconds=_OCR_URL_COZE_RESERVE_SECONDS,
-                        cap=VISION_TIMEOUT_SECONDS,
-                    )
-                    if binary_timeout is None:
-                        deadline_exhausted = True
-                    else:
-                        try:
-                            text = transcribe_vision_question_image(
-                                image_data,
-                                mime_type,
-                                timeout_seconds=binary_timeout,
-                            )
-                            text = _normalize_vision_leading_number(
-                                text,
-                                image_data,
-                                mime_type,
-                            )
-                            provider = "vision"
-                        except (
-                            VisionConfigurationError,
-                            VisionUpstreamError,
-                        ) as exc:
-                            upstream_failure = True
-                            errors.append(str(exc))
-                            application.logger.warning(
-                                "Vision binary OCR fallback failed: %s",
-                                exc,
-                                exc_info=True,
-                            )
-
-    if not text and not deadline_exhausted and coze_ocr_configured():
-        coze_timeout = _ocr_url_remaining_seconds(
-            started_at,
-            reserve_seconds=0,
-            cap=_OCR_URL_COZE_RESERVE_SECONDS,
-        )
-        if coze_timeout is None:
-            deadline_exhausted = True
-        else:
-            try:
-                text = transcribe_coze_question_image_url(
-                    image_url,
-                    timeout_seconds=coze_timeout,
-                )
-                provider = "coze"
-            except CozeConfigurationError as exc:
-                upstream_failure = True
-                errors.append(str(exc))
-            except CozeUpstreamError as exc:
-                upstream_failure = True
-                errors.append(str(exc))
-                application.logger.warning(
-                    "Coze URL OCR fallback failed: %s",
-                    exc,
-                    exc_info=True,
-                )
-
-    if not text:
-        demo_sessions.mark_ocr_failure(session_id)
-        if deadline_exhausted:
-            upstream_failure = True
-            errors.append("图片识别超时，请稍后重试。")
-        detail = "；".join(
-            dict.fromkeys(
-                error.strip()
-                for error in errors
-                if error and error.strip()
-            )
-        )
-        if not detail:
-            detail = "图片识别服务暂时不可用，请稍后重试。"
-        status_code = 502 if upstream_failure else 400
-        return jsonify({"detail": detail}), status_code
-
-    warning = ""
-    if "疑似" in text:
-        warning = "识别结果包含疑似符号，请核对后再发送。"
-    if image_data:
-        payload = _build_ocr_payload(
-            text,
-            provider,
-            warning,
-            image_data,
-            mime_type,
-        )
-    else:
-        payload = _build_ocr_url_payload(text, provider, warning)
-    if not _ocr_payload_has_usable_text(payload):
-        demo_sessions.mark_ocr_failure(session_id)
-        return jsonify(_ocr_failure_response()), 422
-
-    _remember_or_clear_ocr_question(session_id, payload)
-    _store_ocr_response(cache_key, payload)
-    return jsonify(
-        {
-            **payload,
-            "state": _ocr_response_state(payload),
-            "requires_confirmation": not payload["selection_required"],
-            "cache_hit": False,
-            "elapsed_ms": _elapsed_milliseconds(started_at),
-        }
     )
 
 
@@ -1131,33 +916,6 @@ def _build_ocr_payload(
     }
 
 
-def _build_ocr_url_payload(
-    text: str,
-    provider: str,
-    warning: str,
-) -> dict[str, Any]:
-    """Build an OCR response for a URL without downloading layout metadata."""
-    normalized_text = str(text or "").strip()
-    blocks = extract_question_blocks(normalized_text)
-    multiple_questions = len(blocks) >= 2
-    if multiple_questions:
-        warning = _merge_ocr_warning(
-            warning,
-            "识别到多道独立题目，请选择需要计算的题目，可多选或全选。",
-        )
-    return {
-        "text": normalized_text,
-        "provider": provider,
-        "warning": warning,
-        "question_blocks": blocks,
-        "multiple_questions": multiple_questions,
-        "selection_required": multiple_questions,
-        "review_required": False,
-        "layout_suspected_multi": False,
-        "audited_question_count": None,
-    }
-
-
 def _cached_ocr_payload(cached: dict[str, Any], text: str) -> dict[str, Any]:
     blocks = extract_question_blocks_from_payload(cached.get("question_blocks"))
     if not blocks:
@@ -1328,19 +1086,6 @@ def _store_ocr_response(cache_key: str, payload: dict[str, Any]) -> None:
 
 def _elapsed_milliseconds(started_at: float) -> int:
     return max(0, round((time.perf_counter() - started_at) * 1000))
-
-
-def _ocr_url_remaining_seconds(
-    started_at: float,
-    *,
-    reserve_seconds: float,
-    cap: float,
-) -> float | None:
-    elapsed = time.perf_counter() - started_at
-    remaining = _OCR_URL_TOTAL_TIMEOUT_SECONDS - elapsed - reserve_seconds
-    if remaining <= 0.25:
-        return None
-    return min(cap, remaining)
 
 
 def _demo_session_id() -> str:

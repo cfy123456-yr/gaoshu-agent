@@ -16,7 +16,8 @@ from urllib.request import Request, urlopen
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 EXPECTED_VERSION = "0.6.11"
 DEFAULT_OCR_IMAGE_URL = (
-    "https://latex.codecogs.com/png.latex?%5Cint%20x%5E2%20dx"
+    "https://raw.githubusercontent.com/cfy123456-yr/gaoshu-agent/main/"
+    "tests/fixtures/ocr-deployment-regression.png"
 )
 DEMO_REQUIRED_MARKERS = (
     "interactive-widget=resizes-content",
@@ -257,7 +258,7 @@ def verify_ocr_url_api(
         "/demo/api/ocr-url",
         method="POST",
         json_body={"image_url": image_url},
-        timeout=max(timeout, 45.0),
+        timeout=max(timeout, 70.0),
     )
     expect(
         recognized.get("provider") == "vision",
