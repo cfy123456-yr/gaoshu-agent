@@ -68,6 +68,13 @@
   完成后才返回 `verified=true` 的完整解答。
 - 发布前完整测试实测 `326/326` 通过；公网健康接口仍报告服务版本 `0.6.11`，
   视觉链路为 `dashscope/qwen3-vl-plus`。
+- 本轮修复提交 `56a8a6d165891bc09452787371cfeac9096b83de`
+  （`fix: restore verified public math solving`）已同步到 GitHub `main`。当时
+  `github.com:443` 直连受限，使用 GitHub Git Data API 保持同一 tree、parent、
+  author、committer 和时间戳，生成 SHA 与本地完全一致。
+- 该提交触发的 GitHub Actions 全部成功：`Test suite` 运行 `45665149002`、
+  `Public health check` 运行 `45665148958`、`Public regression` 运行
+  `45665148984`；三条运行均返回 `conclusion=success`。
 
 ## 2026-11-25 P0 核心修复
 
