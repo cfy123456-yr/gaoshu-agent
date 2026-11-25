@@ -19,6 +19,7 @@
 - 扣子侧可使用一个 `math_solve` 工作流按 `chapter` 和 `topic` 路由到对应确定性求解器。
 - 扣子侧可使用 `math_plot` 工作流生成函数图像，并在对话中通过 Markdown 图片链接显示。
 - 使用 `knowledge_lookup` 工作流检索导数、微分和积分知识。
+- 中文语音转写和 OCR 文本会先统一数学写法，例如把“x 的平方”转换为 `x^2`，把“根号下 x”转换为 `sqrt(x)`。
 - FastAPI 数学服务同时提供 JSON 和查询参数两种调用方式。
 - 数学表达式支持 `x^2`、`x**2`、`3x` 和 `3*x` 等常见写法。
 
@@ -28,18 +29,12 @@
 gaoshu-agent/
 ├─ app/
 │  ├─ main.py
+│  ├─ math_text.py
 │  ├─ plotting.py
 │  └─ chapter_solvers.py
 ├─ knowledge/
-│  ├─ 01_导数与微分基础.md
-│  └─ 02_积分基础.md
-├─ knowledge_tongji/
 │  ├─ 00_教材目录与编写规则.md
-│  ├─ 01_函数与极限.md
-│  ├─ 03_微分中值定理与导数的应用.md
-│  ├─ 05_反常积分补充.md
-│  ├─ 06_定积分的应用.md
-│  └─ 07—12 章各知识文件
+│  └─ 01—12 章同济大学《高等数学》知识文件
 ├─ deploy/
 │  ├─ wsgi_app.py
 │  ├─ demo_chat.py
@@ -92,8 +87,9 @@ gaoshu-agent/
 - Git
 - 本地演示启动脚本使用 PowerShell 7（`pwsh`）
 
-可选的 Windows 离线 OCR 会先尝试 PowerShell 7；当前系统只有在 PowerShell 7
-无法加载 WinRT OCR 类型时，才回退到 Windows PowerShell 5.1。
+Windows 上的本地离线 OCR 默认启用；设置 `WINDOWS_OCR_FALLBACK=false` 可显式关闭。
+它会先尝试 PowerShell 7，只有在 PowerShell 7 无法加载 WinRT OCR 类型时，才回退到
+Windows PowerShell 5.1。其他平台默认不启用本地 OCR。
 
 ## 安装依赖
 
@@ -432,25 +428,23 @@ GET /plot.svg?expression=x^2&x_min=-5&x_max=5
 | `math_limit` | 双侧极限、左极限、右极限与答案判断 | `/limit-query` |
 | `math_solve` | 所有章节题型的统一求解与部分判断题 | `/solve` |
 | `math_plot` | 生成显函数图像并返回 SVG | `/plot-query`、`/plot.svg` |
-| `knowledge_lookup` | 检索高数知识库 | 扣子知识库 |
+| `knowledge_lookup` | 检索同济大学《高等数学》教材知识库 | 本地 `knowledge/` |
 
 统一智能体提示词见 `COZE_AGENT_PROMPT.md`，可直接复制到扣子。
 
 ## 知识库
 
-- `knowledge/01_导数与微分基础.md`：导数定义、求导公式、求导法则、微分和常见错误。
-- `knowledge/02_积分基础.md`：原函数、不定积分、定积分、换元法、分部积分法和常见错误。
-- `knowledge_tongji/`：函数与极限、微分中值定理、定积分应用、微分方程、向量代数、多元函数微分、重积分、曲线与曲面积分、无穷级数等章节文件。
-- `knowledge_tongji/05_反常积分补充.md`：补齐定积分章节中的反常积分和审敛法。
-
-第 1 章、第 3 章、第 5—12 章使用 `knowledge_tongji` 中的独立文件；第 2、4 章继续引用冻结文件，避免重复生成和版本冲突。
+- `knowledge/` 是唯一启用的知识库目录，严格按同济大学《高等数学》上册第 1—7 章和下册第 8—12 章组织。
+- `00_教材目录与编写规则.md` 只作为教材目录和编写约束，不参与检索索引。
+- `01_函数与极限.md` 至 `12_无穷级数.md` 是当前全部本科高数正文，服务启动后共索引 449 个知识小节。
 
 ## 安全与配置
 
 数学服务已加入基础安全防护：
 
 - 可选 API 密钥校验：`MATH_API_KEY`。
-- 内存请求频率限制：`RATE_LIMIT_PER_MINUTE`，默认每分钟 60 次。
+- 内存请求频率限制：`RATE_LIMIT_PER_MINUTE`，默认每分钟 60 次；限流表最多保留 `RATE_LIMIT_MAX_CLIENTS` 个客户端，默认 10000。
+- 代理地址信任：`TRUSTED_PROXY_HOPS` 默认 0，直接使用连接来源地址。位于 N 层可信反向代理后时设置为 N，系统只从 `X-Forwarded-For` 右侧取可信地址，不采用客户端可伪造的最左侧值。
 - 表达式长度限制：`MAX_EXPRESSION_LENGTH`，默认 300 字符。
 - 变量名长度限制：`MAX_SYMBOL_LENGTH`，默认 32 字符。
 - 表达式字符检查和变量名白名单检查。
@@ -474,6 +468,8 @@ $env:LOG_BACKUP_COUNT = "3"
 ```powershell
 $env:MATH_API_KEY = "替换为你的密钥"
 $env:RATE_LIMIT_PER_MINUTE = "60"
+$env:RATE_LIMIT_MAX_CLIENTS = "10000"
+$env:TRUSTED_PROXY_HOPS = "0"
 $env:MAX_EXPRESSION_LENGTH = "300"
 $env:MAX_SYMBOL_LENGTH = "32"
 $env:CALCULATION_TIMEOUT_SECONDS = "10"
@@ -514,11 +510,11 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 已完成从知识库到教学对话的核心闭环：
 
 - 智能体已发布：<https://www.coze.cn/store/agent/7687155979821481999?bot_id=true>
-- 知识库已绑定：12 个文档、464 个分段。
+- 知识库已整体替换为同济大学《高等数学》教材：13 个文档、496 个分段。
 - 已绑定并测试 `math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot`、`knowledge_lookup`。
 - 已验证不定积分 `∫x^2 dx = x^3/3` 和定积分 `∫_0^1 x^2 dx = 1/3` 的答案判断。
 - 已验证求导 `f(x)=x^2 sin x` 的结果和候选答案判断。
-- 本地完整测试共 166 项，162 项通过、4 项可选旧版显式曲线/曲面积分测试跳过；
+- 本地完整测试共 311 项，全部通过；
   GitHub Actions 会在推送 `main` 和提交拉取请求时自动复跑整套测试；公网极限固定
   回归 6/6、统一求解固定回归 9/9、部署验收 10/10、固定种子随机回归全部通过。
   本地启动脚本也已纳入回归，覆盖 PowerShell 7 调用、工作目录和 Flask 降级路径。
@@ -532,7 +528,7 @@ $env:COZE_OCR_WORKFLOW_ID = ""
 - 已加入章节统一求解器，覆盖 45 个题型；级数收敛、重积分、微分方程、梯度等题型已通过扣子工作流实测。
 - 已加入纯 SVG 函数图像接口，本地绘图单元测试通过。
 - 已通过 `math_plot` 在智能体对话中显示函数图像。
-- 已统一更新并发布扣子提示词，完成求导、积分、极限和级数的空答案、正确/错误候选答案及不定积分补 `C` 话术回归。
+- 本地提示词与工作流接入契约已按口语数学直通、同济教材知识库和 OCR 确认流程统一；扣子提示词和五条计算工作流已完成云端发布。
 - 扣子提示词已允许普通问答；独立演示页也支持通过环境变量接入通用模型，同时保留高数题强制走确定性计算工具的规则。
 
-公网图片识别主链路已切换为视觉模型 OCR，扣子工作流保留为可选备用，本地 Windows OCR 仅作为未配置上游时的降级方案。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用确定性计算；识别残缺或上游失败时要求重新上传，不猜测公式。服务端会话和 OCR 缓存均为进程内存，PythonAnywhere Web 应用 Reload 后会清空。浏览器原生语音输入和回答朗读已接入演示页；语音识别通常依赖浏览器厂商的在线服务，并非完全离线。当前不支持语音 API 的浏览器会隐藏麦克风，文字输入、图片识别和数学求解不受影响。
+公网图片识别主链路已切换为视觉模型 OCR，扣子工作流保留为可选备用，本地 Windows OCR 仅作为未配置上游时的降级方案，并在 Windows 上默认启用。图片题采用严格两阶段流程：第一轮只转写并等待用户确认，确认后的下一轮才调用确定性计算；识别残缺或上游失败时要求重新上传，不猜测公式。服务端会话和 OCR 缓存均为进程内存，PythonAnywhere Web 应用 Reload 后会清空。浏览器原生语音输入和回答朗读已接入演示页；语音识别通常依赖浏览器厂商的在线服务，并非完全离线。当前不支持语音 API 的浏览器会隐藏麦克风，文字输入、图片识别和数学求解不受影响。

@@ -24,15 +24,66 @@ https://cfyyy.pythonanywhere.com
 
 ## 当前验收基线
 
-更新时间：2026-09-29。
+更新时间：2026-11-25。
 
-- 服务版本为 `0.6.7`，公网入口固定为 `https://cfyyy.pythonanywhere.com`。
-- 完整测试为 `166` 项，`162` 项通过，`4` 项可选旧版显式曲线/曲面积分测试跳过。
+- 服务版本为 `0.6.11`，公网入口固定为 `https://cfyyy.pythonanywhere.com`。
+- 知识库只读取 `knowledge/` 下的同济大学《高等数学》第 1—12 章，不再读取 `knowledge_tongji/` 或旧版基础文件。
+- 中文口语数学输入会先转换为 SymPy 写法，覆盖平方、立方、任意次方、根号、除法、乘法和分数。
+- 公网演示页已发布问答模式与教学模式双模式版，默认问答模式，教学模式支持逐步作答、
+  错答提示、本步解析、跳过、重新开始和完成后的完整解析。
+- 扣子知识库 ID 为 `7687143690564796426`，包含 13 个同济教材文件、496 个分段。
+- 扣子 `math_verify`、`math_integrate`、`math_limit`、`math_solve` 和
+  `math_plot` 均已发布新版本，并移除旧 `X-API-Key` 请求头。
+- 完整单元测试为 `311` 项，`311` 项通过；真实 HTTP 验收为 `190/190`。
 - 本地 `scripts/start-demo.cmd` 使用 PowerShell 7，优先启动 Uvicorn；本机
   `a2wsgi` 或 Uvicorn 不可用时自动降级到与 PythonAnywhere 相同的 Flask WSGI 入口。
-- 可选 Windows 离线 OCR 会优先使用 PowerShell 7；仅当 PowerShell 7 无法加载
-  WinRT OCR 类型时，才回退到 Windows PowerShell 5.1。
+- Windows 本地离线 OCR 默认启用，可设置 `WINDOWS_OCR_FALLBACK=false` 显式关闭；
+  它优先使用 PowerShell 7，仅当 PowerShell 7 无法加载 WinRT OCR 类型时，才回退到
+  Windows PowerShell 5.1。
 - `scripts/stop-demo.cmd` 只停止本地 `127.0.0.1:8000` 数学服务，不再管理隧道。
+
+### PythonAnywhere 动态加载修复（2026-11-24）
+
+线上 `/demo` 曾返回 HTTP `500`，错误日志显示
+`TemplateNotFound: demo.html`。根因是 PythonAnywhere WSGI 启动器通过
+`importlib.util.spec_from_file_location` 动态加载 `deploy/wsgi_app.py`，但没有把
+模块登记到 `sys.modules`，导致 `Flask(__name__)` 推断到错误的工作目录。模板文件本身
+与本地完全一致，不需要替换。
+
+修复方式是在 `deploy/wsgi_app.py` 中以 `__file__` 为基准显式设置 `template_folder`
+和 `static_folder` 的绝对路径，并新增动态加载回归测试。发布结果：
+
+| 项目 | 结果 |
+| --- | --- |
+| 本地与远端文件字节数 | `37570` |
+| SHA256 | `624D84747A8B35B75D550918E62E2E89743C06988912C8ADFA740CF8F8AE696B` |
+| 上传后远端回读 | 字节数与 SHA256 一致 |
+| PythonAnywhere Reload | HTTP `200` |
+| 公网 `/demo` | HTTP `200`，`313465` 字节，必需标记完整 |
+| 部署验收 | `10/10` |
+| 极限固定回归 | `6/6` |
+| 章节统一求解回归 | `9/9` |
+| 固定种子随机回归 | 全部通过 |
+
+发布前旧文件已备份到
+`work/pythonanywhere-backup-20261124-202020/wsgi_app.py`。
+
+### 问答与教学模式双模式上线（2026-11-24）
+
+公网 `/demo` 已更新为问答模式与教学模式双模式版。本轮同步了前端模板、教学状态模块、
+对话路由、中文数学归一化、章节求解、视觉 OCR 和远程图片依赖。发布后远端回读与本地
+SHA256 一致，PythonAnywhere Reload 返回 HTTP `200`，公网 `/demo` 返回 HTTP `200`
+并包含全部五项双模式必需标记。
+
+公网浏览器实测通过：
+
+- 问答模式默认选中；切到教学模式后，首步只展示当前步骤，不泄露最终答案。
+- 获取提示、错答提示、跳过、完成、重新开始均正常；完成后展示完整解析和最终答案。
+- 切回问答模式后恢复直接解题和完整解析。
+- 桌面 `1440x900` 与移动端 `390x844` 均无文档级横向溢出，控制台、页面脚本和
+  HTTP 响应无新增错误。
+- 公网测试报告保存在 `work/public-teaching-check/report.json`，截图保存在
+  `work/public-teaching-check/screenshots/`。
 
 本文后续带日期的发布章节保留为历史快照，其中出现的 `141`、`143` 等测试数对应当次
 发布时结果，不代表当前完整测试数。
@@ -56,7 +107,7 @@ https://cfyyy.pythonanywhere.com
 
 普通问答默认使用阿里云百炼 OpenAI 兼容接口和 `qwen-plus`；`GENERAL_CHAT_API_KEY` 未单独设置时会复用 `VISION_API_KEY`。需要切换提供商或模型时，在 PythonAnywhere 的环境变量中显式配置 `GENERAL_CHAT_API_URL`、`GENERAL_CHAT_API_KEY` 和 `GENERAL_CHAT_MODEL`，然后重新加载 Web 应用。配置后，非数学问题内容会发送给该模型服务；数学题仍由本项目的 SymPy 接口计算。`/demo/api/health` 的 `general_chat` 字段会显示是否启用、提供商、模型名、密钥来源和超时，但不会显示密钥。
 
-图片识别优先使用 OpenAI 兼容的视觉模型。线上公网当前启用 `VISION_API_BASE`（或 `VISION_API_URL`）、`VISION_API_KEY` 和 `VISION_MODEL`，扣子 OCR 作为备用链路。可选的 Windows 离线 OCR 仅在未配置任何上游服务时尝试，不会掩盖视觉服务和扣子的故障。相关变量可参考根目录的 `.env.example`。
+图片识别优先使用 OpenAI 兼容的视觉模型。线上公网当前启用 `VISION_API_BASE`（或 `VISION_API_URL`）、`VISION_API_KEY` 和 `VISION_MODEL`，扣子 OCR 作为备用链路。Windows 本地离线 OCR 在未配置任何上游服务时默认尝试，也可通过 `WINDOWS_OCR_FALLBACK=false` 关闭；它不会掩盖视觉服务和扣子的故障。相关变量可参考根目录的 `.env.example`。
 
 ## 扣子节点
 
@@ -71,6 +122,8 @@ https://cfyyy.pythonanywhere.com
 | `math_plot` | `https://cfyyy.pythonanywhere.com/plot-query`、`https://cfyyy.pythonanywhere.com/plot.svg` |
 
 启用 `MATH_API_KEY` 后，除 `/plot.svg` 只用于浏览器显示图片外，其余计算接口都要带 `X-API-Key` 请求头。`math_plot` 调用 `/plot-query` 时同样要带请求头；当前未启用时不需要该请求头。
+
+限流默认忽略客户端提交的 `X-Forwarded-For`，直接使用连接来源地址。上线前必须按真实反向代理层数配置 `TRUSTED_PROXY_HOPS`；例如只有一层可信代理时设为 `1`。设置错误会导致所有访问者共用同一个限流桶，或无法正确区分客户端，修改后需要 Reload。
 
 后端接口已经全部提供；`math_verify`、`math_integrate`、`math_limit`、`math_solve`、`math_plot` 和 `knowledge_lookup` 已加入智能体。所有扩展章节题型统一路由到 `math_solve`，函数图像由 `math_plot` 处理。提示词和调用路由规则已完成统一更新并通过扣子回归测试。
 
