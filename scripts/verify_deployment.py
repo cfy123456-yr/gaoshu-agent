@@ -7,6 +7,9 @@ import argparse
 import json
 import os
 import sys
+import time
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -38,6 +41,7 @@ DEMO_REQUIRED_MARKERS = (
 )
 MODEL_PROVIDERS = {"dashscope", "deepseek", "openai-compatible"}
 MODEL_KEY_SOURCES = {"dedicated", "vision_fallback"}
+RATE_LIMIT_MAX_ATTEMPTS = 4
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -47,6 +51,24 @@ if hasattr(sys.stderr, "reconfigure"):
 
 class VerificationError(RuntimeError):
     """Raised when a deployment check does not match expectations."""
+
+
+def rate_limit_wait_seconds(retry_after: str | None, attempt: int) -> float:
+    """Return a bounded delay while preferring the server's Retry-After value."""
+    value = (retry_after or "").strip()
+    if value:
+        try:
+            return min(75.0, max(1.0, float(value)))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(value)
+                if retry_at.tzinfo is None:
+                    retry_at = retry_at.replace(tzinfo=timezone.utc)
+                remaining = retry_at.timestamp() - time.time()
+                return min(75.0, max(1.0, remaining))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return float(min(8, 2**attempt))
 
 
 def request_json(
@@ -75,17 +97,35 @@ def request_json(
         headers["Content-Type"] = "application/json"
     else:
         data = b"" if method == "POST" else None
-    request = Request(url, data=data, headers=headers, method=method)
 
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            status = response.status
-            raw_body = response.read()
-    except HTTPError as exc:
-        status = exc.code
-        raw_body = exc.read()
-    except (URLError, TimeoutError, OSError) as exc:
-        raise VerificationError(f"无法连接 {url}: {exc}") from exc
+    for attempt in range(1, RATE_LIMIT_MAX_ATTEMPTS + 1):
+        request = Request(url, data=data, headers=headers, method=method)
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                status = response.status
+                raw_body = response.read()
+        except HTTPError as exc:
+            status = exc.code
+            raw_body = exc.read()
+            if (
+                status == 429
+                and expected_status != 429
+                and attempt < RATE_LIMIT_MAX_ATTEMPTS
+            ):
+                wait_seconds = rate_limit_wait_seconds(
+                    exc.headers.get("Retry-After") if exc.headers else None,
+                    attempt,
+                )
+                print(
+                    f"{path} 触发限流，{wait_seconds:.1f} 秒后重试 "
+                    f"（第 {attempt}/{RATE_LIMIT_MAX_ATTEMPTS - 1} 次重试）",
+                    file=sys.stderr,
+                )
+                time.sleep(wait_seconds)
+                continue
+        except (URLError, TimeoutError, OSError) as exc:
+            raise VerificationError(f"无法连接 {url}: {exc}") from exc
+        break
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))

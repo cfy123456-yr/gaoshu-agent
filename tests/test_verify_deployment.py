@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import io
 import re
 import unittest
+from email.message import Message
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from scripts.verify_deployment import (
     DEMO_REQUIRED_MARKERS,
@@ -12,8 +15,36 @@ from scripts.verify_deployment import (
     VerificationError,
     assert_demo_page_markers,
     assert_model_health,
+    request_json,
     verify_ocr_url_api,
 )
+
+
+class FakeResponse:
+    def __init__(self, status: int, body: bytes) -> None:
+        self.status = status
+        self.body = body
+
+    def read(self) -> bytes:
+        return self.body
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+def rate_limit_error(retry_after: str = "1") -> HTTPError:
+    headers = Message()
+    headers["Retry-After"] = retry_after
+    return HTTPError(
+        "https://example.test/solve-query",
+        429,
+        "Too many requests",
+        headers,
+        io.BytesIO(b'{"detail":"Too many requests"}'),
+    )
 
 
 class VerifyDeploymentTests(unittest.TestCase):
@@ -227,6 +258,67 @@ class VerifyDeploymentTests(unittest.TestCase):
                 "https://images.example/question.png",
                 timeout=20.0,
             )
+
+    def test_request_json_retries_transient_rate_limit(self) -> None:
+        responses = (
+            rate_limit_error("1"),
+            rate_limit_error("2"),
+            FakeResponse(200, b'{"status":"ok"}'),
+        )
+
+        with (
+            patch(
+                "scripts.verify_deployment.urlopen",
+                side_effect=responses,
+            ) as urlopen,
+            patch("scripts.verify_deployment.time.sleep") as sleep,
+        ):
+            payload = request_json(
+                "https://example.test",
+                "/solve-query",
+                method="POST",
+                json_body={"chapter": "limits"},
+            )
+
+        self.assertEqual({"status": "ok"}, payload)
+        self.assertEqual(3, urlopen.call_count)
+        self.assertEqual(2, sleep.call_count)
+        self.assertEqual(1.0, sleep.call_args_list[0].args[0])
+        self.assertEqual(2.0, sleep.call_args_list[1].args[0])
+
+    def test_request_json_stops_after_limited_rate_limit_retries(self) -> None:
+        responses = tuple(rate_limit_error("1") for _ in range(4))
+
+        with (
+            patch(
+                "scripts.verify_deployment.urlopen",
+                side_effect=responses,
+            ) as urlopen,
+            patch("scripts.verify_deployment.time.sleep"),
+            self.assertRaisesRegex(VerificationError, "实际为 429"),
+        ):
+            request_json(
+                "https://example.test",
+                "/solve-query",
+                method="POST",
+            )
+
+        self.assertEqual(4, urlopen.call_count)
+
+    def test_request_json_does_not_retry_expected_rate_limit_response(self) -> None:
+        with patch(
+            "scripts.verify_deployment.urlopen",
+            side_effect=[rate_limit_error("61")],
+        ) as urlopen:
+            payload = request_json(
+                "https://example.test",
+                "/solve-query",
+                method="POST",
+                expected_status=429,
+            )
+
+        self.assertEqual({"detail": "Too many requests"}, payload)
+        self.assertEqual(1, urlopen.call_count)
 
 
 if __name__ == "__main__":

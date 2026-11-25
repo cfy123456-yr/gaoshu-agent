@@ -44,4 +44,4 @@ jobs:
       - name: Verify solve regression
         run: python scripts/verify_solve_regression.py --base-url https://cfyyy.pythonanywhere.com
       - name: Verify seeded random regression
-        run: python scripts/verify_random_regression.py --base-url https://cfyyy.pythonanywhere.com --seed 20260928
+        run: python scripts/verify_random_regression.py --base-url https://cfyyy.pythonanywhere.com --seed 20260928 --delay 3
